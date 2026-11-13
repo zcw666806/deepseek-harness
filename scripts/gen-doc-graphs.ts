@@ -649,6 +649,14 @@ const SERVICE_ROLES: ServiceRole[] = [
     note: 'The project owner persists references, ordered shots, generation versions, and exports; named generators return durable clips, while its model tool and browser Remote share project operations.',
   },
   {
+    key: 'comicProduction',
+    pkg: 'comic-production',
+    title: 'Comic manuscripts and artwork',
+    mode: 'core',
+    consumers: ['client-ui-comic-production'],
+    note: 'The service stores Workspace-owned manuscripts and original PNGs. The browser workbench edits manuscript revisions and transfers projects through the Remote.',
+  },
+  {
     key: 'videoWorkflows',
     pkg: 'video-comfyui',
     title: 'Video workflow configuration',

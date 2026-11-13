@@ -216,6 +216,9 @@ flowchart LR
   svc_videoProduction["ctx.videoProduction<br/>Video production projects"]
   pkg_video_comfyui["video-comfyui"]
   pkg_client_ui_video_production["client-ui-video-production"]
+  pkg_comic_production["comic-production"]
+  svc_comicProduction["ctx.comicProduction<br/>Comic manuscripts and artwork"]
+  pkg_client_ui_comic_production["client-ui-comic-production"]
   svc_videoWorkflows["ctx.videoWorkflows<br/>Video workflow configuration"]
   pkg_client_ui_capabilities["client-ui-capabilities"]
   pkg_capability_manager["capability-manager"]
@@ -251,6 +254,7 @@ flowchart LR
   pkg_client_modules --> svc_clientModules
   pkg_code_runtime --> svc_codeRuntime
   pkg_code_runtime_worker_thread --> svc_codeRuntime
+  pkg_comic_production --> svc_comicProduction
   pkg_commands --> svc_commands
   pkg_compaction --> svc_compaction
   pkg_compaction_basic --> svc_compaction
@@ -377,6 +381,7 @@ flowchart LR
   svc_capabilities --> pkg_video_production
   svc_clientModules --> pkg_client_hmr
   svc_codeRuntime --> pkg_tools
+  svc_comicProduction --> pkg_client_ui_comic_production
   svc_compaction --> pkg_compaction_basic
   svc_cordisInspect --> pkg_tool_cordis
   svc_credentials --> pkg_api_settings_controller
@@ -560,6 +565,7 @@ flowchart LR
 | `ctx.clientModules` | `core` | [`client-modules`](../packages/client/modules) | - | [`client-hmr`](../packages/client/hmr) | - | 通过增量 `dsh.client` 扫描组合 __DSH_BOOT__ 入口图，提供插件组合包，并通知重建／图变更订阅方。 |
 | `ctx.workflowEngine` | `seam` | [`workflow`](../packages/workflow/workflow) | [`workflow-worker-thread`](../packages/workflow/workflow-worker-thread) | [`tool-workflow`](../packages/workflow/tool-workflow), [`tool-ralph`](../packages/workflow/tool-ralph) | - | 每个上下文使用一个引擎，与 bash 相同，且没有具名提供方注册表；通用工作流与固定 Ralph 消费方启动运行，其中的 agent() 调用通过 ctx.subagents 扇出。 |
 | `ctx.videoProduction` | `seam` | [`video-production`](../packages/video/video-production) | [`llm-pi-ai`](../packages/llm/llm-pi-ai), [`video-comfyui`](../packages/video/video-comfyui) | [`video-production`](../packages/video/video-production), [`client-ui-video-production`](../packages/client/ui-video-production) | - | 项目所有者持久保存参考素材、顺序镜头、生成版本与导出；命名生成器返回持久片段，模型工具与浏览器 Remote 共享项目操作。 |
+| `ctx.comicProduction` | `core` | [`comic-production`](../packages/comic/comic-production) | - | [`client-ui-comic-production`](../packages/client/ui-comic-production) | - | 服务保存工作区的漫画稿件和原始 PNG。浏览器工作台通过 Remote 编辑稿件版本并转移项目。 |
 | `ctx.videoWorkflows` | `seam` | [`video-comfyui`](../packages/video/video-comfyui) | [`video-comfyui`](../packages/video/video-comfyui) | [`client-ui-capabilities`](../packages/client/ui-capabilities) | - | 工作流编辑器验证可迁移 API 模板及带修订号的设置，保留宿主凭据，并以禁用状态保存工作流以待显式启用，不启动引擎。 |
 | `ctx.capabilities` | `seam` | [`capability-manager`](../packages/capability/capability-manager) | [`video-comfyui-runtime`](../packages/video/video-comfyui-runtime), [`video-comfyui`](../packages/video/video-comfyui), [`llm-pi-ai`](../packages/llm/llm-pi-ai), [`video-production`](../packages/video/video-production) | [`client-ui-capabilities`](../packages/client/ui-capabilities), [`video-production`](../packages/video/video-production), [`video-comfyui`](../packages/video/video-comfyui) | - | 已安装提供方拥有实测前置条件、固定生命周期操作和可迁移设置；目录串行管理操作并报告缺失提供方，不从项目包安装代码。 |
 | `ctx.webhookRuntime` | `core` | [`webhook`](../packages/webhook/webhook) | - | [`webhook-github`](../packages/webhook/webhook-github) | - | 提供方适配器分派已认证交付；可信插件注册独立的进程本地规则，runtime 把非 null 结果转换为普通的 Workspace-backed Session，不保留交付或完成状态。 |

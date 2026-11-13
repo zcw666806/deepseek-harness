@@ -214,6 +214,9 @@ flowchart LR
   svc_videoProduction["ctx.videoProduction<br/>Video production projects"]
   pkg_video_comfyui["video-comfyui"]
   pkg_client_ui_video_production["client-ui-video-production"]
+  pkg_comic_production["comic-production"]
+  svc_comicProduction["ctx.comicProduction<br/>Comic manuscripts and artwork"]
+  pkg_client_ui_comic_production["client-ui-comic-production"]
   svc_videoWorkflows["ctx.videoWorkflows<br/>Video workflow configuration"]
   pkg_client_ui_capabilities["client-ui-capabilities"]
   pkg_capability_manager["capability-manager"]
@@ -249,6 +252,7 @@ flowchart LR
   pkg_client_modules --> svc_clientModules
   pkg_code_runtime --> svc_codeRuntime
   pkg_code_runtime_worker_thread --> svc_codeRuntime
+  pkg_comic_production --> svc_comicProduction
   pkg_commands --> svc_commands
   pkg_compaction --> svc_compaction
   pkg_compaction_basic --> svc_compaction
@@ -375,6 +379,7 @@ flowchart LR
   svc_capabilities --> pkg_video_production
   svc_clientModules --> pkg_client_hmr
   svc_codeRuntime --> pkg_tools
+  svc_comicProduction --> pkg_client_ui_comic_production
   svc_compaction --> pkg_compaction_basic
   svc_cordisInspect --> pkg_tool_cordis
   svc_credentials --> pkg_api_settings_controller
@@ -558,6 +563,7 @@ flowchart LR
 | `ctx.clientModules` | `core` | [`client-modules`](../packages/client/modules) | - | [`client-hmr`](../packages/client/hmr) | - | Composes the __DSH_BOOT__ entry graph from an incremental dsh.client scan, serves plugin bundles, and notifies rebuilt/graph-changed subscribers. |
 | `ctx.workflowEngine` | `seam` | [`workflow`](../packages/workflow/workflow) | [`workflow-worker-thread`](../packages/workflow/workflow-worker-thread) | [`tool-workflow`](../packages/workflow/tool-workflow), [`tool-ralph`](../packages/workflow/tool-ralph) | - | One engine per context, as in bash, with no named-provider registry; the general workflow and fixed Ralph consumers start runs whose agent() calls fan out through ctx.subagents. |
 | `ctx.videoProduction` | `seam` | [`video-production`](../packages/video/video-production) | [`llm-pi-ai`](../packages/llm/llm-pi-ai), [`video-comfyui`](../packages/video/video-comfyui) | [`video-production`](../packages/video/video-production), [`client-ui-video-production`](../packages/client/ui-video-production) | - | The project owner persists references, ordered shots, generation versions, and exports; named generators return durable clips, while its model tool and browser Remote share project operations. |
+| `ctx.comicProduction` | `core` | [`comic-production`](../packages/comic/comic-production) | - | [`client-ui-comic-production`](../packages/client/ui-comic-production) | - | The service stores Workspace-owned manuscripts and original PNGs. The browser workbench edits manuscript revisions and transfers projects through the Remote. |
 | `ctx.videoWorkflows` | `seam` | [`video-comfyui`](../packages/video/video-comfyui) | [`video-comfyui`](../packages/video/video-comfyui) | [`client-ui-capabilities`](../packages/client/ui-capabilities) | - | The workflow editor validates portable API templates and revisioned settings, preserves host credentials, and saves disabled workflows for explicit activation without starting an engine. |
 | `ctx.capabilities` | `seam` | [`capability-manager`](../packages/capability/capability-manager) | [`video-comfyui-runtime`](../packages/video/video-comfyui-runtime), [`video-comfyui`](../packages/video/video-comfyui), [`llm-pi-ai`](../packages/llm/llm-pi-ai), [`video-production`](../packages/video/video-production) | [`client-ui-capabilities`](../packages/client/ui-capabilities), [`video-production`](../packages/video/video-production), [`video-comfyui`](../packages/video/video-comfyui) | - | Installed providers own inspected prerequisites, fixed lifecycle actions and portable settings; the directory serializes management and reports missing providers without installing code from a project package. |
 | `ctx.webhookRuntime` | `core` | [`webhook`](../packages/webhook/webhook) | - | [`webhook-github`](../packages/webhook/webhook-github) | - | Provider adapters dispatch authenticated deliveries; trusted plugins register independent process-local rules, and the runtime turns non-null results into ordinary Workspace-backed Sessions without delivery or completion state. |

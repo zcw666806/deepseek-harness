@@ -27,6 +27,7 @@ kind: "package-group"
 <a id="related-documentation"></a>
 ## 相关文档
 
+- [漫画制作子系统](../../docs/subsystems/comic-production.zh.md) 介绍稿件存储与项目转移。
 - [漫画制作工作台](../client/ui-comic-production/README.zh.md) 介绍 Web 编辑和原画交接流程。
 
 <a id="dev-note"></a>

@@ -167,6 +167,8 @@ const packageFileExtras: Readonly<Record<string, readonly string[]>> = {
   '@deepseek-ai/dsh-experimental-webworker-packer': ['bin.js', 'lib/repository-*.js'],
   '@deepseek-ai/dsh-subprocess-local': ['scripts/ensure-spawn-helper.mjs'],
   '@deepseek-ai/dsh-video-comfyui-runtime': ['runtime-helper.py'],
+  '@deepseek-ai/dsh-web-app': ['comic-production.patch.yml'],
+  '@deepseek-ai/dsh-mcp-client': ['lib/rea-experiment.js'],
 }
 
 function sameStringList(actual: readonly string[] | undefined, expected: readonly string[]): boolean {

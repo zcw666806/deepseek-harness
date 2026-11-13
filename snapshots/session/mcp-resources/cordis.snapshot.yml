@@ -61,6 +61,9 @@
   name: '@deepseek-ai/dsh-llm-deepseek'
   disabled: true
 
+- id: plugin-package-inventory-deepseek
+  disabled: true
+
 - insert:
     - id: llm-replay
       name: '@deepseek-ai/dsh-llm-replay'

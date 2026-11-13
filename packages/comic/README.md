@@ -27,6 +27,7 @@ Comic production projects retain editable pages, lettering, and original artwork
 <a id="related-documentation"></a>
 ## Related documentation
 
+- [Comic production subsystem](../../docs/subsystems/comic-production.md) describes manuscript storage and project transfer.
 - [Comic studio](../client/ui-comic-production/README.md) covers the Web editing and artwork handoff workflow.
 
 <a id="dev-note"></a>
