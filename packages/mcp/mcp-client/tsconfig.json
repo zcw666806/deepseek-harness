@@ -15,6 +15,11 @@
     {
       "path": "../../../vendor/schemastery"
     },
+    { "path": "../../core/agent" },
+    { "path": "../../core/session" },
+    { "path": "../../core/system-prompt" },
+    { "path": "../../session/session-projection" },
+    { "path": "../../settings/settings" },
     {
       "path": "../../llm/llm"
     },

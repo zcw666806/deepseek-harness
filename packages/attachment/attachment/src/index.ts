@@ -8,7 +8,10 @@ import type {
   ImageRequestPolicy,
   RequestImageAttachment,
   SaveImageAttachment,
+  SaveVideoAttachment,
   StoredImageAttachment,
+  StoredVideoAttachment,
+  VideoAttachmentRef,
 } from './types.ts'
 
 export { AttachmentId, ImageVariantId } from './brand.ts'
@@ -27,7 +30,11 @@ export type {
   PromptContentPart,
   RequestImageAttachment,
   SaveImageAttachment,
+  SaveVideoAttachment,
   StoredImageAttachment,
+  StoredVideoAttachment,
+  VideoAttachmentRef,
+  VideoMediaType,
 } from './types.ts'
 
 declare module '@deepseek-ai/cordis' {
@@ -140,6 +147,48 @@ export abstract class AttachmentStore extends Service {
       'The mounted attachment provider cannot derive model-request images.',
       'ATTACHMENT_PROJECTION_UNSUPPORTED',
     ))
+  }
+
+  /**
+   * Validate and durably commit one video.
+   * @param input - raw video bytes, declared media type, and optional metadata.
+   * @param signal - optional cancellation for backend storage work.
+   * @returns the durable content-addressed video reference.
+   */
+  saveVideo(input: SaveVideoAttachment, signal?: AbortSignal): Promise<VideoAttachmentRef> {
+    signal?.throwIfAborted()
+    void input
+    return Promise.reject(new AttachmentError(
+      'The mounted attachment provider does not support video storage.',
+      'ATTACHMENT_PROJECTION_UNSUPPORTED',
+    ))
+  }
+
+  /**
+   * Read one video and verify that bytes still match the recorded reference.
+   * @param ref - durable reference from the session log.
+   * @param signal - optional cancellation for backend read and verification work.
+   * @returns the verified bytes and video attachment reference.
+   * @throws the signal reason when aborted, or a storage error when verification fails.
+   */
+  readVideo(ref: VideoAttachmentRef, signal?: AbortSignal): Promise<StoredVideoAttachment> {
+    signal?.throwIfAborted()
+    void ref
+    return Promise.reject(new AttachmentError(
+      'The mounted attachment provider does not support video storage.',
+      'ATTACHMENT_PROJECTION_UNSUPPORTED',
+    ))
+  }
+
+  /**
+   * Locate the provider-owned video object in the harness host filesystem.
+   * @param ref - durable video attachment reference.
+   * @returns an absolute host path, or undefined when this backend is not host-file-backed.
+   * @throws an AttachmentError when the durable reference is invalid.
+   */
+  videoHostPath(ref: VideoAttachmentRef): string | undefined {
+    void ref
+    return undefined
   }
 
 }

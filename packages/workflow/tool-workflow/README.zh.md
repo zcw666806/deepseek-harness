@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-`dsh-tool-workflow` 把 `workflow` 工具交给模型：以 JavaScript 编排脚本、身份块与可选参数调用它，它会在 `ctx.workflowEngine` 上运行脚本，把工作扇出到多个 subagent，直到脚本的最终值返回。该工具拥有模型侧 schema、系统提示词中的使用指导与结果包络；脚本解析、执行、上限与取消位于引擎之后。执行为前台：父级轮次会阻塞到整个工作流结算，非正常结束是错误，绝不是部分输出。仅当用户明确要求工作流式或大型多 agent 编排时选择它；一两项委派时优先使用普通 subagent 调用。
+`dsh-tool-workflow` 让模型通过 JavaScript 脚本协调多个 subagent，并收集最终 JSON 值。前台调用等待完成；`run_in_background: true` 返回任务 id，让父级继续其他工作。后台调用需要任务服务与任务控制工具。仅当用户明确要求工作流式或大型多 agent 编排时选择它；一两项委派时优先使用普通 subagent 调用。
 
 ## 目录
 
@@ -29,13 +29,13 @@ kind: "package-reference"
 
 ### 调用工具
 
-模型提交三个参数：`meta`（必需的身份数据：`name`、`description`，以及可选的 `whenToUse` 与 `phases`）、`script`（必需的纯 JavaScript 脚本体——不含 `export const meta` 语句；工具描述携带完整的编写约定）与 `args`（可选 JSON 对象，作为全局变量 `args` 向脚本公开；裸列表应包装到字段中，使协议 schema 如实表达形态）。
+模型提交 `meta`（必需的身份数据：`name`、`description`，以及可选的 `whenToUse` 与 `phases`）、`script`（必需的纯 JavaScript 脚本体——不含 `export const meta` 语句；工具描述携带完整的编写约定）、可选 `args`（作为脚本全局变量 `args` 的 JSON 对象）与可选 `run_in_background`。裸列表应包装到 `args` 的字段中。
 
-成功返回规范包络 `{ runId, agentsStarted, result }`，向模型渲染为 `workflow "<name>" completed (<count> agent<optional-s>).`，后接 `Return value:` 与美化打印的 JSON。无法启动的工作流——脚本解析或 meta 校验失败——返回模型可以修正的错误。取消与执行失败返回 `Error: workflow run was cancelled` 或 `Error: workflow run failed: <error>`；部分输出绝不会被报告为成功。
+前台成功返回 `{ runId, agentsStarted, result }`，渲染为 `workflow "<name>" completed (<count> agent<optional-s>).`，后接 `Return value:` 与美化打印的 JSON。后台成功立即返回 `{ jobId }`；`job_output` 收集最终结果，`job_kill` 停止工作流，已配置的任务通知策略投递尚未报告的完成结果。脚本解析或 meta 校验失败会返回错误，不注册任务。执行失败与取消会报告原因；部分输出绝不会被报告为成功。
 
 ### 运行期间的预期
 
-脚本运行期间，父级轮次会等待：工具启动运行、等待其结果，并始终 dispose（资源释放）它，因此脚本及其子 agent 在每条路径上完全停稳——包括从父级步骤中止信号桥接而来的取消。模型只看到最终结果，永远不会看到中间子 agent 消息；子 agent 自己的工作不会进入父级对话。
+前台调用等待完成，并把父级步骤的中止信号桥接到工作流。后台调用把所有权交给父 Agent 的任务注册表：发起步骤结束后任务继续运行，`job_kill`、Agent 释放或任务服务释放会取消它。每次结算都先等待工作流释放，再让任务报告终态。模型收到最终结果，不接收中间子 agent 消息。后台任务只保存在当前进程内，进程退出后不能恢复。
 
 ### 配置
 
@@ -62,11 +62,11 @@ kind: "package-reference"
 
 ### 运行生命周期
 
-`execute` 启动运行，并在 `try/finally` 内等待 `run.result`；该结构总会 dispose 运行。`exec.signal` 会桥接到 `run.cancel()`，包括启动前已经中止的情况。非 `completed` 结束原因会映射为报告原因的 `isError` 结果；完成时渲染 `{ runId, agentsStarted, result }`，Native 渲染器只会在 `maxResultChars` 处截断该投影。
+前台执行在 `try/finally` 内等待 `run.result`，并把 `exec.signal` 桥接到 `run.cancel()`。后台执行只在 `ctx.jobs.start()` 接纳所有者并确认控制器可用后启动；缺少服务或控制器时，在工作流启动前拒绝。生产者负责运行的取消与清理，任务结果包含有长度上限的最终文本。两条路径都先释放运行，再报告结算。清理失败会让任务失败，并使持久工作流记录保留缺少终态后缀的前缀。
 
 ### 持久会话记录
 
-对于根 transport 执行（`exec.parent` 缺省），工具会用四个 log-only 事件把运行投影到调用 Agent 的 Session：`start()` 返回后写 run-start，只记录 `run.id` 匹配的成员开始与结束，并且只在结果可用且 dispose 完全停稳后写 run-end。嵌套 transport 调用照常执行，但不写任何记录。任一次 Session append 首次失败后，本运行会停止后续记录并只告警一次，留下空记录或合法连续前缀，同时不改变工具结果和清理。包 invariant 会在冷加载与实时追加时拒绝重复 start、未配对成员、仍有开放成员的终点与 run-end 后更新，同时允许缺失终态后缀的连续前缀。
+对于前台根 transport 执行（`exec.parent` 缺省），工具会用四个 log-only 事件把运行投影到调用 Agent 的 Session：`start()` 返回后写 run-start，只记录 `run.id` 匹配的成员开始与结束，并且只在结果可用且释放完全停稳后写 run-end。后台调用使用现有任务控制与通知，不创建前台工作流 Chat 记录。嵌套 transport 调用不写工作流记录。首次追加失败会停止后续记录，留下合法连续前缀，不改变执行或清理。不变式拒绝重复 start、未配对成员、仍有开放成员的终点与 run-end 后更新，并允许缺失终态后缀。
 
 ### 渲染意图
 
@@ -139,7 +139,7 @@ Use the <toolName> tool ONLY when the user explicitly asks for a workflow or for
 
 #### 模型看到什么
 
-由模型编写的完整脚本、元数据与 args 会保留在 assistant 工具调用中。成功结果精确为 `workflow "<name>" completed (<count> agent<optional-s>).`、换行、`Return value:`、换行，以及美化打印且依赖数据的 JSON；达到上限时，会在新行添加 `… [truncated: <omitted> more characters]`。失败结果精确为 `Error: workflow run was cancelled`（可以追加后缀 ` (<error>)`）、`Error: workflow run failed: <error-or-unknown error>` 或防御性的 `Error: workflow run ended abnormally (<reason>)`；没有所属 agent 的调用变为 `Error: workflow tool requires a calling agent (exec.agent was undefined)`。中间子 agent 消息会被省略。
+完整的模型脚本、元数据与 args 留在 assistant 工具调用中。前台成功文本严格为 `workflow "<name>" completed (<count> agent<optional-s>).`、换行、`Return value:`、换行，以及美化打印的数据相关 JSON；达到上限时另起一行加入 `… [truncated: <omitted> more characters]`。后台启动文本严格为 `workflow "<name>" started in background (job_id: <jobId>). Use job_output to collect the result or job_kill to stop it.` 任务最终文本使用相同的完成渲染，或报告 `workflow run was cancelled`（可追加 ` (<error>)`）、`workflow run failed: <error-or-unknown error>`。前台失败使用普通 `Error:` 前缀。中间子 agent 消息被省略；任务读取与通知遵循[任务控制工具](../../jobs/tool-jobs/README.zh.md)。
 
 #### Token 影响
 
@@ -156,10 +156,10 @@ Use the <toolName> tool ONLY when the user explicitly asks for a workflow or for
 
 这些限制说明该工具尚未支持什么。它们是当前约束，不是任务积压。
 
-- **父级轮次会阻塞到整个工作流结算**——没有后台启动／轮询接口，取消会丢弃局部输出并返回错误。
+- **后台任务需要运行中的进程与控制器**——已接纳的任务在发起工具步骤结束后继续运行，但 Agent 或任务服务释放会取消它们。进程退出后，任务 id 不能恢复工作流。
 - **`args` 必须是对象，Native 结果文本有界**——调用方把顶层数组／标量包装到字段中；规范工作流结果保持完整，超过 `maxResultChars` 的 JSON 会在面向模型的投影中截断，而不是存储在检索句柄背后。
 - **每次工具注册的工作流策略固定**——提供方选择、上限与工具名称属于部署配置，不是模型调用参数。
-- **持久记录只覆盖顶层且只供观察**——嵌套 PTC mode dispatch 不记录；记录故障会刻意退化为不完整前缀，而不改变执行。
+- **后台进度与结果由任务控制提供**——后台调用不创建专用工作流时间线。前台时间线覆盖顶层调用；嵌套 PTC 调用没有独立时间线。
 
 <a id="dev-note"></a>
 ### 开发备注
@@ -169,6 +169,6 @@ Use the <toolName> tool ONLY when the user explicitly asks for a workflow or for
 
 本开发备注是维护者的工作上下文：尚未决定的开放方向。它明确不具权威性——已交付的行为、限制与既定理由以上文、包代码与相关 Agent Note 为准。
 
-开放方向：让父级轮次不再阻塞的后台启动／轮询路径；把截断的 JSON 存储在检索句柄背后，而不是剪裁投影；记录超出顶层的嵌套 dispatch。
+开放方向：把截断的 JSON 存储在检索句柄背后，而不是剪裁投影；记录超出顶层的嵌套 dispatch。
 
 </details>

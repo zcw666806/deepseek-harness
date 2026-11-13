@@ -1,0 +1,34 @@
+{
+  "initial": [
+    {
+      "name": "mcp_resource__docs__list",
+      "description": "List one page of resources from MCP server docs, without their contents. Pass nextCursor as cursor to continue. Read a listed URI with mcp_resource__docs__read.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cursor": {
+            "type": "string",
+            "description": "Opaque nextCursor from the previous page; omit for the first page."
+          }
+        }
+      }
+    },
+    {
+      "name": "mcp_resource__docs__read",
+      "description": "Read a resource URI from MCP server docs. Use mcp_resource__docs__list to discover URIs. Text is returned on demand; binary content is identified but not included.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "uri": {
+            "type": "string",
+            "description": "Non-empty resource URI provided by this MCP server."
+          }
+        },
+        "required": [
+          "uri"
+        ]
+      }
+    }
+  ],
+  "changes": []
+}

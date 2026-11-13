@@ -28,6 +28,16 @@ import type {
   Provider,
   ThinkingLevelMap,
 } from '@earendil-works/pi-ai'
+import type { ModelModality } from '@deepseek-ai/dsh-llm'
+
+/**
+ * Extended model type that includes output modalities.
+ * pi-ai's base Model type doesn't have this field, so we extend it locally.
+ */
+export type ModelWithOutput<A extends Api = Api> = Model<A> & {
+  /** Output modalities this model can produce. */
+  output?: readonly ModelModality[]
+}
 
 /**
  * Pricing for a model the installed catalog does not describe. The harness
@@ -52,6 +62,9 @@ const MODALITY_GATE: Record<PiAiModality, true> = {
 /** Every request modality a profile may declare. */
 export const MODALITIES = Object.keys(MODALITY_GATE) as readonly PiAiModality[]
 
+/** Every output modality a profile may declare (superset of input modalities). */
+export const OUTPUT_MODALITIES: readonly ModelModality[] = ['text', 'image', 'video']
+
 /**
  * One entry's modality list, or `undefined` when it states no answer. Absent
  * and empty mean the same thing — `[]` describes a model that accepts nothing
@@ -62,6 +75,16 @@ export const MODALITIES = Object.keys(MODALITY_GATE) as readonly PiAiModality[]
  * @returns the declared modalities, or `undefined` to ask the next level.
  */
 function declaredInput(configured: readonly PiAiModality[] | undefined): Model<Api>['input'] | undefined {
+  return configured === undefined || configured.length === 0 ? undefined : [...configured]
+}
+
+/**
+ * One entry's output modality list, or `undefined` when it states no answer.
+ * An absent output declaration uses the chat default `['text']`.
+ * @param configured - the list a `models` or `modelOverrides` entry supplied.
+ * @returns the declared output modalities, or `undefined` to use the default.
+ */
+function declaredOutput(configured: readonly ModelModality[] | undefined): ModelWithOutput['output'] {
   return configured === undefined || configured.length === 0 ? undefined : [...configured]
 }
 
@@ -573,6 +596,13 @@ export interface PiAiModelProfile {
    */
   input?: PiAiModality[]
   /**
+   * Response modalities this model produces. Absent defaults to `['text']`.
+   * Declaring `['text', 'video']` makes this a video-generation model and
+   * exposes the `generate_video` tool. Video targets are excluded from chat
+   * selection and use the native video endpoint through that tool.
+   */
+  output?: ModelModality[]
+  /**
    * Selectable reasoning efforts. Absent inherits the installed catalog
    * entry's capability (a hand-declared model has none and does not reason);
    * `false` declares a non-reasoning model, which is how a profile strips
@@ -887,6 +917,7 @@ export function resolveRouteModels(request: RouteCatalogRequest): RouteCatalog {
       provider,
       baseUrl,
       input: declaredInput(entry.input) ?? base?.input ?? [...request.defaultInput],
+      output: declaredOutput(entry.output) ?? ['text'],
       cost: base?.cost ?? NO_COST,
       contextWindow,
       maxTokens,

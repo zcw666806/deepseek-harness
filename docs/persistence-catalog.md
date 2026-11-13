@@ -549,6 +549,22 @@ Source: [`packages/interaction/permission-presets/src/index.ts:53`](../packages/
 
 Source: [`packages/plan/plan-mode/src/index.ts:46`](../packages/plan/plan-mode/src/index.ts)
 
+### `rea-experiment/*`
+
+<a id="rea-experimentselected--log-only"></a>
+
+#### `rea-experiment/selected` — log-only
+
+```ts persistence-catalog
+/**
+ * Records the REA launcher selected before the session's first request.
+ * Log-only; absence keeps restored sessions outside the experiment.
+ */
+'rea-experiment/selected': ReaExperimentSelection
+```
+
+Source: [`packages/mcp/mcp-client/src/rea-experiment-state.ts:23`](../packages/mcp/mcp-client/src/rea-experiment-state.ts)
+
 ### `request/*`
 
 <a id="requestcontext--log-only"></a>

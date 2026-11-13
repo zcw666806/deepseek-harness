@@ -705,6 +705,13 @@ inspect( sessionId: SessionId, signal?: AbortSignal, ): Promise<{ meta: SessionH
 @Remote('attachment') attachment(request: SessionAttachmentRequest): Promise<SessionAttachmentValue>
 
 /**
+ * Read a bounded video slice proven reachable from a successful Session generation.
+ * @param request - Session and attachment identities plus raw-byte range.
+ * @returns verified metadata and a base64 slice containing at most 256 KiB of raw video bytes.
+ */
+@Remote('videoAttachment') videoAttachment(request: SessionVideoAttachmentRequest): Promise<SessionVideoAttachmentValue>
+
+/**
  * Mutate one still-pending queue occurrence on a live Agent.
  * @param request - Session, queue item, and requested mutation.
  * @returns acknowledgement that the queue mutation was applied.

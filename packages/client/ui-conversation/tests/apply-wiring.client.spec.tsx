@@ -65,7 +65,7 @@ describe('target-neutral Conversation apply wiring', () => {
     const b = await bench()
     const session = entry(b.runtime, 'conversation.session')
     const header = entry(b.runtime, 'conversation.session.header')
-    expect(entry(b.runtime, 'conversation')?.store).toBeUndefined()
+    expect(entry(b.runtime, 'conversation')?.store).toBe(session?.store)
     expect(session?.store).toBeDefined()
     expect(header?.store).toBe(session?.store)
     expect(b.runtime.slots.spec('conversation.composer'))
@@ -85,6 +85,10 @@ describe('target-neutral Conversation apply wiring', () => {
     } | undefined)?.hooks.conversationViews
     expect(source).toBeDefined()
     expect(source?.getSnapshot()).toBe(source?.getSnapshot())
+    const rootSource = (b.runtime.slots.entries('conversation')[0]?.inject?.() as {
+      hooks: { conversationViews: ObservableSnapshot<readonly ViewTab[]> }
+    } | undefined)?.hooks.conversationViews
+    expect(rootSource).toBe(source)
 
     const disposeView = b.runtime.slots.register({
       name: 'conversation.view',

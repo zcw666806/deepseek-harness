@@ -197,6 +197,7 @@ export function apply(ctx: Context): void {
   const registerConversationRoot = () => slots.register({
     name: 'conversation',
     locale: NS,
+    store: conversationStore,
     children: {
       'conversation.session': { kind: 'single', scope: 'session' },
       'conversation.session.header': { kind: 'single', scope: 'session' },
@@ -214,6 +215,7 @@ export function apply(ctx: Context): void {
     inject: (sessionId: SessionId | undefined): ConversationInjected => ({
       hooks: {
         composerBlock: sessionId === undefined ? ABSENT_BLOCK : composerBlocks.storeFor(sessionId),
+        conversationViews,
       },
       selectWorkspace: async (workspaceId) => {
         const nextId = await workspaceNavigation.connectWorkspace(workspaceId)

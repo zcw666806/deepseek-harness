@@ -10,6 +10,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { FC } from 'react'
 import type { ScopedStandardSourceBinding, SlotRendererHost } from '@deepseek-ai/dsh-client-ui-slots'
 import { SlotRegistry } from '../src/client/registry.ts'
+import { defineStore } from '@deepseek-ai/dsh-client-store'
 
 // Test-only slot keys (merged so the typed entries/spec faces accept them).
 declare module '@deepseek-ai/dsh-client-ui-slots' {
@@ -407,16 +408,16 @@ describe('declaration injection', () => {
     const { handle } = fakeHandle()
     bench.erased.inject('t.host', () => bench.erased.register({ name: 't.host', store: handle }, C))
     const oldEntry = host.entriesOf('t.host')[0]
-    expect(host.storeOf(oldEntry as never, undefined)).toBeDefined()
+    expect(host.storeOf(oldEntry as never, undefined, 'root')).toBeDefined()
     disposeFrame()
-    expect(() => host?.storeOf(oldEntry as never, undefined)).toThrow(/not registered/)
+    expect(() => host?.storeOf(oldEntry as never, undefined, 'root')).toThrow(/not registered/)
     bench.erased.register({
       name: 'root', children: { 't.panel': { kind: 'single', scope: 'session' } },
     }, C)
     bench.erased.register({ name: 't.panel', store: handle }, C)
     const panelEntry = host.entriesOf('t.panel')[0]
     const scope = scopedBinding(bench.ctx, 's1')
-    expect(host.storeOf(panelEntry as never, scope.binding)).toBeDefined()
+    expect(host.storeOf(panelEntry as never, scope.binding, 'session')).toBeDefined()
     expect(handle.create).toHaveBeenLastCalledWith('s1')
     await scope.fiber.dispose()
   })
@@ -548,6 +549,61 @@ describe('store instance axis', () => {
     return { bench, host }
   }
 
+  it('keeps an immutable absent optional source and shares actual Session instances without persistence pollution', async () => {
+    const { bench, host } = await storeBench()
+    const data = new Map([['optional-test', JSON.stringify({ n: 99, nested: { value: 99 } })]])
+    const storage = {
+      getItem: vi.fn((key: string) => data.get(key) ?? null),
+      setItem: vi.fn((key: string, value: string) => { data.set(key, value) }),
+      removeItem: vi.fn((key: string) => { data.delete(key) }),
+    }
+    vi.stubGlobal('localStorage', storage)
+    const handle = defineStore({
+      init: () => ({ n: 0, nested: { value: 1 } }), persist: 'optional-test',
+      actions: { bump: (draft) => { draft.n += 1 } },
+    })
+    const create = vi.spyOn(handle, 'create')
+    const removeMaybe = bench.erased.register({ name: 't.maybe', store: handle }, C)
+    const removeStrict = bench.erased.register({ name: 't.panel', store: handle }, C)
+    const [maybe] = host.entriesOf('t.maybe')
+    const [strict] = host.entriesOf('t.panel')
+    const one = scopedBinding(bench.ctx, 'one')
+    const two = scopedBinding(bench.ctx, 'two')
+    try {
+      const absent = host.storeOf(maybe as never, undefined, 'session-maybe')!
+      expect(absent.getSnapshot()).toEqual({ n: 0, nested: { value: 1 } })
+      expect(Object.isFrozen((absent.getSnapshot() as { nested: object }).nested)).toBe(true)
+      expect(() => { absent.actions['bump']!() }).toThrow('require a selected Session')
+      expect(create).not.toHaveBeenCalled()
+      expect(storage.getItem).not.toHaveBeenCalled()
+      expect(storage.setItem).not.toHaveBeenCalled()
+      expect(() => host.storeOf(strict as never, undefined, 'session')).toThrow('requires a session id')
+      const first = host.storeOf(maybe as never, one.binding, 'session-maybe')!
+      expect(host.storeOf(strict as never, one.binding, 'session')).toBe(first)
+      first.actions['bump']!()
+      expect(first.getSnapshot()).toMatchObject({ n: 1 })
+      const second = host.storeOf(maybe as never, two.binding, 'session-maybe')!
+      expect(second).not.toBe(first)
+      expect(second.getSnapshot()).toMatchObject({ n: 0 })
+      expect(host.storeOf(maybe as never, one.binding, 'session-maybe')).toBe(first)
+      expect(host.storeOf(maybe as never, undefined, 'session-maybe')).toBe(absent)
+      expect(absent.getSnapshot()).toEqual({ n: 0, nested: { value: 1 } })
+      expect(storage.getItem.mock.calls.every(([key]) => key !== 'optional-test')).toBe(true)
+      expect(storage.setItem.mock.calls.every(([key]) => key !== 'optional-test')).toBe(true)
+      removeMaybe()
+      removeStrict()
+      expect(() => host.storeOf(maybe as never, undefined, 'session-maybe')).toThrow('not registered')
+      bench.erased.register({ name: 't.maybe', store: handle }, C)
+      const [replacement] = host.entriesOf('t.maybe')
+      expect(host.storeOf(replacement as never, undefined, 'session-maybe')).not.toBe(absent)
+    } finally {
+      await one.fiber.dispose()
+      await two.fiber.dispose()
+      await bench.ctx.fiber.dispose()
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('resolves one instance per (handle x root scope) shared across entries', async () => {
     const { bench, host } = await storeBench()
     const { handle } = fakeHandle()
@@ -555,8 +611,8 @@ describe('store instance axis', () => {
     bench.erased.register({ name: 't.rows', id: 'a', store: handle }, C)
     const [hostEntry] = host.entriesOf('t.host')
     const [rowEntry] = host.entriesOf('t.rows')
-    const a = host.storeOf(hostEntry as never, undefined)
-    const b = host.storeOf(rowEntry as never, undefined)
+    const a = host.storeOf(hostEntry as never, undefined, 'root')
+    const b = host.storeOf(rowEntry as never, undefined, 'root')
     expect(a).toBeDefined()
     expect(a).toBe(b) // shared handle, same scope key = same instance
     expect(handle.create).toHaveBeenCalledTimes(1)
@@ -570,13 +626,13 @@ describe('store instance axis', () => {
     const [entry] = host.entriesOf('t.panel')
     const scope1 = scopedBinding(bench.ctx, 's1')
     const scope2 = scopedBinding(bench.ctx, 's2')
-    const s1 = host.storeOf(entry as never, scope1.binding)
-    const s2 = host.storeOf(entry as never, scope2.binding)
+    const s1 = host.storeOf(entry as never, scope1.binding, 'session')
+    const s2 = host.storeOf(entry as never, scope2.binding, 'session')
     expect(s1).not.toBe(s2)
-    expect(host.storeOf(entry as never, scope1.binding)).toBe(s1) // cached per key
+    expect(host.storeOf(entry as never, scope1.binding, 'session')).toBe(s1) // cached per key
     expect(handle.create).toHaveBeenCalledWith('s1')
     expect(handle.create).toHaveBeenCalledWith('s2')
-    expect(() => host.storeOf(entry as never, undefined)).toThrow(/requires a session id/)
+    expect(() => host.storeOf(entry as never, undefined, 'session')).toThrow(/requires a session id/)
     await Promise.all([scope1.fiber.dispose(), scope2.fiber.dispose()])
   })
 
@@ -586,8 +642,8 @@ describe('store instance axis', () => {
     bench.erased.register({ name: 't.host', store: factory }, C)
     bench.erased.register({ name: 't.rows', id: 'a', store: factory }, C)
     expect(factory).toHaveBeenCalledTimes(2)
-    const a = host.storeOf(host.entriesOf('t.host')[0] as never, undefined)
-    const b = host.storeOf(host.entriesOf('t.rows')[0] as never, undefined)
+    const a = host.storeOf(host.entriesOf('t.host')[0] as never, undefined, 'root')
+    const b = host.storeOf(host.entriesOf('t.rows')[0] as never, undefined, 'root')
     expect(a).not.toBe(b) // two mints, two instances
   })
 
@@ -598,10 +654,10 @@ describe('store instance axis', () => {
     bench.erased.register({ name: 't.rows', id: 'a', store: handle }, C)
     const rowEntry = host.entriesOf('t.rows')[0]
     const hostEntry = host.entriesOf('t.host')[0]
-    const shared = host.storeOf(rowEntry as never, undefined)
+    const shared = host.storeOf(rowEntry as never, undefined, 'root')
     d1() // one holder left: record (and instance) survive
-    expect(host.storeOf(rowEntry as never, undefined)).toBe(shared)
-    expect(() => host.storeOf(hostEntry as never, undefined)).not.toThrow() // handle still live via the row entry
+    expect(host.storeOf(rowEntry as never, undefined, 'root')).toBe(shared)
+    expect(() => host.storeOf(hostEntry as never, undefined, 'root')).not.toThrow() // handle still live via the row entry
     // Note: dropping the row entry would sever the last reference; stale
     // resolution is covered through the cascade spec below.
   })
@@ -612,12 +668,12 @@ describe('store instance axis', () => {
     bench.erased.register({ name: 't.panel', store: handle }, C)
     const [entry] = host.entriesOf('t.panel')
     const scope = scopedBinding(bench.ctx, 's1')
-    const s1 = host.storeOf(entry as never, scope.binding)
+    const s1 = host.storeOf(entry as never, scope.binding, 'session')
     expect(s1).toBe(created[0]) // the resolved instance is the fake the handle minted
     await scope.fiber.dispose()
     expect(created[0]?.clearPersisted).toHaveBeenCalledTimes(1)
     const replacement = scopedBinding(bench.ctx, 's1')
-    expect(host.storeOf(entry as never, replacement.binding)).not.toBe(s1)
+    expect(host.storeOf(entry as never, replacement.binding, 'session')).not.toBe(s1)
     await replacement.fiber.dispose()
   })
 
@@ -669,13 +725,13 @@ describe('store instance axis', () => {
     bench.erased.register({ name: 't.maybe', store: handle }, C)
     const [entry] = host.entriesOf('t.maybe')
     const scope = scopedBinding(bench.ctx, 's1')
-    const before = host.storeOf(entry as never, scope.binding)
+    const before = host.storeOf(entry as never, scope.binding, 'session')
 
     await scope.fiber.dispose()
 
     expect(created[0]?.clearPersisted).toHaveBeenCalledOnce()
     const replacement = scopedBinding(bench.ctx, 's1')
-    const after = host.storeOf(entry as never, replacement.binding)
+    const after = host.storeOf(entry as never, replacement.binding, 'session')
     expect(after).not.toBe(before)
     expect(handle.create).toHaveBeenLastCalledWith('s1')
     await replacement.fiber.dispose()

@@ -6,6 +6,8 @@ The user-settings seam of [dsh-settings](../../packages/settings/settings) holds
 
 Source: [`packages/settings/settings/src/index.ts`](../../packages/settings/settings/src/index.ts)
 
+The [REA experiment](../../packages/mcp/mcp-client/README.md#rea-experiment-in-web) settings owner samples `ReaExperimentSettings` for newly created Web sessions. Enabled sessions retain their launcher selection in the session log; restoring or forking one uses that selection rather than the current user setting.
+
 ## Identity
 
 A namespace names one plugin-owned section of the user document. The brand prevents callers from mixing settings namespaces with other ids passed between packages or processes; construction validates lowercase kebab-case syntax.
@@ -172,6 +174,32 @@ type SettingsUpdateSource = 'update' | 'provider'
 ## Cordis API
 
 Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnpm run verify-cordis-catalog` in doc-sync; regenerate with `pnpm run gen-cordis-catalog`) — the language sides differ only in locale-specific paired document paths. Signature blocks use a `ts cordis-catalog` fence and keep the original source JSDoc; dispatch modes are defined in the [primer](../cordis-primer.md#dispatch-modes), and the framework-inherited `ctx` API lives in [cordis-api/inherited.md](../cordis-api/inherited.md).
+
+<a id="ctxreaexperiment--reaexperimentservice"></a>
+
+### `ctx.reaExperiment` — `ReaExperimentService`
+
+Settings owner that composes an independent REA connection into each opted-in session.
+
+```ts cordis-catalog
+/**
+ * Read detached settings for the next new session.
+ * @returns The opt-in preference and exact launcher configuration.
+ */
+current(): ReaExperimentSettings
+
+/**
+ * Await REA discovery before an unpublished session can enter the registry.
+ * Creation samples current settings; resume reads only the session's durable selection.
+ * @param agentCtx - Unpublished Agent context owned by the registry factory's setup.
+ * @param mode - Whether the caller creates a new session or resumes persisted history.
+ * @returns After the full catalog is registered, or immediately when the session is outside the trial.
+ * @throws When startup or discovery fails, after the session-owned connection is disposed.
+ */
+async compose(agentCtx: Context, mode: 'create' | 'resume'): Promise<void>
+```
+
+Source: [`packages/mcp/mcp-client/src/rea-experiment.ts`](../../packages/mcp/mcp-client/src/rea-experiment.ts)
 
 <a id="ctxsettings--settingsprovider-abstract-seam"></a>
 

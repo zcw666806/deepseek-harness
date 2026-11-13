@@ -22,7 +22,7 @@ harness 此前无法消费 MCP（Model Context Protocol）生态中的工具。M
 
 ### 范围
 
-仅 MCP Client（不含 server 端——ACP 已承担「将 harness 暴露为 agent」的角色）。仅桥接 **Tools**——Resources 和 Prompts 延后处理（它们需要 harness 侧尚不存在的消费机制，且设计空间较大）。
+仅 MCP Client（不含 server 端——ACP 已承担「将 harness 暴露为 agent」的角色）。桥接 Tools 及按需资源列表和读取操作。[资源消费](2026-10-19-qywork-capability-adoption.zh.md)使用已记录的工具结果；资源模板、订阅和 Prompts 仍不支持。
 
 ### 插件形态
 
@@ -171,7 +171,7 @@ MCP 仅保证工具名在[单个服务器内](https://modelcontextprotocol.io/sp
 
 ### 桥接 Resources 和 Prompts
 
-延后。Resources 需要 harness 侧的机制来决定何时注入内容（系统提示词？按需？模型触发？）。Prompts 需要 harness 尚不具备的「提示词模板」概念。两者都需要独立设计；Tools 是高价值、低风险的起点。
+Resources 使用由模型请求的列表与读取工具，不自动注入提示词。Prompts 仍延后，因为它们需要提示词模板消费方；资源模板和订阅也仍不在桥接范围内。
 
 ### 原始模型可见工具名加可选 `toolPrefix`
 

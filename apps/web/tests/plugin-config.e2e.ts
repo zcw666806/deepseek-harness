@@ -25,9 +25,11 @@ describe('web e2e: plugin configuration section', () => {
   let browser: Browser
   let page: Page
   let tripwire: ReturnType<typeof watchConsole>
+  let shellDefaultTimeout: string
 
   beforeAll(async () => {
     scaffold = await launchWebScaffold({})
+    shellDefaultTimeout = String((scaffold.ctx.settings.get('shell') as { timeoutMs: number }).timeoutMs)
     browser = await chromium.launch()
     // Chinese browser: the section asserts the localized copy the client
     // derives from it, as the rest of the settings surface does.
@@ -82,6 +84,7 @@ describe('web e2e: plugin configuration section', () => {
     await dialog.getByText('终端', { exact: true }).waitFor({ timeout: 10_000 })
     expect(await dialog.getByText('Agent 循环', { exact: true }).count()).toBe(1)
     expect(await dialog.getByText('网页搜索', { exact: true }).count()).toBe(1)
+    expect(await dialog.getByText('REA 实验功能', { exact: true }).count()).toBe(1)
     // Collapsed: a card's fields appear only once it is expanded.
     expect(await dialog.getByLabel('命令超时（毫秒）').count()).toBe(0)
 
@@ -129,6 +132,37 @@ describe('web e2e: plugin configuration section', () => {
     expect(tripwire.pageErrors).toEqual([])
   }, 60_000)
 
+  it('persists the REA trial switch and retains launch settings when disabled', async () => {
+    onTestFailed(() => saveFailureShot(page, 'web-e2e-plugin-config-rea'))
+    const dialog = await openPlugins()
+    const expand = dialog.getByRole('button', { name: '展开设置: REA 实验功能', exact: true })
+    await expand.click()
+    const toggle = dialog.getByRole('switch', { name: '启用全部 REA 工具', exact: true })
+    expect(await toggle.getAttribute('aria-checked')).toBe('false')
+    await toggle.click()
+    expect(await settingsDocument()).not.toContain('rea-experiment:')
+    await dialog.getByRole('button', { name: '保存', exact: true }).click()
+    await expand.waitFor()
+    await expect.poll(async () => (await settingsDocument()).includes('rea-experiment:')).toBe(true)
+
+    await page.reload({ waitUntil: 'load' })
+    await page.waitForSelector('[class*="frame"]', { timeout: 30_000 })
+    const restored = await openPlugins()
+    await restored.getByRole('button', { name: '展开设置: REA 实验功能', exact: true }).click()
+    const restoredToggle = restored.getByRole('switch', { name: '启用全部 REA 工具', exact: true })
+    expect(await restoredToggle.getAttribute('aria-checked')).toBe('true')
+    await restored.getByText('高级配置', { exact: true }).click()
+    expect(await restored.getByLabel('启动参数（JSON 数组）').inputValue())
+      .toBe('["--yes","rea-agents@6.7.0","mcp"]')
+    await restoredToggle.click()
+    await restored.getByRole('button', { name: '保存', exact: true }).click()
+    await restored.getByRole('button', { name: '展开设置: REA 实验功能', exact: true }).waitFor()
+    await restored.getByRole('button', { name: '展开设置: REA 实验功能', exact: true }).click()
+    await expect.poll(() => restoredToggle.getAttribute('aria-checked')).toBe('false')
+    expect(await settingsDocument()).toContain('rea-agents@6.7.0')
+    expect(tripwire.pageErrors).toEqual([])
+  })
+
   it('stages an edit and writes it only when saved', async () => {
     onTestFailed(() => saveFailureShot(page, 'web-e2e-plugin-config-write'))
     const dialog = await openPlugins()
@@ -137,7 +171,7 @@ describe('web e2e: plugin configuration section', () => {
     const timeout = dialog.getByLabel('命令超时（毫秒）')
     await timeout.waitFor({ timeout: 10_000 })
     // The composed default this deployment ships, before any user layer.
-    expect(await timeout.inputValue()).toBe('60000')
+    expect(await timeout.inputValue()).toBe(shellDefaultTimeout)
     await timeout.fill('12000')
     await timeout.blur()
 
@@ -204,7 +238,7 @@ describe('web e2e: plugin configuration section', () => {
     // The reset stages the composed default; the document still carries the
     // override until the save lands.
     await dialog.getByRole('button', { name: '恢复默认' }).click()
-    await expect.poll(() => timeout.inputValue(), { timeout: 5_000 }).toBe('60000')
+    await expect.poll(() => timeout.inputValue(), { timeout: 5_000 }).toBe(shellDefaultTimeout)
     expect(await settingsDocument()).toContain('timeoutMs: 12000')
 
     await dialog.getByRole('button', { name: '保存', exact: true }).click()
@@ -214,7 +248,7 @@ describe('web e2e: plugin configuration section', () => {
     const expandTerminal = dialog.getByRole('button', { name: '展开设置: 终端' })
     await expandTerminal.waitFor({ timeout: 5_000 })
     await expandTerminal.click()
-    expect(await timeout.inputValue()).toBe('60000')
+    expect(await timeout.inputValue()).toBe(shellDefaultTimeout)
     expect(await dialog.getByText('已覆盖').count()).toBe(0)
     expect(tripwire.pageErrors).toEqual([])
   }, 60_000)

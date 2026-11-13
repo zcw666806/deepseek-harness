@@ -1,0 +1,9 @@
+version: 1
+scenario: video-workflow
+profile: web
+composition: video-workflow
+recording: authored
+permission: danger-full-access
+header:
+  class: video-workflow
+  pin: true

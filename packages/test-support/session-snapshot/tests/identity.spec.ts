@@ -10,6 +10,28 @@ const otherId = '66666666-6666-4666-8666-666666666666'
 const proseUuid = '77777777-7777-4777-8777-777777777777'
 
 describe('session snapshot identity redaction', () => {
+  it('tracks a Session-derived project identity only through its successful producing tool', () => {
+    const projectId = 'video-session-derived-digest'
+    const fixture = (name: string, isError: boolean, sessionId = parentId): string => [
+      { type: 'session', id: parentId },
+      { type: 'tool/call', data: { callId: 'project', name } },
+      { type: 'tool/result', data: {
+        message: { source: { kind: 'tool', callId: 'project' }, content: [{
+          type: 'tool-result', toolCallId: 'project', isError,
+          content: [{ type: 'text', text: JSON.stringify({ id: projectId }) }],
+        }] },
+        meta: { id: projectId, sessionId, revision: 1, assets: [], shots: [], exports: [] },
+      } },
+    ].map(value => JSON.stringify(value)).join('\n') + '\n'
+    const valid = redactSessionSnapshotIds([fixture('video_project', false)])
+    expect(valid[0]).not.toContain(projectId)
+    expect(valid[0]?.match(/\{\{id:1\}\}/g)).toHaveLength(2)
+    expect(redactSessionSnapshotIds(valid)).toEqual(valid)
+    for (const invalid of [fixture('other', false), fixture('video_project', true), fixture('video_project', false, childId)]) {
+      expect(redactSessionSnapshotIds([invalid])[0]).toContain(projectId)
+    }
+  })
+
   it('preserves typed relationships across parent and child logs', () => {
     const parent = [
       JSON.stringify({ type: 'session', id: parentId, createdAt: 1, cwd: '/tmp/work' }),

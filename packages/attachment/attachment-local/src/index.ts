@@ -3,14 +3,17 @@
 import { join, resolve } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import { AttachmentStore } from '@deepseek-ai/dsh-attachment'
+import { AttachmentId, AttachmentStore } from '@deepseek-ai/dsh-attachment'
 import type {
   ImageAttachmentLimits,
   ImageAttachmentRef,
   ImageRequestPolicy,
   RequestImageAttachment,
   SaveImageAttachment,
+  SaveVideoAttachment,
   StoredImageAttachment,
+  StoredVideoAttachment,
+  VideoAttachmentRef,
 } from '@deepseek-ai/dsh-attachment'
 import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
 import type { NormalizationPolicy } from './normalization.ts'
@@ -261,6 +264,54 @@ export class LocalAttachmentStore extends AttachmentStore {
       }).catch(() => {})
     }
     return operation.wait(signal)
+  }
+
+  override async saveVideo(input: SaveVideoAttachment, signal?: AbortSignal): Promise<VideoAttachmentRef> {
+    signal?.throwIfAborted()
+    const { data, mediaType, name, durationSeconds, width, height } = input
+    const { createHash } = await import('node:crypto')
+    const hash = createHash('sha256').update(data).digest('hex')
+    const attachmentId = AttachmentId(hash)
+
+    const dir = join(this.root, 'videos', hash.slice(0, 2))
+    const filePath = join(dir, hash)
+
+    const { mkdir, writeFile } = await import('node:fs/promises')
+    await mkdir(dir, { recursive: true })
+    await writeFile(filePath, data)
+
+    return {
+      attachmentId,
+      mediaType,
+      bytes: data.byteLength,
+      width: width ?? undefined,
+      height: height ?? undefined,
+      durationSeconds: durationSeconds ?? undefined,
+      name: name ?? undefined,
+    }
+  }
+
+  override async readVideo(ref: VideoAttachmentRef, signal?: AbortSignal): Promise<StoredVideoAttachment> {
+    signal?.throwIfAborted()
+    const { attachmentId } = ref
+    const hash = String(attachmentId)
+    const filePath = join(this.root, 'videos', hash.slice(0, 2), hash)
+
+    const { readFile } = await import('node:fs/promises')
+    const data = await readFile(filePath)
+
+    const { createHash } = await import('node:crypto')
+    const actualHash = createHash('sha256').update(data).digest('hex')
+    if (actualHash !== hash) {
+      throw new Error(`Video attachment verification failed: expected ${hash}, got ${actualHash}`)
+    }
+
+    return { ref, data }
+  }
+
+  override videoHostPath(ref: VideoAttachmentRef): string {
+    const hash = String(ref.attachmentId)
+    return join(this.root, 'videos', hash.slice(0, 2), hash)
   }
 
 }

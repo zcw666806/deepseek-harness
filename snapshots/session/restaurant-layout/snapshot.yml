@@ -1,0 +1,12 @@
+version: 1
+scenario: restaurant-layout
+profile: headless
+composition: restaurant-layout
+recording: authored
+header:
+  class: restaurant-layout
+  pin: true
+replay:
+  override: true
+workspace:
+  final: true

@@ -31,7 +31,6 @@ import {
   readWholeBytes,
   readWholeText,
   resolveLocalTarget,
-  restoreLineEndings,
   streamWholeText,
   writeFileAtomic,
 } from './fsio.ts'
@@ -243,17 +242,14 @@ export class LocalFileSystem extends FileSystem {
       }
 
       const original = await readForEdit(target.targetKey, target.displayPath, signal)
-      const edited = applyLiteralEdit(original.content, edit.oldString, edit.newString, edit.replaceAll, target.displayPath)
-      const content = restoreLineEndings(edited.content, original.lineEndings)
-      await writeFileAtomic(target.targetKey, content, existing.mode, signal, this.internals)
+      const edited = applyLiteralEdit(original, edit.oldString, edit.newString, edit.replaceAll, target.displayPath)
+      await writeFileAtomic(target.targetKey, edited.content, existing.mode, signal, this.internals)
 
       const after = await probe(target.targetKey)
       return {
         version: this.versionAfterWrite(after, target),
-        // The LF-normalized before/after text (the applied-hunk diff basis);
-        // line-ending restoration is a storage detail the diff ignores.
-        before: original.content,
-        after: edited.content,
+        before: normalizeLineEndings(original),
+        after: normalizeLineEndings(edited.content),
       }
     })
   }

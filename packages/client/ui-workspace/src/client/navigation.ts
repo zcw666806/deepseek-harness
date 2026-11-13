@@ -10,9 +10,37 @@ import type {
   IWorkspaces, WorkspaceId, WorkspaceView,
 } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
+import type { WorkspaceSessionPresentation } from './contract/presentations.ts'
+import { SessionPresentationDirectory } from './session-presentations.ts'
+
+/**
+ * Inspect feature-owned data before reusing a transcript-blank Session.
+ * @param sessionId - candidate already belonging to the requested Workspace.
+ * @returns true only when this feature permits reuse; rejection prevents reuse.
+ */
+export type SessionReuseGuard = (sessionId: SessionId) => boolean | Promise<boolean>
+
+interface ReuseGuardEntry {
+  readonly guard: SessionReuseGuard
+  readonly pending: Set<Promise<boolean>>
+  accepting: boolean
+}
 
 /** Workspace archive and directory operations consumed by Client UI domains. */
 export interface UiWorkspace {
+  /**
+   * Register authoritative feature titles that keep project-bearing blank Sessions navigable.
+   * @param source - Explicit feature-owned presentation projection, without modifying Session state.
+   * @returns Effect-owned disposer withdrawing this source and its subscription.
+   */
+  registerSessionPresentation(source: ObservableSnapshot<readonly WorkspaceSessionPresentation[]>): () => void
+  /**
+   * Register a feature's check for data that a blank transcript does not describe.
+   * @param guard - callback returning true only for reusable candidates.
+   * @returns disposer withdrawing the guard and awaiting its admitted probes.
+   */
+  registerSessionReuseGuard(guard: SessionReuseGuard): () => Promise<void>
   /**
    * Resolve the reusable or newly created blank Session for a Workspace.
    * @param workspaceId - target Workspace.
@@ -69,6 +97,10 @@ export class DirectoryBrowseError extends Error {
 
 /** Implements Workspace archive and directory UI operations. */
 class UiWorkspaceService extends Service implements UiWorkspace {
+  private readonly presentationDirectory = new SessionPresentationDirectory()
+  /** Aggregated feature-owned Session titles supplied to the Workspace browser's injected hook. */
+  readonly sessionPresentations = this.presentationDirectory.snapshot
+  private readonly reuseGuards = new Set<ReuseGuardEntry>()
   private readonly connecting = new Map<WorkspaceId, Promise<SessionId>>()
 
   /**
@@ -84,7 +116,26 @@ class UiWorkspaceService extends Service implements UiWorkspace {
     private readonly sessions: ISessions,
   ) {
     super(ctx, 'uiWorkspace')
+    ctx.effect(() => () => { this.presentationDirectory.clear() }, 'ui-workspace: Session presentations')
     ctx.effect(() => this.watchNavigation(), 'ui-workspace: Workspace navigation policy')
+  }
+
+  registerSessionPresentation(source: ObservableSnapshot<readonly WorkspaceSessionPresentation[]>): () => void {
+    const dispose = this.ctx.effect(() => this.presentationDirectory.register(source), 'ui-workspace: feature Session presentation')
+    return () => { void dispose() }
+  }
+
+  registerSessionReuseGuard(guard: SessionReuseGuard): () => Promise<void> {
+    const entry: ReuseGuardEntry = { guard, pending: new Set(), accepting: true }
+    const dispose = this.ctx.effect(() => {
+      this.reuseGuards.add(entry)
+      return async () => {
+        entry.accepting = false
+        this.reuseGuards.delete(entry)
+        await Promise.allSettled([...entry.pending])
+      }
+    }, 'ui-workspace: Session reuse guard')
+    return async () => { await dispose() }
   }
 
   async connectWorkspace(workspaceId: WorkspaceId): Promise<SessionId> {
@@ -96,19 +147,41 @@ class UiWorkspaceService extends Service implements UiWorkspace {
     const inflight = this.connecting.get(workspaceId)
     if (inflight !== undefined) return inflight
 
-    const archived = this.workspaces.list.getSnapshot().archivedSessionIds
-    const sessions = this.sessions.list.getSnapshot()
-    for (const id of sessions.ids) {
-      const summary = sessions.byId[id]
-      if (summary !== undefined && summary.blank && summary.cwd === workspace.path
-        && workspace.sessionIds.includes(summary.id)
-        && !archived.includes(summary.id)) return summary.id
-    }
-
-    const attempt = this.sessions.create({ workspaceId })
+    const attempt = this.resolveSession(workspace)
       .finally(() => { this.connecting.delete(workspaceId) })
     this.connecting.set(workspaceId, attempt)
     return attempt
+  }
+
+  private async resolveSession(workspace: WorkspaceView): Promise<SessionId> {
+    for (const id of this.sessions.list.getSnapshot().ids) {
+      if (this.isBlankCandidate(workspace.workspaceId, id) && await this.canReuse(id)
+        && this.isBlankCandidate(workspace.workspaceId, id)) return id
+    }
+    return await this.sessions.create({ workspaceId: workspace.workspaceId })
+  }
+
+  private isBlankCandidate(workspaceId: WorkspaceId, sessionId: SessionId): boolean {
+    const workspaces = this.workspaces.list.getSnapshot()
+    const workspace = workspaces.items.find(item => item.workspaceId === workspaceId)
+    const summary = this.sessions.list.getSnapshot().byId[sessionId]
+    return workspace !== undefined && summary !== undefined && summary.blank && summary.cwd === workspace.path
+      && workspace.sessionIds.includes(sessionId) && !workspaces.archivedSessionIds.includes(sessionId)
+  }
+
+  private async canReuse(sessionId: SessionId): Promise<boolean> {
+    for (const entry of this.reuseGuards) {
+      const result = Promise.resolve().then(() => entry.accepting ? entry.guard(sessionId) : false)
+      entry.pending.add(result)
+      try {
+        if (!await result || !entry.accepting) return false
+      } catch {
+        return false
+      } finally {
+        entry.pending.delete(result)
+      }
+    }
+    return true
   }
 
   startSession(workspaceId?: WorkspaceId): void {

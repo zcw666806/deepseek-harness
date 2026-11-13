@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`dsh-tool-workflow` gives the model the `workflow` tool: call it with a JavaScript orchestration script, an identity block, and optional arguments, and it runs the script over `ctx.workflowEngine`, fanning work out across subagents until the script's final value returns. The tool owns the model-facing schema, the usage guidance in the system prompt, and the result envelope; script parsing, execution, caps, and cancellation live behind the engine. Execution is foreground: the parent turn blocks until the whole workflow settles, and a non-clean finish is an error, never partial output. Choose it when the user explicitly asks for workflow-style or large multi-agent orchestration; prefer plain subagent calls for one or two delegations.
+`dsh-tool-workflow` lets the model coordinate many subagents with a JavaScript script and collect its final JSON value. Foreground calls wait for completion; `run_in_background: true` returns a job id so the parent can continue other work. Background calls require the jobs service and job-control tools. Choose it when the user explicitly asks for workflow-style or large multi-agent orchestration; prefer plain subagent calls for one or two delegations.
 
 ## Table of Contents
 
@@ -29,13 +29,13 @@ The `workflow` tool runs a model-authored orchestration script that fans work ou
 
 ### Calling the tool
 
-The model submits three parameters: `meta` (required identity data: `name`, `description`, and optional `whenToUse` and `phases`), `script` (required plain JavaScript body — no `export const meta` statement; the tool description carries the complete authoring contract), and `args` (optional JSON object exposed to the script as the `args` global; wrap a bare list in a field so the wire schema stays honest).
+The model submits `meta` (required identity data: `name`, `description`, and optional `whenToUse` and `phases`), `script` (required plain JavaScript body — no `export const meta` statement; the tool description carries the complete authoring contract), optional `args` (a JSON object exposed as the script's `args` global), and optional `run_in_background`. Wrap a bare list in an `args` field.
 
-Success returns the canonical envelope `{ runId, agentsStarted, result }`, rendered to the model as `workflow "<name>" completed (<count> agent<optional-s>).` followed by `Return value:` and the pretty-printed JSON. A workflow that cannot start — a script parse or meta validation failure — returns an error the model can correct from. Cancellation and execution failures return `Error: workflow run was cancelled` or `Error: workflow run failed: <error>`; partial output is never reported as success.
+Foreground success returns `{ runId, agentsStarted, result }`, rendered as `workflow "<name>" completed (<count> agent<optional-s>).` followed by `Return value:` and pretty-printed JSON. Background success returns `{ jobId }` immediately; `job_output` collects the final result, `job_kill` stops the workflow, and the configured job notification policy delivers unreported completion. A parse or meta validation failure returns an error without registering a job. Execution failure and cancellation report their reason; partial output is never reported as success.
 
 ### What to expect during a run
 
-While the script runs, the parent turn waits: the tool starts the run, awaits its result, and always disposes it, so the script and its children reach quiescence on every path — including cancellation, which is bridged from the parent step's abort signal. The model sees one final outcome, never intermediate child messages; the children's own work stays out of the parent conversation.
+Foreground calls wait and bridge the parent step's abort signal to the workflow. Background calls transfer ownership to the parent Agent's job registry: ending the initiating step leaves the job running, while `job_kill`, Agent disposal, or job-service disposal cancels it. Every settlement awaits workflow disposal before the job reports a terminal status. The model receives the final result rather than intermediate child messages. Background jobs are process-local and do not survive process exit.
 
 ### Config
 
@@ -62,11 +62,11 @@ The consumer owns the model-facing schema, the `tool:<toolName>` system-prompt g
 
 ### Run lifecycle
 
-`execute` starts the run and awaits `run.result` inside a `try/finally` that always disposes the run. `exec.signal` is bridged to `run.cancel()`, including the already-aborted-before-start case. A non-`completed` stop reason maps to an `isError` result reporting the reason; completion renders `{ runId, agentsStarted, result }`, with the Native renderer truncating only that projection at `maxResultChars`.
+Foreground execution awaits `run.result` inside a `try/finally` and bridges `exec.signal` to `run.cancel()`. Background execution starts only after `ctx.jobs.start()` admits the owner and confirms a serving controller; missing services or controllers reject before workflow startup. The producer owns run cancellation and cleanup, and its job outcome contains the bounded final text. Both routes dispose the run before reporting settlement. A cleanup failure fails the job and leaves durable workflow records without a terminal suffix.
 
 ### Durable session records
 
-For a root transport execution (`exec.parent` absent), the tool projects the run into the calling Agent's Session with four log-only events: run-start after `start()` returns, member starts and endings filtered by `run.id`, then run-end only after the result is available and disposal reaches quiescence. Nested transport calls execute normally but write no record. The first failed Session append disables later recording for that run with one warning, leaving either no record or a legal continuous prefix without changing the tool result or cleanup. The package invariant rejects duplicate starts, unpaired members, terminal events with open members, and updates after run-end on both cold load and live append, while accepting missing terminal suffixes.
+For a foreground root transport execution (`exec.parent` absent), the tool projects the run into the calling Agent's Session with four log-only events: run-start after `start()` returns, member starts and endings filtered by `run.id`, then run-end only after the result is available and disposal reaches quiescence. Background calls use the existing job controls and notifications, without creating a foreground workflow Chat record. Nested transport calls write no workflow record. The first failed append stops later recording, leaving a legal continuous prefix without changing execution or cleanup. The invariant rejects duplicate starts, unpaired members, terminal events with open members, and updates after run-end while accepting missing terminal suffixes.
 
 ### Render intent
 
@@ -139,7 +139,7 @@ Prefix-stable while `toolName`, definition, and visibility are unchanged. Renami
 
 #### What the model sees
 
-The full model-written script, metadata, and args remain in the assistant tool call. Success is exactly `workflow "<name>" completed (<count> agent<optional-s>).`, newline, `Return value:`, newline, and pretty-printed data-dependent JSON; a cap adds `… [truncated: <omitted> more characters]` on a new line. Failures are exactly `Error: workflow run was cancelled`, optionally suffixed ` (<error>)`, `Error: workflow run failed: <error-or-unknown error>`, or defensively `Error: workflow run ended abnormally (<reason>)`; a call without an owning agent becomes `Error: workflow tool requires a calling agent (exec.agent was undefined)`. Intermediate child messages are omitted.
+The full model-written script, metadata, and args remain in the assistant tool call. Foreground success is exactly `workflow "<name>" completed (<count> agent<optional-s>).`, newline, `Return value:`, newline, and pretty-printed data-dependent JSON; a cap adds `… [truncated: <omitted> more characters]` on a new line. Background start is exactly `workflow "<name>" started in background (job_id: <jobId>). Use job_output to collect the result or job_kill to stop it.` The job's final text uses the same completion rendering or reports `workflow run was cancelled`, optionally suffixed ` (<error>)`, or `workflow run failed: <error-or-unknown error>`. Foreground failures have the ordinary `Error:` prefix. Intermediate child messages are omitted; job reads and notifications follow the [job-control tool](../../jobs/tool-jobs/README.md).
 
 #### Token effect
 
@@ -156,10 +156,10 @@ Append-only; newly visible content follows the reusable request prefix and does 
 
 These limits define what the tool does not yet support. They are current constraints, not a task backlog.
 
-- **The parent turn blocks until the whole workflow settles** — there is no background start/poll API, and cancellation discards partial output as an error.
+- **Background jobs require a live process and controller** — accepted jobs outlive the initiating tool step, but Agent or job-service disposal cancels them. Job ids do not resume a workflow after process exit.
 - **`args` must be an object and Native result text is bounded** — callers wrap top-level arrays and scalars in a field; the canonical workflow result stays complete, while JSON beyond `maxResultChars` is truncated in the model-facing projection rather than stored behind a retrieval handle.
 - **Workflow policy is fixed per tool registration** — provider selection, caps, and tool name are deployment config, not model-call arguments.
-- **Durable records are top-level and observational** — nested PTC mode dispatches are not recorded, and a recording failure intentionally degrades to an incomplete prefix rather than changing execution.
+- **Background progress and results use job controls** — background calls do not create a dedicated workflow timeline. Foreground timelines cover top-level calls; nested PTC calls have no independent timeline.
 
 <a id="dev-note"></a>
 ### Dev Note
@@ -169,6 +169,6 @@ These limits define what the tool does not yet support. They are current constra
 
 This Dev Note is working context for maintainers: open directions that are not decided. It is explicitly non-authoritative — shipped behavior, limits, and accepted rationale live in the sections above, the package code, and the linked Agent Notes.
 
-Open directions: a background start/poll route so the parent turn does not block; storing truncated JSON behind a retrieval handle instead of clipping the projection; recording nested dispatches beyond the top level.
+Open directions: storing truncated JSON behind a retrieval handle instead of clipping the projection; recording nested dispatches beyond the top level.
 
 </details>

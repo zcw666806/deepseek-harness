@@ -51,6 +51,9 @@ harness 由 `packages/` 下的 npm 包组装而成，按能力系列分组：会
 | [`jobs/`](jobs/README.zh.md) | 通用后台任务运行时和面向模型的作业控制工具 |
 | [`experimental/`](experimental/README.zh.md) | 私有原型与内部专用插件 |
 | [`workflow/`](workflow/README.zh.md) | 工作流 seam、worker 线程引擎、面向模型的 `workflow`/`ralph` 工具 |
+| [`video/`](video/README.zh.md) | 持久视频项目、参考素材、镜头版本与整片导出 |
+| [`comic/`](comic/README.zh.md) | 工作区漫画稿件、原尺寸绘画素材与可移植项目文件 |
+| [`capability/`](capability/README.zh.md) | 已安装能力管理及可迁移的提供方配置 |
 | [`webhook/`](webhook/README.zh.md) | 已验证外部事件、受信规则与即发即弃 Workspace Session |
 | [`web/`](web/README.zh.md) | Web 能力系列：seam、搜索/获取提供方、面向模型的 Web 工具 |
 | [`attachment/`](attachment/README.zh.md) | 持久附件标识、校验、本地内容寻址存储 |

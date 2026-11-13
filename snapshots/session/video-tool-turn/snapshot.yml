@@ -1,0 +1,12 @@
+version: 1
+scenario: video-tool-turn
+profile: headless
+composition: video-tool
+recording: authored
+header:
+  class: video-tool
+  pin: true
+replay:
+  override: true
+environment:
+  SNAPSHOT_VIDEO_KEY: snapshot-video-key

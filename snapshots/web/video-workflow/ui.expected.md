@@ -1,0 +1,83 @@
+- application:
+  - img:
+    - group "Fixed relationship"
+  - img:
+    - group "Fixed relationship"
+  - img:
+    - group "Fixed relationship"
+  - img:
+    - group "Fixed relationship"
+  - img:
+    - group "Fixed relationship"
+  - group "Shot prompt Wide view":
+    - article:
+      - text: ≡ Shot prompt
+      - strong: Wide view
+      - textbox "Shot title": Wide view
+      - textbox "Picture description": A green leaf in sunlight, wide static view.
+      - text: {{duration}} Text
+  - group "Video generation Wide view":
+    - article:
+      - text: ✦ Video generation
+      - strong: Wide view
+      - text: ✦
+      - strong: Choose a generation target
+      - text: {{duration}} · 16:9 · 480p
+      - button "Generate shot" [disabled]
+      - text: Text Reference images Video
+  - group "Shot video Wide view":
+    - article:
+      - text: ▶ Shot video
+      - strong: Wide view
+      - text: No video generated yet
+      - paragraph
+      - text: Fixed relationship Video
+  - group "Shot prompt Close view":
+    - article:
+      - text: ≡ Shot prompt
+      - strong: Close view
+      - textbox "Shot title": Close view
+      - textbox "Picture description": Close view of the same green leaf moving gently.
+      - text: {{duration}} Text
+  - group "Video generation Close view":
+    - article:
+      - text: ✦ Video generation
+      - strong: Close view
+      - text: ✦
+      - strong: Choose a generation target
+      - text: {{duration}} · 16:9 · 480p
+      - button "Generate shot" [disabled]
+      - text: Text Reference images Video
+  - group "Shot video Close view":
+    - article:
+      - text: ▶ Shot video
+      - strong: Close view
+      - text: No video generated yet
+      - paragraph
+      - text: Fixed relationship Video
+  - group "Film assembly":
+    - article:
+      - text: ▤ Film assembly
+      - strong: Film assembly
+      - list:
+        - listitem:
+          - text: "01"
+          - strong: Wide view
+          - text: ○
+        - listitem:
+          - text: "02"
+          - strong: Close view
+          - text: ○
+      - text: Waiting for shots Shot sequence Final film
+  - group "Final film":
+    - article:
+      - text: ▶ Final film
+      - strong: Final film
+      - text: Select and save a completed video version for every shot first.
+      - group: 0 inputs
+      - text: Fixed relationship
+  - img
+  - img "Canvas minimap"
+  - link "React Flow attribution":
+    - /url: https://reactflow.dev?utm_source=attribution
+    - text: React Flow

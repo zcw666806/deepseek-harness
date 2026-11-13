@@ -27,6 +27,8 @@ import { PluginsSettingsSection } from './PluginsSettingsSection.tsx'
 import type { PluginsSettingsSectionInjected, PluginsSettingsTabEntry } from './PluginsSettingsSection.tsx'
 import { SubagentModelSelectionCard } from './SubagentModelSelectionCard.tsx'
 import { WebSearchCard } from './WebSearchCard.tsx'
+import { ReaExperimentCard } from './ReaExperimentCard.tsx'
+import { REA_EXPERIMENT_NS, ReaExperimentCardController } from './rea-experiment-card-controller.ts'
 import { AGENT_LOOP_NS, AgentLoopCardController } from './agent-loop-card-controller.ts'
 import { SHELL_NS, BashCardController } from './bash-card-controller.ts'
 import { ConfigurablePluginsTabController } from './tab-store.ts'
@@ -73,6 +75,9 @@ export function apply(ctx: ClientContext): void {
     ctx.settingsScope.bind({ namespace: SUBAGENT_MODEL_SELECTION_NS }),
     ctx,
   )
+  const reaExperiment = new ReaExperimentCardController(
+    ctx.settingsScope.bind({ namespace: REA_EXPERIMENT_NS }),
+  )
 
   // The credential a card reports is not part of any settings section, so its
   // scope publishes nothing when one is written. This is the only signal that
@@ -90,10 +95,14 @@ export function apply(ctx: ClientContext): void {
     'ui-settings-plugins: subagent settings invalidations',
   )
   ctx.effect(
-    () => ctx.on('connection/reset', () => { subagentModelSelection.resetConnection() }),
+    () => ctx.on('connection/reset', () => {
+      subagentModelSelection.resetConnection()
+      reaExperiment.resetConnection()
+    }),
     'ui-settings-plugins: subagent connection generation',
   )
   ctx.effect(() => () => { subagentModelSelection.dispose() }, 'ui-settings-plugins: subagent preference')
+  ctx.effect(() => () => { reaExperiment.dispose() }, 'ui-settings-plugins: REA preference')
 
   // The shared SettingsScope mirror updates after document commits and reconnects.
   const configurable = new ConfigurablePluginsTabController(
@@ -189,5 +198,11 @@ export function apply(ctx: ClientContext): void {
       locale: NS,
       inject: () => webSearch.inject(),
     }, WebSearchCard)
+    yield ctx.slots.register({
+      name: 'settings.plugin.item',
+      key: REA_EXPERIMENT_NS,
+      locale: NS,
+      inject: () => reaExperiment.inject(),
+    }, ReaExperimentCard)
   })
 }

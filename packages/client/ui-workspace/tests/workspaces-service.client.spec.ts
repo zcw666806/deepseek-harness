@@ -1,5 +1,5 @@
 import { Context } from '@deepseek-ai/cordis'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import type {
   ISessions, SessionListState, SessionSummary,
 } from '@deepseek-ai/dsh-api-session-controller/client'
@@ -189,6 +189,7 @@ interface BenchOptions {
 
 function bench(options: BenchOptions = {}) {
   const ctx = new Context()
+  onTestFinished(() => ctx.fiber.dispose())
   const directoryPicker = new FakeDirectoryPicker()
   const workspaces = new FakeWorkspaces(options.workspaces ?? workspaceState([], [], 'pending'))
   const sessions = new FakeSessions(options.sessions ?? sessionState([], undefined, 'pending'))
@@ -207,6 +208,69 @@ async function flush(): Promise<void> {
 }
 
 describe('UiWorkspaceService', () => {
+  it('reuses a blank candidate only when every registered feature allows it', async () => {
+    const blank = summary('blank', { blank: true, cwd: '/w/alpha' })
+    const b = bench({ sessions: sessionState([blank], blank.id), workspaces: workspaceState([workspace('alpha', [blank.id])]) })
+    const first = vi.fn(async () => true)
+    b.uiWorkspace.registerSessionReuseGuard(first)
+    const withdraw = b.uiWorkspace.registerSessionReuseGuard(() => false)
+    await expect(b.uiWorkspace.connectWorkspace(wid('alpha'))).resolves.toBe(sid('created-alpha'))
+    expect(first).toHaveBeenCalledWith(blank.id)
+    await withdraw()
+    await expect(b.uiWorkspace.connectWorkspace(wid('alpha'))).resolves.toBe(blank.id)
+    expect(b.sessions.create).toHaveBeenCalledOnce()
+  })
+
+  it('does not reuse a candidate when a feature probe fails', async () => {
+    const blank = summary('blank', { blank: true, cwd: '/w/alpha' })
+    const b = bench({ sessions: sessionState([blank], blank.id), workspaces: workspaceState([workspace('alpha', [blank.id])]) })
+    b.uiWorkspace.registerSessionReuseGuard(async () => { throw new Error('Host unavailable') })
+    await expect(b.uiWorkspace.connectWorkspace(wid('alpha'))).resolves.toBe(sid('created-alpha'))
+  })
+
+  it('coalesces guarded navigation and waits for admitted probes when the guard is withdrawn', async () => {
+    const blank = summary('blank', { blank: true, cwd: '/w/alpha' })
+    const b = bench({ sessions: sessionState([blank], blank.id), workspaces: workspaceState([workspace('alpha', [blank.id])]) })
+    const pending = Promise.withResolvers<boolean>()
+    const guard = vi.fn(() => pending.promise)
+    const withdraw = b.uiWorkspace.registerSessionReuseGuard(guard)
+    const first = b.uiWorkspace.connectWorkspace(wid('alpha'))
+    const second = b.uiWorkspace.connectWorkspace(wid('alpha'))
+    try {
+      await vi.waitFor(() => { expect(guard).toHaveBeenCalledOnce() })
+      const finished = vi.fn()
+      const disposing = withdraw().then(finished)
+      expect(finished).not.toHaveBeenCalled()
+      pending.resolve(true)
+      await disposing
+      await expect(Promise.all([first, second])).resolves.toEqual([sid('created-alpha'), sid('created-alpha')])
+      expect(b.sessions.create).toHaveBeenCalledOnce()
+      await expect(b.uiWorkspace.connectWorkspace(wid('alpha'))).resolves.toBe(blank.id)
+    } finally {
+      pending.resolve(false)
+      await Promise.allSettled([first, second])
+      await withdraw()
+    }
+  })
+
+  it('rechecks archive membership after a feature probe resolves', async () => {
+    const blank = summary('blank', { blank: true, cwd: '/w/alpha' })
+    const b = bench({ sessions: sessionState([blank], blank.id), workspaces: workspaceState([workspace('alpha', [blank.id])]) })
+    const pending = Promise.withResolvers<boolean>()
+    const guard = vi.fn(() => pending.promise)
+    b.uiWorkspace.registerSessionReuseGuard(guard)
+    const request = b.uiWorkspace.connectWorkspace(wid('alpha'))
+    try {
+      await vi.waitFor(() => { expect(guard).toHaveBeenCalledOnce() })
+      b.workspaces.list.update(value => ({ ...value, archivedSessionIds: [blank.id] }))
+      pending.resolve(true)
+      await expect(request).resolves.toBe(sid('created-alpha'))
+    } finally {
+      pending.resolve(false)
+      await Promise.allSettled([request])
+    }
+  })
+
   it('reuses only an unarchived member blank and coalesces concurrent creation', async () => {
     const b = bench()
     const memberBlank = sid('member-blank')

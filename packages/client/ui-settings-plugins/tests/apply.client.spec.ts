@@ -12,6 +12,7 @@ import type {
   ConfigurablePluginsTabFace, PluginsSettingsSectionInjected,
 } from '@deepseek-ai/dsh-client-ui-settings-plugins/client'
 import { SubagentModelSelectionCardController } from '../src/client/subagent-model-selection-card-controller.ts'
+import { ReaExperimentCardController } from '../src/client/rea-experiment-card-controller.ts'
 
 // These specs assert the shipped Chinese copy. The lane has no jsdom `window`,
 // so browser-language detection never runs and a fresh LocaleRuntime opens on
@@ -127,7 +128,7 @@ describe('ui-settings-plugins apply', () => {
     await ctx.plugin({ inject: [...inject], apply }).await()
 
     expect(slots.entries('settings.plugin.item').map(entry => entry.options.key))
-      .toEqual(['shell', 'agent-loop', 'subagent-model-selection', 'web-search-deepseek'])
+      .toEqual(['shell', 'agent-loop', 'subagent-model-selection', 'web-search-deepseek', 'rea-experiment'])
   })
 
   it('dispatches the served namespaces its cards claim, and no others', async () => {
@@ -216,6 +217,24 @@ describe('ui-settings-plugins apply', () => {
     expect(describeCredentials).not.toHaveBeenCalled()
   })
 
+  it('resets REA drafts on reconnect and disposes the controller with its plugin', async () => {
+    const reset = vi.spyOn(ReaExperimentCardController.prototype, 'resetConnection')
+    const dispose = vi.spyOn(ReaExperimentCardController.prototype, 'dispose')
+    try {
+      const { ctx, slots } = await bench()
+      declareRoot(slots)
+      const fiber = ctx.plugin({ inject: [...inject], apply })
+      await fiber.await()
+      ctx.emit('connection/reset')
+      expect(reset).toHaveBeenCalledOnce()
+      await fiber.dispose()
+      expect(dispose).toHaveBeenCalledOnce()
+    } finally {
+      reset.mockRestore()
+      dispose.mockRestore()
+    }
+  })
+
   it('registers into a declaration that arrives after apply', async () => {
     const { ctx, slots } = await bench()
     await ctx.plugin({ inject: [...inject], apply }).await()
@@ -230,7 +249,7 @@ describe('ui-settings-plugins apply', () => {
     declareRoot(slots)
     const fiber = ctx.plugin({ inject: [...inject], apply })
     await fiber.await()
-    expect(slots.entries('settings.plugin.item')).toHaveLength(4)
+    expect(slots.entries('settings.plugin.item')).toHaveLength(5)
 
     await fiber.dispose()
 

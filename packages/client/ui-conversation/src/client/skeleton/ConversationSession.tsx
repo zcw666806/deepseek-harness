@@ -54,7 +54,7 @@ function equalBreadcrumbs(left: readonly Breadcrumb[], right: readonly Breadcrum
 /**
  * Renders Session header chrome above the resident conversation scrollport.
  * @param props - Strict Session store, view ledger, navigation, render, and locale shares.
- * @returns the hidden blank-session header or visible title and tabs.
+ * @returns View navigation for a blank Session with additional Views, or the full active Session header.
  */
 export function ConversationSessionHeader({
   sessionId, useSession, useSessions, useConversation, useConversationViews, useStore,
@@ -66,7 +66,9 @@ export function ConversationSessionHeader({
   const ancestry = useSessions(s => deriveAncestry(s, sessionId), equalBreadcrumbs)
   const session = useSession(s => s)
   const conversation = useConversation(s => s)
-  const hideChrome = session.blank && conversationPhase(session, conversation) === 'blank'
+  const blank = session.blank && conversationPhase(session, conversation) === 'blank'
+  const hasNonChatView = tabs.some(tab => tab.id !== 'chat')
+  const hideChrome = blank && !hasNonChatView
 
   return (
     <header
@@ -75,7 +77,7 @@ export function ConversationSessionHeader({
     >
       {!hideChrome && (
         <>
-          <div className={css.titleRow}>
+          {!blank && <div className={css.titleRow}>
             <div className={css.titleCluster}>
               <nav className={css.crumbs} aria-label={t('session.hierarchy')}>
                 {ancestry.map((summary, index) => {
@@ -133,8 +135,8 @@ export function ConversationSessionHeader({
             <div className={css.headerUtilities}>
               {renderSlot('conversation.session.header.utilities', {})}
             </div>
-          </div>
-          {tabs.length > 1 && (
+          </div>}
+          {(tabs.length > 1 || hasNonChatView) && (
             <div className={css.tabs} role="tablist">
               {tabs.map(viewTab => (
                 <button
@@ -160,7 +162,7 @@ export function ConversationSessionHeader({
  * Renders the active Session view inside the resident scrollport and keeps
  * the input draft mirrored while blank Hero chrome is visible.
  * @param props - Strict Session input/store, view ledger, and render shares.
- * @returns the active view area, or null while the Session remains blank.
+ * @returns the selected View, or null for blank Chat while the resident shell presents its Hero.
  */
 export function ConversationSession({
   useSession, useConversation, useConversationViews, useInput, inputActions, useStore, actions,
@@ -183,7 +185,8 @@ export function ConversationSession({
     // the machine mirror, not this seed effect.
   }, [inputActions])
 
-  if (session.blank && conversationPhase(session, conversation) === 'blank') return null
+  if (session.blank && conversationPhase(session, conversation) === 'blank'
+    && (active === undefined || active.id === 'chat')) return null
   return (
     <div className={css.viewArea}>
       {active !== undefined && renderSlot('conversation.view', {

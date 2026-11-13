@@ -35,9 +35,11 @@ Every registered component receives props composed from four shares: the runtime
 
 A register call may declare a store seat with `store: defineStore(...)`: `init` infers the state schema and `actions` is the complete draft-transform write set. Components read through the selector hook and write through the baked callbacks; the engine implementation of `defineStore` lives in the runtime package and satisfies the `DefineStore` contract exported here.
 
+Shared handles belong to either the root axis or the Session axis. `session` and `session-maybe` entries share one handle × Session instance when a Session is selected; root entries cannot share that handle. Without a Session, an optional entry receives a stable frozen `init` snapshot and actions that reject until a Session is selected. This absent source does not create a live store or read or write an unsuffixed persistence key.
+
 ### Declaration discipline
 
-Declaring a slot is claiming it: the registering entry becomes the only entry allowed to render that key, and registering into an undeclared slot, declaring an already-declared child, mounting one shared handle under two scopes, or registering a chain without `select` throws at load. An entry's disposer collapses its declared child slots recursively — ledger rows, contributions, and store mounts die on one lifecycle axis.
+Declaring a slot is claiming it: the registering entry becomes the only entry allowed to render that key, and registering into an undeclared slot, declaring an already-declared child, mounting one shared handle across the root and Session axes, or registering a chain without `select` throws at load. An entry's disposer collapses its declared child slots recursively — ledger rows, contributions, and store mounts die on one lifecycle axis.
 
 -----
 

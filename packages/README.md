@@ -51,6 +51,9 @@ Every package lives in exactly one group; new packages join existing groups, and
 | [`jobs/`](jobs/README.md) | Generic background-job runtime and model-facing job control tools |
 | [`experimental/`](experimental/README.md) | Private prototypes and internal-only plugins |
 | [`workflow/`](workflow/README.md) | Workflow seam, worker-thread engine, and model-facing `workflow`/`ralph` tools |
+| [`video/`](video/README.md) | Persistent video projects, reference assets, shot versions, and film exports |
+| [`comic/`](comic/README.md) | Workspace-owned comic manuscripts, original artwork, and portable project files |
+| [`capability/`](capability/README.md) | Installed capability management and portable provider configuration |
 | [`webhook/`](webhook/README.md) | Verified external events, trusted rules, and fire-and-forget Workspace Sessions |
 | [`web/`](web/README.md) | Web capability family: seam, search/fetch providers, model-facing web tools |
 | [`attachment/`](attachment/README.md) | Durable attachment identity, validation, local content-addressed storage |

@@ -1,7 +1,7 @@
 /**
  * Derives the workspace browser tree from Host Workspace order and membership.
  * Unassigned Sessions trail under Ungrouped; only the selected blank Session
- * remains visible.
+ * remains visible unless an explicit feature presentation supplies project content.
  */
 import {
   type SessionListState, type SessionSearchResultItem, type SessionSummary,
@@ -12,6 +12,7 @@ import type {
 } from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-schedule/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { WorkspaceSessionPresentation } from './contract/presentations.ts'
 import { workspaceTitleOf } from '@deepseek-ai/dsh-util-workspace-path'
 import {
   indexSubagentDescendants, type SubagentDescendantSummary,
@@ -27,10 +28,12 @@ type SessionPendingInteractions = ReadonlyMap<SessionId, SessionPendingInteracti
 /** One top-level session row in a group or the flat list. */
 export interface SessionNode {
   id: SessionId
-  /** Stored display title; the renderer substitutes the localized New Session label for blank rows. */
+  /** Chat display title or feature title; provisional rows use the localized New Session label. */
   title: string
   /** The provisional blank session (renderer shows the localized New Session title). */
   blank: boolean
+  /** Whether Session-owned rename and transcript-fork operations have chat content to act on. */
+  hasTranscript: boolean
   /** A Session-scoped UI consumer is awaiting this user. */
   pendingInteraction?: SessionPendingInteractionStatus
   running: boolean
@@ -123,24 +126,25 @@ function byRecency(a: SessionSummary, b: SessionSummary): number {
 }
 
 /**
- * Ordinary sessions are visible; among blank sessions, only the current one
- * is visible. Subagent children use their parent header catalog; archived
+ * Ordinary Sessions and explicit feature presentations are visible; among
+ * remaining blank Sessions, only the current one is visible. Subagent children use their parent header catalog; archived
  * sessions are visible nowhere, while their accounting slots remain so
  * unarchiving restores position.
  */
-function sessionVisible(session: SessionSummary, current: SessionId | undefined, archived: ReadonlySet<SessionId>): boolean {
+function sessionVisible(
+  session: SessionSummary, current: SessionId | undefined, archived: ReadonlySet<SessionId>, presentations: ReadonlyMap<SessionId, string>,
+): boolean {
   return session.origin !== 'subagent'
     && !archived.has(session.id)
-    && (!session.blank || session.id === current)
+    && (!session.blank || session.id === current || presentations.has(session.id))
 }
 
 /**
- * A blank session is the selected Workspace's provisional New Session row;
- * its canonical title never enters search (blank rows are query-excluded)
- * and the renderer localizes its display label.
+ * Feature titles represent non-chat content for a blank transcript. Remaining
+ * blank Sessions use a localized provisional label and stay query-excluded.
  */
-function sessionTitle(session: SessionSummary): string {
-  return session.blank ? '' : session.displayTitle
+function sessionTitle(session: SessionSummary, presentations: ReadonlyMap<SessionId, string>): string {
+  return session.blank ? presentations.get(session.id) ?? '' : session.displayTitle
 }
 
 /** The list projection alone owns the best-effort active-Schedule indicator. */
@@ -194,6 +198,7 @@ function groupByWorkspace(
   workspaces: readonly WorkspaceView[],
   archived: ReadonlySet<SessionId>,
   ungroupedOrder: readonly string[] | undefined,
+  presentations: ReadonlyMap<SessionId, string>,
 ): Group[] {
   const groups: Group[] = []
   const accounted = new Set<SessionId>()
@@ -203,7 +208,7 @@ function groupByWorkspace(
       const summary = list.byId[id]
       if (summary === undefined) continue // account may lead the list pull; the row appears when the summary lands
       accounted.add(id)
-      if (!sessionVisible(summary, list.current, archived)) continue
+      if (!sessionVisible(summary, list.current, archived, presentations)) continue
       members.push(summary)
     }
     groups.push(buildGroup(
@@ -214,7 +219,7 @@ function groupByWorkspace(
   const stray = list.ids
     .map(id => list.byId[id])
     .filter((s): s is SessionSummary =>
-      s !== undefined && !accounted.has(s.id) && sessionVisible(s, list.current, archived))
+      s !== undefined && !accounted.has(s.id) && sessionVisible(s, list.current, archived, presentations))
   if (stray.length > 0) {
     groups.push(buildGroup(
       UNGROUPED_KEY,
@@ -245,12 +250,13 @@ function sessionNode(
   s: SessionSummary,
   descendants: ReadonlyMap<SessionId, SubagentDescendantSummary>,
   pendingInteractions: SessionPendingInteractions,
+  presentations: ReadonlyMap<SessionId, string>,
 ): SessionNode {
   const pendingInteraction = visiblePendingKind(pendingInteractions.get(s.id)?.kind)
   return {
     id: s.id,
-    title: sessionTitle(s),
-    blank: s.blank,
+    title: sessionTitle(s, presentations),
+    blank: s.blank && !presentations.has(s.id), hasTranscript: !s.blank,
     running: s.running,
     runningSubagentCount: descendants.get(s.id)?.runningCount ?? 0,
     completed: s.completed === true,
@@ -273,6 +279,7 @@ function sessionNode(
  * @param archivedSessionIds - registry-global archive set.
  * @param pendingInteractions - pending UI interactions by Session.
  * @param view - local expansion arrays.
+ * @param sessionPresentations - Aggregated feature-owned titles for Sessions with non-chat content.
  * @returns group sections in render order.
  */
 export function deriveGroups(
@@ -281,7 +288,9 @@ export function deriveGroups(
   archivedSessionIds: readonly SessionId[],
   pendingInteractions: SessionPendingInteractions,
   view: TreeView,
+  sessionPresentations: readonly WorkspaceSessionPresentation[] = [],
 ): GroupNode[] {
+  const presentations = new Map(sessionPresentations.map(item => [item.sessionId, item.displayTitle]))
   const archived = new Set(archivedSessionIds)
   const expandedGroups = new Set(view.expandedGroups)
   const descendants = indexSubagentDescendants(list.byId)
@@ -290,7 +299,7 @@ export function deriveGroups(
     : (workspaces.find(w => w.sessionIds.includes(list.current as SessionId))?.workspaceId as string | undefined)
         ?? UNGROUPED_KEY
   const groups: GroupNode[] = []
-  for (const g of groupByWorkspace(list, workspaces, archived, view.ungroupedOrder)) {
+  for (const g of groupByWorkspace(list, workspaces, archived, view.ungroupedOrder, presentations)) {
     const expanded = expandedGroups.has(g.key)
     groups.push({
       key: g.key,
@@ -302,7 +311,7 @@ export function deriveGroups(
       expanded,
       containsCurrent: g.key === currentGroup,
       sessions: expanded
-        ? g.sessions.map(session => sessionNode(session, descendants, pendingInteractions))
+        ? g.sessions.map(session => sessionNode(session, descendants, pendingInteractions, presentations))
         : [],
     })
   }
@@ -317,23 +326,26 @@ export function deriveGroups(
  * @param list - sessions list snapshot.
  * @param archivedSessionIds - registry-global archive set.
  * @param pendingInteractions - pending UI interactions by Session.
+ * @param sessionPresentations - Aggregated feature-owned titles for Sessions with non-chat content.
  * @returns flat rows in render order.
  */
 export function deriveFlat(
   list: SessionListState,
   archivedSessionIds: readonly SessionId[],
   pendingInteractions: SessionPendingInteractions,
+  sessionPresentations: readonly WorkspaceSessionPresentation[] = [],
 ): SessionNode[] {
+  const presentations = new Map(sessionPresentations.map(item => [item.sessionId, item.displayTitle]))
   const archived = new Set(archivedSessionIds)
   const descendants = indexSubagentDescendants(list.byId)
   const rows: SessionSummary[] = []
   for (const id of list.ids) {
     const s = list.byId[id]
-    if (s === undefined || !sessionVisible(s, list.current, archived)) continue
+    if (s === undefined || !sessionVisible(s, list.current, archived, presentations)) continue
     rows.push(s)
   }
   rows.sort(byRecency)
-  return rows.map(session => sessionNode(session, descendants, pendingInteractions))
+  return rows.map(session => sessionNode(session, descendants, pendingInteractions, presentations))
 }
 
 /**
@@ -347,6 +359,7 @@ export function deriveFlat(
  * @param pendingInteractions - pending UI interactions by Session.
  * @param content - ranked Host content-search page.
  * @param limit - protocol-owned maximum merged row count.
+ * @param sessionPresentations - Aggregated feature-owned titles for Sessions with non-chat content.
  * @returns bounded deduplicated flat rows and a refine-query hint bit.
  */
 export function deriveSearchResults(
@@ -357,7 +370,9 @@ export function deriveSearchResults(
   pendingInteractions: SessionPendingInteractions,
   content: { items: readonly SessionSearchResultItem[]; hasMore: boolean },
   limit: number,
+  sessionPresentations: readonly WorkspaceSessionPresentation[] = [],
 ): SearchResultSet {
+  const presentations = new Map(sessionPresentations.map(item => [item.sessionId, item.displayTitle]))
   const q = query.trim().toLowerCase()
   if (q === '') return { items: [], hasMore: false }
   const archived = new Set(archivedSessionIds)
@@ -381,9 +396,10 @@ export function deriveSearchResults(
     const summary = list.byId[id]
     // Blank placeholders never match a query (their canonical title displays
     // localized, so matching it would tie search to one language).
-    if (summary === undefined || summary.blank || !sessionVisible(summary, list.current, archived)) continue
+    if (summary === undefined || (summary.blank && !presentations.has(summary.id))
+      || !sessionVisible(summary, list.current, archived, presentations)) continue
     if (
-      sessionTitle(summary).toLowerCase().includes(q)
+      sessionTitle(summary, presentations).toLowerCase().includes(q)
       || labelOf(summary).toLowerCase().includes(q)
     ) {
       local.push(summary)
@@ -401,7 +417,8 @@ export function deriveSearchResults(
   for (const summary of local) include(summary)
   for (const item of content.items) {
     const summary = list.byId[item.sessionId]
-    if (summary !== undefined && !summary.blank && sessionVisible(summary, list.current, archived)) include(summary)
+    if (summary !== undefined && (!summary.blank || presentations.has(summary.id))
+      && sessionVisible(summary, list.current, archived, presentations)) include(summary)
   }
 
   return {
@@ -410,7 +427,7 @@ export function deriveSearchResults(
       const pendingInteraction = visiblePendingKind(pendingInteractions.get(summary.id)?.kind)
       return {
         id: summary.id,
-        title: sessionTitle(summary),
+        title: sessionTitle(summary, presentations),
         workspace: labelOf(summary),
         running: summary.running,
         runningSubagentCount: descendants.get(summary.id)?.runningCount ?? 0,

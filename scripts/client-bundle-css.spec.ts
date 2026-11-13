@@ -2,7 +2,7 @@
  * Stylesheets enter client bundles through virtual modules, so the loader must
  * register their physical files as watch dependencies.
  */
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -52,6 +52,32 @@ describe('client bundle CSS Modules', () => {
 })
 
 describe('client bundle global CSS', () => {
+  it('resolves exported package stylesheets without evaluating a package entry', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-client-package-css-'))
+    try {
+      const packageRoot = join(root, 'node_modules/@fixture/canvas-ui')
+      await mkdir(join(packageRoot, 'dist'), { recursive: true })
+      await writeFile(join(packageRoot, 'package.json'), JSON.stringify({
+        name: '@fixture/canvas-ui', version: '0.0.0', type: 'module',
+        exports: { './theme.css': './dist/theme.css' },
+      }))
+      const stylesheet = join(packageRoot, 'dist/theme.css')
+      await writeFile(stylesheet, '.canvas { color: blue; }\n')
+      for (const name of ['dsh-css-global-inline', 'dsh-css-text-inline'] as const) {
+        const plugin = cssPlugin(name)
+        const specifier = `@fixture/canvas-ui/theme.css${name === 'dsh-css-text-inline' ? '?inline' : ''}`
+        const virtualId = plugin.resolveId?.(specifier, join(root, 'lib/types/client/index.js'))
+        if (typeof virtualId !== 'string' || plugin.load === undefined) throw new Error('package stylesheet was not resolved')
+        const watched: string[] = []
+        const output = await plugin.load.call({ addWatchFile: id => watched.push(id) }, virtualId)
+        expect(watched).toEqual([stylesheet])
+        expect(output).toContain('.canvas{color:#00f}')
+      }
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
   it('compiles a side-effect stylesheet into a watched style injector', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-client-global-css-watch-'))
     try {

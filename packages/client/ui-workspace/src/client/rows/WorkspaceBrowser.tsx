@@ -20,6 +20,7 @@ import type {
 } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { WorkspaceSessionPresentation } from '../contract/presentations.ts'
 import type { WorkspaceBrowserProps } from '../contract/slots.ts'
 import type { SessionNode, SessionOrderBy } from '../tree.ts'
 import { deriveFlat, deriveGroups, deriveSearchResults, UNGROUPED_KEY } from '../tree.ts'
@@ -235,6 +236,7 @@ type SessionTreeProps = Pick<
   'useSessions' | 'useSessionPendingInteraction' | 'startSession' | 'open' | 'forkSession'
   | 'insertWorkspaceBefore' | 'insertSessionBefore' | 't'
 > & {
+  sessionPresentations: readonly WorkspaceSessionPresentation[]
   /** Host account home for POSIX hover-path abbreviation. */
   home?: string | undefined
   workspaces: readonly WorkspaceView[]
@@ -266,7 +268,7 @@ type SessionTreeProps = Pick<
 
 /** The scrolling session tree; unmounting drops the sessions subscription and expand-all state. */
 function SessionTree({
-  useSessions, useSessionPendingInteraction, startSession, open, forkSession, workspaces, archivedSessionIds,
+  useSessions, useSessionPendingInteraction, startSession, open, forkSession, workspaces, archivedSessionIds, sessionPresentations,
   onRenameRequest, onDeleteRequest, onSessionRename, onSessionArchive,
   insertWorkspaceBefore, insertSessionBefore, orderBy,
   groupExpansion, setGroupExpanded,
@@ -344,8 +346,8 @@ function SessionTree({
       ...(sessionOrderByAccount[UNGROUPED_KEY] === undefined
         ? {}
         : { ungroupedOrder: sessionOrderByAccount[UNGROUPED_KEY] }),
-    }),
-    [list, orderedWorkspaces, archivedSessionIds, pendingInteractions, expandedGroups, sessionOrderByAccount],
+    }, sessionPresentations),
+    [list, orderedWorkspaces, archivedSessionIds, pendingInteractions, expandedGroups, sessionOrderByAccount, sessionPresentations],
   )
   const now = Date.now()
   const commitSessionDrag = (activeDrag: DragState, over: NonNullable<DragState['over']>): void => {
@@ -593,7 +595,7 @@ function SessionTree({
 /** The flat "In one list" body: every session is one draggable top-level row. */
 function FlatList({
   useSessions, useSessionPendingInteraction, open, forkSession, onSessionRename, onSessionArchive,
-  archivedSessionIds,
+  archivedSessionIds, sessionPresentations,
   orderBy, sessionOrderByAccount, sessionUpdatedAtByAccount, syncSessionOrderAccount, setSessionOrder, t,
 }: Pick<
   SessionTreeProps,
@@ -604,6 +606,7 @@ function FlatList({
   | 'onSessionRename'
   | 'onSessionArchive'
   | 'archivedSessionIds'
+  | 'sessionPresentations'
   | 'orderBy'
   | 'sessionOrderByAccount'
   | 'sessionUpdatedAtByAccount'
@@ -614,8 +617,8 @@ function FlatList({
   const list = useSessions(s => s)
   const pendingInteractions = useSessionPendingInteraction(s => s)
   const baseRows = useMemo(
-    () => deriveFlat(list, archivedSessionIds, pendingInteractions),
-    [list, archivedSessionIds, pendingInteractions],
+    () => deriveFlat(list, archivedSessionIds, pendingInteractions, sessionPresentations),
+    [list, archivedSessionIds, pendingInteractions, sessionPresentations],
   )
   const sessionIds = useMemo(() => baseRows.map(row => row.id), [baseRows])
   const previousOrderBy = useRef(orderBy)
@@ -730,6 +733,7 @@ function SearchResults({
   query,
   remote,
   resultLimit,
+  sessionPresentations,
   t,
 }: Pick<SessionTreeProps, 'useSessions' | 'useSessionPendingInteraction' | 'open' | 't'> & {
   workspaces: readonly WorkspaceView[]
@@ -737,6 +741,7 @@ function SearchResults({
   query: string
   remote: RemoteSearchState
   resultLimit: number
+  sessionPresentations: readonly WorkspaceSessionPresentation[]
 }) {
   const list = useSessions(s => s)
   const pendingInteractions = useSessionPendingInteraction(s => s)
@@ -752,8 +757,9 @@ function SearchResults({
       pendingInteractions,
       currentRemote,
       resultLimit,
+      sessionPresentations,
     ),
-    [list, workspaces, query, archivedSessionIds, pendingInteractions, currentRemote, resultLimit],
+    [list, workspaces, query, archivedSessionIds, pendingInteractions, currentRemote, resultLimit, sessionPresentations],
   )
   const pending = currentRemote.status === 'loading'
   const failed = currentRemote.status === 'error'
@@ -821,10 +827,13 @@ export function WorkspaceBrowser({
   searchResultLimit,
   useDirectoryFlow,
   useHostInfo,
+  useSessionPresentations,
   renderSlot,
   t,
 }: WorkspaceBrowserProps) {
   const home = useHostInfo(info => info.home)
+  const sessionPresentations = useSessionPresentations(value => value)
+  const projectSessions = useMemo(() => new Set(sessionPresentations.map(item => item.sessionId)), [sessionPresentations])
   const workspaces = useWorkspaces(state => state.items)
   const workspacePhase = useWorkspaces(state => state.phase)
   const archivedSessionIds = useWorkspaces(state => state.archivedSessionIds)
@@ -838,7 +847,7 @@ export function WorkspaceBrowser({
   const sessionUpdatedAtByAccount = useStore(s => s.sessionUpdatedAtByAccount)
   const currentBlankSessionId = useSessions((state) => {
     const current = state.current
-    return current !== undefined && state.byId[current]?.blank === true ? current : undefined
+    return current !== undefined && state.byId[current]?.blank === true && !projectSessions.has(current) ? current : undefined
   })
   const currentBlankAccount = currentBlankSessionId === undefined
     ? undefined
@@ -1212,6 +1221,7 @@ export function WorkspaceBrowser({
               query={normalizedQuery}
               remote={remoteSearch}
               resultLimit={searchResultLimit}
+              sessionPresentations={sessionPresentations}
               t={t}
             />
           )
@@ -1222,6 +1232,7 @@ export function WorkspaceBrowser({
                 open={open} forkSession={forkSession}
                 onSessionRename={onSessionRename} onSessionArchive={onSessionArchive}
                 archivedSessionIds={archivedSessionIds}
+                sessionPresentations={sessionPresentations}
                 orderBy={orderBy}
                 sessionOrderByAccount={sessionOrderByAccount}
                 sessionUpdatedAtByAccount={sessionUpdatedAtByAccount}
@@ -1238,6 +1249,7 @@ export function WorkspaceBrowser({
                 onSessionArchive={onSessionArchive}
                 forkSession={forkSession}
                 workspaces={workspaces}
+                sessionPresentations={sessionPresentations}
                 groupExpansion={groupExpansion}
                 setGroupExpanded={actions.setGroupExpanded}
                 sessionOrderByAccount={sessionOrderByAccount}

@@ -22,7 +22,7 @@ Use the official [`@modelcontextprotocol/sdk`](https://github.com/modelcontextpr
 
 ### Scope
 
-MCP Client only (no server side — ACP already covers the "expose harness as an agent" role). Bridge **Tools** only — Resources and Prompts are deferred (they require harness-side consumption mechanisms that don't exist yet, and design space is large).
+MCP Client only (no server side — ACP already covers the "expose harness as an agent" role). Bridge Tools and on-demand resource list/read operations. [Resource consumption](2026-10-19-qywork-capability-adoption.md) uses logged tool results; resource templates, subscriptions, and Prompts remain unsupported.
 
 ### Plugin shape
 
@@ -171,7 +171,7 @@ Rejected by the connect-once design: it added a partial-availability state (tool
 
 ### Bridge Resources and Prompts
 
-Deferred. Resources need a harness-side mechanism to decide WHEN to inject content (system prompt? on demand? model-triggered?). Prompts need a "prompt template" concept the harness lacks. Both require their own design; Tools are the high-value, low-risk starting point.
+Resources use model-requested list/read tools rather than automatic prompt injection. Prompts remain deferred because they need a prompt-template consumer; resource templates and subscriptions also remain outside the bridge.
 
 ### Raw model-facing tool names with an optional `toolPrefix`
 

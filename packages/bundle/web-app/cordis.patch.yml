@@ -46,6 +46,29 @@
     - id: subagent-model-selection-settings
       name: '@deepseek-ai/dsh-tool-subagent/model-selection-settings'
 
+    - id: rea-experiment
+      name: '@deepseek-ai/dsh-mcp-client/rea-experiment'
+
+    - id: video-production
+      name: '@deepseek-ai/dsh-video-production'
+
+    - id: comic-production
+      name: '@deepseek-ai/dsh-comic-production'
+      disabled: true
+
+    - id: capability-manager
+      name: '@deepseek-ai/dsh-capability-manager'
+
+    - id: video-comfyui-runtime
+      name: '@deepseek-ai/dsh-video-comfyui-runtime'
+
+    - id: video-comfyui
+      name: '@deepseek-ai/dsh-video-comfyui'
+      config:
+        enabled: false
+        baseURL: http://127.0.0.1:8188/
+        managedCapability: engine.comfyui
+
     - id: code-runtime
       name: '@deepseek-ai/dsh-code-runtime-worker-thread'
 
@@ -231,6 +254,16 @@
     # existing generic workflow tool row.
     - id: ui-workflow-run
       name: '@deepseek-ai/dsh-client-ui-workflow-run'
+
+    - id: ui-video-production
+      name: '@deepseek-ai/dsh-client-ui-video-production'
+
+    - id: ui-comic-production
+      name: '@deepseek-ai/dsh-client-ui-comic-production'
+      disabled: true
+
+    - id: ui-capabilities
+      name: '@deepseek-ai/dsh-client-ui-capabilities'
 
     # Turn tail: the produced-files row under each closing assistant message.
     # Remove this entry to turn the surface off; the tail hole renders empty.

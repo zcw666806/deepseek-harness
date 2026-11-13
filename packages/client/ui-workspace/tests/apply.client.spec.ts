@@ -7,6 +7,9 @@ import { apply, inject } from '@deepseek-ai/dsh-client-ui-workspace/client'
 import type { WorkspaceBrowserInjected, WorkspacePickerInjected } from '@deepseek-ai/dsh-client-ui-workspace/client'
 import { WorkspaceBrowser } from '../src/client/rows/WorkspaceBrowser.tsx'
 import { WorkspacePicker } from '../src/client/WorkspacePicker.tsx'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
+import type { WorkspaceSessionPresentation } from '../src/client/contract/presentations.ts'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 
 async function bench() {
   const ctx = new Context()
@@ -83,6 +86,31 @@ function declare(slots: SlotRegistry, ...names: HoleName[]): () => void {
 }
 
 describe('ui-workspace apply', () => {
+  it('withdraws feature-owned presentation sources with their plugin fiber and accepts replacement registrations', async () => {
+    const b = await bench()
+    declare(b.slots, 'sidebar.workspaces')
+    await b.ctx.plugin({ inject: [...inject], apply }).await()
+    const browser = (b.slots.entries('sidebar.workspaces')[0]!.inject as () => WorkspaceBrowserInjected)()
+    const source = createSnapshotStore<readonly WorkspaceSessionPresentation[]>([
+      { sessionId: 'project' as SessionId, displayTitle: 'First project' },
+    ])
+    const feature = b.ctx.plugin({ name: 'project-feature', inject: ['uiWorkspace'], apply: (ctx: Context) => {
+      ctx.uiWorkspace.registerSessionPresentation(source)
+    } })
+    await feature.await()
+    expect(browser.hooks.sessionPresentations.getSnapshot()).toEqual(source.getSnapshot())
+    await feature.dispose()
+    expect(browser.hooks.sessionPresentations.getSnapshot()).toEqual([])
+    source.set([{ sessionId: 'project' as SessionId, displayTitle: 'Late source' }])
+    expect(browser.hooks.sessionPresentations.getSnapshot()).toEqual([])
+    const replacement = b.ctx.plugin({ name: 'project-feature-replacement', inject: ['uiWorkspace'], apply: (ctx: Context) => {
+      ctx.uiWorkspace.registerSessionPresentation(source)
+    } })
+    await replacement.await()
+    expect(browser.hooks.sessionPresentations.getSnapshot()[0]?.displayTitle).toBe('Late source')
+    await b.ctx.fiber.dispose()
+  })
+
   it('declares the services it drives', () => {
     expect(inject).toEqual([
       'slots', 'sessions', 'workspaces', 'locale', 'remote', 'remote.directoryPicker',

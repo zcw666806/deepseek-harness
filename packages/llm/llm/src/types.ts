@@ -5,7 +5,7 @@
  */
 
 import type { Branded } from '@deepseek-ai/dsh-brand'
-import type { ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
+import type { ImageAttachmentRef, VideoAttachmentRef } from '@deepseek-ai/dsh-attachment'
 import type { ToolCallId, ProviderRequestId, ReasoningEffortId } from './brand.ts'
 import type { Message } from './message.ts'
 
@@ -74,6 +74,17 @@ export interface ImageBlock {
   attachment: ImageAttachmentRef
 }
 
+/**
+ * A durable video reference, valid in assistant content. Videos are output-only
+ * in this phase: only assistant messages may carry video blocks. User video input
+ * is deferred.
+ */
+export interface VideoBlock {
+  type: 'video'
+  /** Immutable bytes and metadata owned by the attachment service. */
+  attachment: VideoAttachmentRef
+}
+
 /** A tool invocation requested by the model. */
 export interface ToolCallBlock {
   type: 'tool-call'
@@ -100,6 +111,7 @@ export interface ContentBlockMap {
   'text': TextBlock
   'reasoning': ReasoningBlock
   'image': ImageBlock
+  'video': VideoBlock
   'tool-call': ToolCallBlock
   'tool-result': ToolResultBlock
 }
@@ -190,6 +202,7 @@ export interface LlmProviderInfo {
 export interface ModelModalityMap {
   text: 'text'
   image: 'image'
+  video: 'video'
 }
 
 /** Any declared provider model modality. */
@@ -293,6 +306,8 @@ export interface LlmModelInfo {
   description?: string
   /** Accepted request modalities; absent means unknown, while an explicit omission is negative capability. */
   inputModalities?: readonly ModelModality[]
+  /** Produced response modalities; absent means text-only, while an explicit list declares output capability. */
+  outputModalities?: readonly ModelModality[]
 }
 
 /** Provider-owned context capacity for one exact provider/model route. */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { assertServiceable, Config } from '../src/config.ts'
+import { assertServiceable, Config, resolveProfiles } from '../src/config.ts'
 
 /** Validate one hand-declared route, with the caller's fields layered onto it. */
 const routeWith = (profile: Record<string, unknown>): (() => unknown) =>
@@ -17,6 +17,24 @@ const routeWith = (profile: Record<string, unknown>): (() => unknown) =>
 /** Validate that route with the caller's fields on its single model entry. */
 const configWith = (model: Record<string, unknown>): (() => unknown) =>
   routeWith({ models: [{ id: 'm', ...model }] })
+
+describe('video timing configuration', () => {
+  it('resolves defaults and accepts deployment timing budgets', () => {
+    const defaults = resolveProfiles({ xai: {} }).get('xai')!
+    expect(defaults.videoPollIntervalMs).toBe(3000)
+    expect(defaults.videoTimeoutMs).toBe(300000)
+    const configured = resolveProfiles({ xai: { videoPollIntervalMs: 50, videoTimeoutMs: 600000 } }).get('xai')!
+    expect(configured.videoPollIntervalMs).toBe(50)
+    expect(configured.videoTimeoutMs).toBe(600000)
+  })
+
+  it.each(['videoPollIntervalMs', 'videoTimeoutMs'] as const)('rejects invalid %s at schema and resolution', (field) => {
+    for (const value of [0, -1, 1.5, Number.POSITIVE_INFINITY, 2147483648]) {
+      expect(routeWith({ [field]: value })).toThrow()
+      expect(() => resolveProfiles({ xai: { [field]: value } })).toThrow(field)
+    }
+  })
+})
 
 describe('reasoning schema boundary', () => {
   it('rejects a level pi-ai does not know at the write that produced it', () => {

@@ -52,6 +52,8 @@ The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-a
 
 Read any regular UTF-8 text file whole or as a stream, read raw bytes up to a cap you choose, and list one directory level in stable name order. Create or replace a file atomically, and apply a literal text edit atomically; both mutations serialize per file, so concurrent writers never interleave. The version guard is optional: omit it for unconditional create-or-overwrite, or supply it to fail when the file changed since you last observed it.
 
+Literal edits match LF and CRLF interchangeably and preserve every unmatched line ending, including files that mix both styles. Newlines inside replacement text use the whole file's dominant style, with LF on a tie or in a file without newlines. Returned diff text remains LF-normalized.
+
 Failures are typed `FsError`s with stable codes — `FS_NOT_FOUND`, `FS_NOT_TEXT` (binary content), `FS_STALE_VERSION` (changed since observation), `FS_EDIT_NOT_FOUND` or `FS_AMBIGUOUS_EDIT` (no unique literal match), and others — so callers branch on the code, never on message text. A missing target on a guarded edit reports `FS_STALE_VERSION` either way.
 
 -----
@@ -86,7 +88,7 @@ Each write probes the target, enforces the optional guard (`createIfAbsent` or `
 
 ### Edit path
 
-Each edit probes, verifies the version guard before literal matching (so stale edits report `FS_STALE_VERSION`, never a misleading no-match), reads the file, applies the literal replacement with LF normalization, restores the file's dominant line-ending style, and republishes — all inside the per-target lock.
+Each edit probes, verifies the version guard before literal matching (so stale edits report `FS_STALE_VERSION`, never a misleading no-match), reads the original text, maps LF-normalized literal matches back to their original offsets, replaces those spans, and republishes — all inside the per-target lock.
 
 ### Ownership and invariants
 

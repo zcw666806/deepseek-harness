@@ -1,7 +1,7 @@
 /** Browser-safe request, result, and lifecycle vocabulary for the Session Remote service. */
 
 import type {
-  AttachmentIdType, ImageAttachmentLimits, ImageAttachmentRef, ImageMediaType,
+  AttachmentIdType, ImageAttachmentLimits, ImageAttachmentRef, ImageMediaType, VideoAttachmentRef,
 } from '@deepseek-ai/dsh-attachment'
 import type { Branded } from '@deepseek-ai/dsh-brand'
 import type { MessageId } from '@deepseek-ai/dsh-llm/brand'
@@ -323,6 +323,21 @@ export interface SessionAttachmentRequest {
 export interface SessionAttachmentValue {
   readonly attachment: ImageAttachmentRef
   readonly data: string
+}
+
+/** Bounded read of a generated video referenced by one Session. */
+export interface SessionVideoAttachmentRequest extends SessionAttachmentRequest {
+  readonly offset: number
+  readonly length: number
+}
+
+/** Verified video metadata and a base64-encoded raw-byte slice. */
+export interface SessionVideoAttachmentValue {
+  readonly attachment: VideoAttachmentRef
+  readonly data: string
+  readonly offset: number
+  readonly nextOffset: number
+  readonly total: number
 }
 
 /** Pending queue mutation request. */

@@ -62,6 +62,8 @@ flowchart LR
   pkg_settings_file["settings-file"]
   pkg_tool_subagent["tool-subagent"]
   svc_subagentModelSelection["ctx.subagentModelSelection<br/>Subagent model-selection preference"]
+  pkg_mcp_client["mcp-client"]
+  svc_reaExperiment["ctx.reaExperiment<br/>Session-scoped REA experiment"]
   pkg_credentials["credentials"]
   svc_credentials["ctx.credentials<br/>Credential seam"]
   pkg_credentials_local["credentials-local"]
@@ -208,6 +210,15 @@ flowchart LR
   svc_workflowEngine["ctx.workflowEngine<br/>Workflow script engine"]
   pkg_workflow_worker_thread["workflow-worker-thread"]
   pkg_tool_workflow["tool-workflow"]
+  pkg_video_production["video-production"]
+  svc_videoProduction["ctx.videoProduction<br/>Video production projects"]
+  pkg_video_comfyui["video-comfyui"]
+  pkg_client_ui_video_production["client-ui-video-production"]
+  svc_videoWorkflows["ctx.videoWorkflows<br/>Video workflow configuration"]
+  pkg_client_ui_capabilities["client-ui-capabilities"]
+  pkg_capability_manager["capability-manager"]
+  svc_capabilities["ctx.capabilities<br/>Installed capability management"]
+  pkg_video_comfyui_runtime["video-comfyui-runtime"]
   pkg_webhook["webhook"]
   svc_webhookRuntime["ctx.webhookRuntime<br/>Webhook rule runtime"]
   pkg_webhook_github["webhook-github"]
@@ -234,6 +245,7 @@ flowchart LR
   pkg_authorization --> svc_authorization
   pkg_bash_local --> svc_shell
   pkg_bash_sandbox --> svc_shell
+  pkg_capability_manager --> svc_capabilities
   pkg_client_modules --> svc_clientModules
   pkg_code_runtime --> svc_codeRuntime
   pkg_code_runtime_worker_thread --> svc_codeRuntime
@@ -265,10 +277,13 @@ flowchart LR
   pkg_jobs_local --> svc_jobs
   pkg_llm --> svc_llm
   pkg_llm_deepseek --> svc_llm
+  pkg_llm_pi_ai --> svc_capabilities
   pkg_llm_pi_ai --> svc_llm
+  pkg_llm_pi_ai --> svc_videoProduction
   pkg_llm_replay --> svc_llm
   pkg_lsp --> svc_lsp
   pkg_lsp_stdio --> svc_lsp
+  pkg_mcp_client --> svc_reaExperiment
   pkg_message_feedback --> svc_messageFeedback
   pkg_permission_presets --> svc_permissionPresets
   pkg_plan_mode --> svc_planMode
@@ -323,6 +338,12 @@ flowchart LR
   pkg_typert_registry --> svc_typert
   pkg_user_approval --> svc_approval
   pkg_user_questions --> svc_userQuestions
+  pkg_video_comfyui --> svc_capabilities
+  pkg_video_comfyui --> svc_videoProduction
+  pkg_video_comfyui --> svc_videoWorkflows
+  pkg_video_comfyui_runtime --> svc_capabilities
+  pkg_video_production --> svc_capabilities
+  pkg_video_production --> svc_videoProduction
   pkg_web --> svc_web
   pkg_web_fetch_http --> svc_web
   pkg_web_search_deepseek --> svc_web
@@ -349,6 +370,9 @@ flowchart LR
   svc_attachments --> pkg_llm_pi_ai
   svc_attachments --> pkg_tool_fs
   svc_authorization --> pkg_llm_pi_ai
+  svc_capabilities --> pkg_client_ui_capabilities
+  svc_capabilities --> pkg_video_comfyui
+  svc_capabilities --> pkg_video_production
   svc_clientModules --> pkg_client_hmr
   svc_codeRuntime --> pkg_tools
   svc_compaction --> pkg_compaction_basic
@@ -374,6 +398,7 @@ flowchart LR
   svc_llm --> pkg_agent_loop
   svc_llm --> pkg_compaction_basic
   svc_lsp --> pkg_tool_lsp
+  svc_reaExperiment --> pkg_api_session_controller
   svc_sandbox --> pkg_bash_sandbox
   svc_sandbox --> pkg_terminal_bash
   svc_sandboxPolicy --> pkg_bash_sandbox
@@ -449,6 +474,9 @@ flowchart LR
   svc_typert --> pkg_api_gateway
   svc_typert --> pkg_typert_loader
   svc_userQuestions --> pkg_tool_ask_user
+  svc_videoProduction --> pkg_client_ui_video_production
+  svc_videoProduction --> pkg_video_production
+  svc_videoWorkflows --> pkg_client_ui_capabilities
   svc_web --> pkg_tool_web
   svc_webServer --> pkg_client_connection
   svc_webServer --> pkg_client_hmr
@@ -482,6 +510,7 @@ flowchart LR
 | `ctx.sessionPersistence` | `seam` | [`session-persistence`](../packages/session/session-persistence) | [`session-persistence-jsonl`](../packages/session/session-persistence-jsonl) | [`agent-loop`](../packages/core/agent-loop), [`tool-bash`](../packages/shell/tool-bash), [`hooks-claude-code`](../packages/hooks/hooks-claude-code), [`hooks-codex`](../packages/hooks/hooks-codex), [`session-query`](../packages/session-query/session-query), [`session-query-sqlite`](../packages/session-query/session-query-sqlite), [`message-feedback`](../packages/feedback/message-feedback) | - | The JSONL backend persists the SessionEvent vocabulary as one artifact per Session. |
 | `ctx.settings` | `seam` | [`settings`](../packages/settings/settings) | [`settings-file`](../packages/settings/settings-file) | [`api-settings-controller`](../packages/api/settings-controller), [`llm-deepseek`](../packages/llm/llm-deepseek), [`llm-pi-ai`](../packages/llm/llm-pi-ai) | - | Plugins register namespace schemas and resolve layered values; providers store the raw document. The LLM adapters register their entry config as the composition base under the user section; the settings controller serves redacted layered descriptors and writes the user layer. |
 | `ctx.subagentModelSelection` | `core` | [`tool-subagent`](../packages/subagent/tool-subagent) | - | [`tool-subagent`](../packages/subagent/tool-subagent) | - | Owns the default-off settings namespace that Agent-scoped delegation tools sample when composing a new top-level Session. |
+| `ctx.reaExperiment` | `core` | [`mcp-client`](../packages/mcp/mcp-client) | - | [`api-session-controller`](../packages/api/session-controller) | - | Owns default-off launcher settings and prepares an independent MCP connection for each selected Web session. Restore and fork use the durable launcher selection. |
 | `ctx.credentials` | `seam` | [`credentials`](../packages/credentials/credentials) | [`credentials-local`](../packages/credentials/credentials-local) | [`api-settings-controller`](../packages/api/settings-controller), [`llm-deepseek`](../packages/llm/llm-deepseek), [`llm-pi-ai`](../packages/llm/llm-pi-ai) | - | Configuration carries references to secrets; providers own the values. Consumers resolve per operation, so a rotated credential reaches the very next request; the settings controller exposes value-free views and write-only storage. |
 | `ctx.authorization` | `seam` | [`authorization`](../packages/credentials/authorization) | - | [`llm-pi-ai`](../packages/llm/llm-pi-ai) | - | Flows are registered by the plugin that knows how to obtain one credential and keyed by the record they write; the seam owns the conversation and the one-attempt-per-key lifecycle, never the protocol. |
 | `ctx.sessionTelemetry` | `seam` | [`session-telemetry`](../packages/session/session-telemetry) | [`session-telemetry-otel`](../packages/session/session-telemetry-otel) | - | - | The seam captures, redacts, and hands session records to one backend; nothing else consumes the service — its output leaves the process. |
@@ -528,6 +557,9 @@ flowchart LR
 | `ctx.webServer` | `core` | [`host-webserver`](../packages/host/webserver) | - | [`client-connection`](../packages/client/connection), [`client-modules`](../packages/client/modules), [`client-hmr`](../packages/client/hmr) | - | Plain node:http carrier: named-route registry, index transform taps, and the static dist fallback; web-transport plugins register their own routes. |
 | `ctx.clientModules` | `core` | [`client-modules`](../packages/client/modules) | - | [`client-hmr`](../packages/client/hmr) | - | Composes the __DSH_BOOT__ entry graph from an incremental dsh.client scan, serves plugin bundles, and notifies rebuilt/graph-changed subscribers. |
 | `ctx.workflowEngine` | `seam` | [`workflow`](../packages/workflow/workflow) | [`workflow-worker-thread`](../packages/workflow/workflow-worker-thread) | [`tool-workflow`](../packages/workflow/tool-workflow), [`tool-ralph`](../packages/workflow/tool-ralph) | - | One engine per context, as in bash, with no named-provider registry; the general workflow and fixed Ralph consumers start runs whose agent() calls fan out through ctx.subagents. |
+| `ctx.videoProduction` | `seam` | [`video-production`](../packages/video/video-production) | [`llm-pi-ai`](../packages/llm/llm-pi-ai), [`video-comfyui`](../packages/video/video-comfyui) | [`video-production`](../packages/video/video-production), [`client-ui-video-production`](../packages/client/ui-video-production) | - | The project owner persists references, ordered shots, generation versions, and exports; named generators return durable clips, while its model tool and browser Remote share project operations. |
+| `ctx.videoWorkflows` | `seam` | [`video-comfyui`](../packages/video/video-comfyui) | [`video-comfyui`](../packages/video/video-comfyui) | [`client-ui-capabilities`](../packages/client/ui-capabilities) | - | The workflow editor validates portable API templates and revisioned settings, preserves host credentials, and saves disabled workflows for explicit activation without starting an engine. |
+| `ctx.capabilities` | `seam` | [`capability-manager`](../packages/capability/capability-manager) | [`video-comfyui-runtime`](../packages/video/video-comfyui-runtime), [`video-comfyui`](../packages/video/video-comfyui), [`llm-pi-ai`](../packages/llm/llm-pi-ai), [`video-production`](../packages/video/video-production) | [`client-ui-capabilities`](../packages/client/ui-capabilities), [`video-production`](../packages/video/video-production), [`video-comfyui`](../packages/video/video-comfyui) | - | Installed providers own inspected prerequisites, fixed lifecycle actions and portable settings; the directory serializes management and reports missing providers without installing code from a project package. |
 | `ctx.webhookRuntime` | `core` | [`webhook`](../packages/webhook/webhook) | - | [`webhook-github`](../packages/webhook/webhook-github) | - | Provider adapters dispatch authenticated deliveries; trusted plugins register independent process-local rules, and the runtime turns non-null results into ordinary Workspace-backed Sessions without delivery or completion state. |
 | `ctx.lsp` | `seam` | [`lsp`](../packages/lsp/lsp) | [`lsp-stdio`](../packages/lsp/lsp-stdio) | [`tool-lsp`](../packages/lsp/tool-lsp) | - | Provider registration and selection plus normalized query execution over exactly four operations; the seam offers no protocol escape hatch, so a backend translates into the normalized request and result. |
 | `ctx.dynamicCordisRunner` | `core` | [`cordis-host-runner`](../packages/extensions/cordis-host-runner) | - | [`tool-cordis`](../packages/extensions/tool-cordis) | - | Owns the in-memory definition registry, the vm sandbox for host halves, and the request-run round trip; browser pages reach the same service over the wire through its remote namespace. |

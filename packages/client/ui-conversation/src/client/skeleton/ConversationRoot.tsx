@@ -7,6 +7,7 @@ import clsx from 'clsx'
 import type { WorkspaceId } from '@deepseek-ai/dsh-workspace/types'
 import type { ConversationSlotProps, InputZone } from '../contract/slots.ts'
 import { conversationPhase } from '../contract/snapshot.ts'
+import { resolveActiveView } from '../view-selection.ts'
 import { HeroShell, WorkspaceChip, workspaceLabel } from './EmptyHero.tsx'
 import css from './ConversationRoot.module.css'
 
@@ -130,10 +131,12 @@ function WidthHandle(props: {
 
 export function ConversationRoot({
   sessionId, useSession, useSessions, useSessionPendingInteraction,
-  useWorkspaces, useConversation, useInput, useComposerBlock,
+  useWorkspaces, useConversation, useInput, useComposerBlock, useConversationViews, useStore,
   renderSlot, renderSlotChain, selectWorkspace, t,
 }: ConversationRootProps) {
   const session = useSession(s => s)
+  const activeView = resolveActiveView(useConversationViews(views => views), useStore(state => state.view))
+  const selectedWorkspaceView = session !== undefined && activeView !== undefined && activeView.id !== 'chat'
   const pendingInteraction = useSessionPendingInteraction(snapshot =>
     sessionId === undefined ? undefined : snapshot.get(sessionId))
   const conversation = useConversation(s => s)
@@ -269,8 +272,8 @@ export function ConversationRoot({
     (shellPhase === 'blank' && openState === 'loading' && summaryBlank !== true)
     || parentAvailabilityPending
   )
-  const hero = sessionId === undefined
-    || (shellPhase === 'blank' && (openState === 'open' || summaryBlank === true))
+  const hero = !selectedWorkspaceView && (sessionId === undefined
+    || (shellPhase === 'blank' && (openState === 'open' || summaryBlank === true)))
   const zone: InputZone | undefined =
     session === undefined || inputState === undefined ? undefined : { session, input: inputState }
 
@@ -384,7 +387,7 @@ export function ConversationRoot({
         </div>
         {/* Width handles only while a transcript is on screen; the hero has no
             content column to size. */}
-        {phase === 'active' && (['left', 'right'] as const).map(side => (
+        {phase === 'active' && !selectedWorkspaceView && (['left', 'right'] as const).map(side => (
           <WidthHandle
             key={side}
             side={side}

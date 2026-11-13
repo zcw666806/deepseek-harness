@@ -6,6 +6,8 @@
 
 来源：[`packages/settings/settings/src/index.ts`](../../packages/settings/settings/src/index.ts)
 
+[REA 实验](../../packages/mcp/mcp-client/README.zh.md#rea-experiment-in-web)的设置拥有方在新建 Web 会话时采样 `ReaExperimentSettings`。启用的会话将所选启动配置保留在会话日志中；恢复或 fork 时使用该选择，而非当前用户设置。
+
 ## 标识
 
 namespace 命名用户文档中一个归插件所有的分节。brand 防止调用方将设置 namespace 与在包或进程之间传递的其他 id 混用；构造时校验小写 kebab-case 语法。
@@ -172,6 +174,32 @@ type SettingsUpdateSource = 'update' | 'provider'
 ## Cordis API
 
 Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnpm run verify-cordis-catalog` in doc-sync; regenerate with `pnpm run gen-cordis-catalog`) — the language sides differ only in locale-specific paired document paths. Signature blocks use a `ts cordis-catalog` fence and keep the original source JSDoc; dispatch modes are defined in the [primer](../cordis-primer.zh.md#dispatch-modes), and the framework-inherited `ctx` API lives in [cordis-api/inherited.md](../cordis-api/inherited.md).
+
+<a id="ctxreaexperiment--reaexperimentservice"></a>
+
+### `ctx.reaExperiment` — `ReaExperimentService`
+
+Settings owner that composes an independent REA connection into each opted-in session.
+
+```ts cordis-catalog
+/**
+ * Read detached settings for the next new session.
+ * @returns The opt-in preference and exact launcher configuration.
+ */
+current(): ReaExperimentSettings
+
+/**
+ * Await REA discovery before an unpublished session can enter the registry.
+ * Creation samples current settings; resume reads only the session's durable selection.
+ * @param agentCtx - Unpublished Agent context owned by the registry factory's setup.
+ * @param mode - Whether the caller creates a new session or resumes persisted history.
+ * @returns After the full catalog is registered, or immediately when the session is outside the trial.
+ * @throws When startup or discovery fails, after the session-owned connection is disposed.
+ */
+async compose(agentCtx: Context, mode: 'create' | 'resume'): Promise<void>
+```
+
+Source: [`packages/mcp/mcp-client/src/rea-experiment.ts`](../../packages/mcp/mcp-client/src/rea-experiment.ts)
 
 <a id="ctxsettings--settingsprovider-abstract-seam"></a>
 

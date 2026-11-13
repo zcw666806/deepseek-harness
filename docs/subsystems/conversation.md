@@ -26,6 +26,8 @@ Each Session keeps a monotonic set of active targets. Creating or reading a targ
 
 The shell owns View selection and resolves the registered preferred View or Chat fallback before rendering when a binding is created or selected as current, and after View-roster changes. The assembler receives only the resolved target id and does not select Chat or another default target. A third-party View participates through the same selection and activation operations.
 
+An existing blank Session can select registered non-Chat Views before its first message. Blank Chat keeps the resident Hero, while a selected non-Chat View owns its empty-data content. The header exposes View navigation without the blank Session's title or utility row. Returning to Chat, or removing the selected View while Chat remains registered, restores the Hero without changing Session lifecycle data.
+
 ## Replayable event families
 
 Choose one stable business id before writing the Definition. Every event that contributes to the same Node must carry that id or derive it independently from its own payload; the client must never assign an update to “the latest unfinished” Context.

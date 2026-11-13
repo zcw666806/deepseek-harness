@@ -624,6 +624,19 @@ describe('editText', () => {
     expect(await readFile(join(dir, 'a.txt'), 'utf8')).toBe('a\r\nNEW\r\nb\r\n')
   })
 
+  it('preserves unmatched mixed endings while returning normalized diff text', async () => {
+    await writeFile(join(dir, 'mixed.txt'), 'head\r\none\r\ntwo\nend\r\n')
+    const target = await fs.resolve('mixed.txt')
+    const outcome = await fs.editText(target, {
+      oldString: 'one\ntwo',
+      newString: 'ONE\nTWO',
+      replaceAll: false,
+    }, { version: await versionOf(target) })
+    expect(outcome.before).toBe('head\none\ntwo\nend\n')
+    expect(outcome.after).toBe('head\nONE\nTWO\nend\n')
+    expect(await readFile(join(dir, 'mixed.txt'), 'utf8')).toBe('head\r\nONE\r\nTWO\nend\r\n')
+  })
+
   it('checks the stale version BEFORE literal matching', async () => {
     await writeFile(join(dir, 'a.txt'), 'hello world')
     const target = await fs.resolve('a.txt')

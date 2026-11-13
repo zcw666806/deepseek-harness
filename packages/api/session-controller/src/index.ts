@@ -24,6 +24,8 @@ import type {
   ModelCatalog,
   SessionAttachmentRequest,
   SessionAttachmentValue,
+  SessionVideoAttachmentRequest,
+  SessionVideoAttachmentValue,
   SessionCancelRequest,
   SessionCancelValue,
   SessionControlFrame,
@@ -332,6 +334,16 @@ export class SessionController extends TypertRemoteService {
   @Remote('attachment')
   attachment(request: SessionAttachmentRequest): Promise<SessionAttachmentValue> {
     return this.commands.attachment(request)
+  }
+
+  /**
+   * Read a bounded video slice proven reachable from a successful Session generation.
+   * @param request - Session and attachment identities plus raw-byte range.
+   * @returns verified metadata and a base64 slice containing at most 256 KiB of raw video bytes.
+   */
+  @Remote('videoAttachment')
+  videoAttachment(request: SessionVideoAttachmentRequest): Promise<SessionVideoAttachmentValue> {
+    return this.commands.videoAttachment(request)
   }
 
   /**

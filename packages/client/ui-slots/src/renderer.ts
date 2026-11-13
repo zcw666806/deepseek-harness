@@ -181,10 +181,11 @@ export interface SlotRendererHost {
    * Resolve (create or return cached) the store instance for an entry's
    * declared handle under a scope key; lifecycle rides the ledger axis.
    * @param entry - entry whose declaration carries the handle.
-   * @param scopeBinding - exact Session binding for scoped slots, undefined for root scope.
-   * @returns the instance, or undefined when the entry declares no store.
+   * @param scopeBinding - Exact Session binding, absent for root or a session-maybe entry without a Session.
+   * @param scope - Entry's declared scope; strict Session entries require a binding.
+   * @returns The bound instance, a read-only initial source for an absent optional Session, or undefined without a store.
    */
-  storeOf(entry: StoredEntry, scopeBinding: ScopedStandardSourceBinding | undefined): StoreInstanceLike | undefined
+  storeOf(entry: StoredEntry, scopeBinding: ScopedStandardSourceBinding | undefined, scope: SlotScope): StoreInstanceLike | undefined
   /** Root standard data assembled from domain-owned contributions. */
   readonly root: HostObservable<StandardSourceBinding>
   /** Monotonic source updated whenever the installed scope-adapter roster changes. */

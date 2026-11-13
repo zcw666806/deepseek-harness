@@ -15,6 +15,7 @@ import { SessionQueryError, type SessionObservation } from '@deepseek-ai/dsh-ses
 import { SessionTitleInvalidError } from '@deepseek-ai/dsh-session-title'
 import { canonicalClientTimeZone } from '@deepseek-ai/dsh-util-time'
 import { RemoteError, remoteErrorOf } from '@deepseek-ai/dsh-typert-protocol'
+import { readSessionVideoAttachment } from './video-attachment.ts'
 import type { Workspace } from '@deepseek-ai/dsh-workspace'
 import {
   ApiSessionAgentController,
@@ -29,6 +30,8 @@ import {
 import type {
   SessionAttachmentRequest,
   SessionAttachmentValue,
+  SessionVideoAttachmentRequest,
+  SessionVideoAttachmentValue,
   SessionCancelRequest,
   SessionCancelValue,
   SessionCreateRequest,
@@ -237,7 +240,7 @@ export class SessionCommandController {
       )
     }
     const childId = brandString<SessionId>(`session-${randomUUID()}`)
-    const composition = await this.agents.composeAgent(this.agents.presetForObservation(source))
+    const composition = await this.agents.composeAgent(this.agents.presetForObservation(source), 'resume')
     try {
       const { provider, model } = this.ctx.agentDefaultModel.currentSelection()
       await this.ctx.agents.create({
@@ -374,6 +377,24 @@ export class SessionCommandController {
       }
       throw new RemoteError('gateway/internal', 'Unable to read image attachment.', {})
     }
+  }
+
+  /**
+   * Read a bounded slice of a video produced by this Session without resuming its Agent.
+   * @param request - Session, attachment identity, and byte range.
+   * @returns verified video metadata and encoded bytes.
+   */
+  async videoAttachment(request: SessionVideoAttachmentRequest): Promise<SessionVideoAttachmentValue> {
+    let source: SessionReadState
+    try {
+      source = await this.readSessionState(request.sessionId)
+    } catch (error) {
+      if (error instanceof ApiSessionNotFound) {
+        throw new RemoteError('session/not-found', error.message, { sessionId: request.sessionId })
+      }
+      throw new RemoteError('gateway/internal', 'Unable to authorize video attachment for this session.', {})
+    }
+    return readSessionVideoAttachment(this.ctx, source.events, request)
   }
 
   /**

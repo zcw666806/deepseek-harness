@@ -1,0 +1,42 @@
+[
+  {
+    "kind": "chunks",
+    "chunks": [
+      { "type": "block-start", "index": 0, "blockType": "tool-call" },
+      { "type": "tool-call-delta", "index": 0, "id": "restaurant-read", "name": "restaurant_read", "argumentsDelta": "{}" },
+      { "type": "block-end", "index": 0, "block": { "type": "tool-call", "id": "restaurant-read", "name": "restaurant_read", "arguments": "{}" } },
+      { "type": "usage", "usage": { "inputTokens": 10, "outputTokens": 5 } },
+      { "type": "finish", "reason": { "kind": "tool-calls" } }
+    ]
+  },
+  {
+    "kind": "chunks",
+    "chunks": [
+      { "type": "block-start", "index": 0, "blockType": "tool-call" },
+      { "type": "tool-call-delta", "index": 0, "id": "restaurant-move", "name": "restaurant_move", "argumentsDelta": "{\"expectedRevision\":0,\"itemIds\":[\"table-1\"],\"dxMm\":300,\"dyMm\":0}" },
+      { "type": "block-end", "index": 0, "block": { "type": "tool-call", "id": "restaurant-move", "name": "restaurant_move", "arguments": "{\"expectedRevision\":0,\"itemIds\":[\"table-1\"],\"dxMm\":300,\"dyMm\":0}" } },
+      { "type": "usage", "usage": { "inputTokens": 10, "outputTokens": 5 } },
+      { "type": "finish", "reason": { "kind": "tool-calls" } }
+    ]
+  },
+  {
+    "kind": "chunks",
+    "chunks": [
+      { "type": "block-start", "index": 0, "blockType": "tool-call" },
+      { "type": "tool-call-delta", "index": 0, "id": "restaurant-undo", "name": "restaurant_undo", "argumentsDelta": "{\"expectedRevision\":1}" },
+      { "type": "block-end", "index": 0, "block": { "type": "tool-call", "id": "restaurant-undo", "name": "restaurant_undo", "arguments": "{\"expectedRevision\":1}" } },
+      { "type": "usage", "usage": { "inputTokens": 10, "outputTokens": 5 } },
+      { "type": "finish", "reason": { "kind": "tool-calls" } }
+    ]
+  },
+  {
+    "kind": "chunks",
+    "chunks": [
+      { "type": "block-start", "index": 0, "blockType": "text" },
+      { "type": "text-delta", "index": 0, "text": "RESTAURANT_RESTORED" },
+      { "type": "block-end", "index": 0, "block": { "type": "text", "text": "RESTAURANT_RESTORED" } },
+      { "type": "usage", "usage": { "inputTokens": 10, "outputTokens": 2 } },
+      { "type": "finish", "reason": { "kind": "stop" } }
+    ]
+  }
+]

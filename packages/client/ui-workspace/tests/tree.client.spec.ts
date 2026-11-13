@@ -41,6 +41,26 @@ const schedule = (id: string, scheduledAt: string): ScheduleRecord => ({
 })
 
 describe('deriveGroups', () => {
+  it('keeps explicitly presented blank projects visible, searchable and distinct from provisional chat rows', () => {
+    const project = { ...summary('project', 20), blank: true }
+    const placeholder = { ...summary('placeholder', 10), blank: true }
+    const chat = { ...summary('chat', 30), displayTitle: 'Chat title' }
+    const state = list(project, placeholder, chat)
+    const presentations = [{ sessionId: project.id, displayTitle: 'Restored film' }, { sessionId: chat.id, displayTitle: 'Ignored project name' }]
+    const workspaces = [workspace('one', ['project', 'placeholder', 'chat'])]
+    const grouped = deriveGroups(state, workspaces, [], noAttention, view(['one']), presentations)
+    expect(grouped[0]?.sessions.map(item => [item.title, item.blank, item.hasTranscript])).toEqual([
+      ['Restored film', false, false], ['Chat title', false, true],
+    ])
+    expect(deriveFlat(state, [], noAttention, presentations).map(item => item.title)).toEqual(['Chat title', 'Restored film'])
+    expect(deriveSearchResults(state, workspaces, 'Restored', [], noAttention, { items: [], hasMore: false }, 20, presentations)
+      .items.map(item => item.id)).toEqual([project.id])
+    expect(deriveSearchResults(state, workspaces, 'Ignored', [], noAttention, { items: [], hasMore: false }, 20, presentations).items).toEqual([])
+    expect(deriveFlat(state, [], noAttention).map(item => item.id)).toEqual([chat.id])
+    expect(state.byId[project.id]?.blank).toBe(true)
+    expect(deriveFlat(state, [project.id], noAttention, presentations).map(item => item.id)).toEqual([chat.id])
+  })
+
   it('keeps Host Workspace and sessionIds order without Client recency sorting', () => {
     const sessions = list(summary('newer', 20), summary('older', 10))
     const workspaces = [workspace('first', ['older', 'newer']), workspace('empty', [])]

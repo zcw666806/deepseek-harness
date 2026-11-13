@@ -7,7 +7,9 @@
  */
 
 import { globSync, readFileSync, writeFileSync } from 'node:fs'
-import { basename, resolve } from 'node:path'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { basename, join, resolve } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import LlmRuntime from '@deepseek-ai/dsh-llm'
 import type { ToolSchema } from '@deepseek-ai/dsh-llm'
@@ -15,6 +17,10 @@ import AgentRegistry from '@deepseek-ai/dsh-agent'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { createScope } from '@deepseek-ai/dsh-scope'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
+import JsonlSessionPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
+import Storage from '@deepseek-ai/dsh-storage'
+import * as StorageJson from '@deepseek-ai/dsh-storage-json'
+import * as StorageDomain from '@deepseek-ai/dsh-storage-domain'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import SqliteSessionQueryEngine from '@deepseek-ai/dsh-session-query-sqlite'
 import GoalService from '@deepseek-ai/dsh-goal'
@@ -68,6 +74,7 @@ import * as ToolWeb from '@deepseek-ai/dsh-tool-web'
 import VmWorkflowEngine from '@deepseek-ai/dsh-workflow-worker-thread'
 import * as ToolRalph from '@deepseek-ai/dsh-tool-ralph'
 import * as ToolWorkflow from '@deepseek-ai/dsh-tool-workflow'
+import VideoProduction from '@deepseek-ai/dsh-video-production'
 import { githubSlug } from './verify-md-links.ts'
 
 /** Attachment seam marker that makes the attachments-conditional `read_image` schema harvestable. */
@@ -583,7 +590,7 @@ const TOOL_PACKAGES: ToolPackage[] = [
     pkg: '@deepseek-ai/dsh-tool-workflow',
     dir: 'tool-workflow',
     source: 'packages/workflow/tool-workflow/src/index.ts',
-    requires: ['ctx.tools', 'ctx.workflowEngine', 'ctx.systemPrompt', 'a calling Agent (exec.agent parents the script children)'],
+    requires: ['ctx.tools', 'ctx.workflowEngine', 'ctx.systemPrompt', 'ctx.jobs at call time for run_in_background', 'a calling Agent (exec.agent parents the script children)'],
     writes: ['tool/call', 'tool/result'],
     async mount(ctx) {
       // The tool injects `workflows`; boot the vm engine over a scripted
@@ -611,6 +618,33 @@ const TOOL_PACKAGES: ToolPackage[] = [
     },
     note:
       'web_search and web_fetch keep provider selection behind ctx.web so model-visible schemas stay stable across backend swaps.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-video-production',
+    dir: 'video-production',
+    source: 'packages/video/video-production/src/index.ts',
+    requires: [
+      'ctx.tools', 'ctx.videoProduction', 'ctx.storageDomain', 'ctx.sessions', 'ctx.sessionPersistence', 'ctx.attachments',
+      'an owning Agent at execution time', 'a configured video generator (generation)',
+      'host-local ctx.fs + ctx.subprocess + FFmpeg/ffprobe (export)',
+    ],
+    writes: ['tool/call', 'video_production storage-domain projects', 'durable video attachments (generation/export)', 'tool/result'],
+    async mount(ctx) {
+      const home = await mkdtemp(join(tmpdir(), 'dsh-tool-catalog-video-'))
+      ctx.effect(() => async () => { await rm(home, { recursive: true, force: true }) }, 'tool-catalog video storage')
+      await ctx.plugin(SessionStore)
+      await ctx.plugin(JsonlSessionPersistence, { root: join(home, 'sessions'), compression: 'none' })
+      await ctx.plugin(Storage)
+      await ctx.plugin(StorageJson, { root: join(home, 'storage') })
+      await ctx.plugin(StorageDomain, { backend: 'json' })
+      await ctx.plugin(CatalogAttachmentStore)
+      await ctx.plugin(VideoProduction)
+    },
+    note:
+      'One revisioned video project belongs to one Session. Every action returns the complete project, '
+      + 'including ordered shots, preserved generation versions, selected attachments, and export outcomes. '
+      + 'Generation requires a registered video provider; film export requires host-local FFmpeg and ffprobe. '
+      + 'Both operations wait for completion and retain failed or interrupted attempts.',
   },
 ]
 
@@ -755,7 +789,7 @@ export function render(catalog: ToolCatalog): string {
     '',
     'This file is GENERATED and verified fresh by `pnpm run verify-tool-catalog` (part of `doc-sync`) — do not edit it by hand. Unlike the cordis catalog (a pure source-AST pass), this generator BOOTS each tool plugin on a real context and reads `ctx.tools.schemas()`, because a tool schema is not statically knowable (runtime-spread enums, concatenated descriptions, config-driven names, raw-JSON-Schema MCP tools). A completeness guard globs `packages/*/tool-*` and fails if any package is missing from the generator\'s boot manifest, so a new tool cannot be silently undocumented. See [the tool-schema-catalog Agent Note](../.agents/notes/implemented/process/2026-07-02-tool-schema-catalog.md).',
     '',
-    'Scope: shipped product tools under `packages/*/tool-*`, each booted with its DEFAULT config, except where a Config field is REQUIRED with no default — there the generator must choose, and the per-package note records which branch this page shows. The registered tool NAME can be a load-time config (e.g. `tool-subagent`\'s `toolName`), so a deployment may expose a package under a different or additional name — a per-package note records those shipped aliases where they exist. The `examples/` demo tools (e.g. `echo`) are excluded, matching the cordis catalog\'s packages-only scope.',
+    'Scope: shipped product tools under `packages/*/tool-*` and the service-owned tool contributions listed in the boot manifest, each booted with its DEFAULT config, except where a Config field is REQUIRED with no default — there the generator must choose, and the per-package note records which branch this page shows. The registered tool NAME can be a load-time config (e.g. `tool-subagent`\'s `toolName`), so a deployment may expose a package under a different or additional name — a per-package note records those shipped aliases where they exist. The `examples/` demo tools (e.g. `echo`) are excluded, matching the cordis catalog\'s packages-only scope.',
     '',
     '## Tool Package Map',
     '',

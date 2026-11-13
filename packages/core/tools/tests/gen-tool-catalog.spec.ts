@@ -37,7 +37,7 @@ describe('gen-tool-catalog collectToolCatalog', () => {
       'str_replace_editor', 'subagent', 'team_task_create',
       'team_task_get', 'team_task_list', 'team_task_update', 'terminal_close', 'terminal_list',
       'terminal_open', 'terminal_read', 'terminal_send', 'terminal_signal', 'todo_write',
-      'update_goal', 'wait_agent', 'web_fetch', 'web_search', 'workflow', 'write',
+      'update_goal', 'video_project', 'wait_agent', 'web_fetch', 'web_search', 'workflow', 'write',
     ])
     // Every tool carries a JSON-Schema `parameters` object (what the model sees).
     for (const entry of catalog) {
@@ -68,6 +68,11 @@ describe('gen-tool-catalog collectToolCatalog', () => {
       list_agents: 'packages/subagent/tool-subagent-control/src/list-agents.ts',
       send_message: 'packages/subagent/tool-subagent-control/src/index.ts',
     })
+    const production = catalog.find(entry => entry.pkg === '@deepseek-ai/dsh-video-production')
+    expect(production?.sources.video_project).toBe('packages/video/video-production/src/index.ts')
+    expect(production?.schemas.map(schema => schema.name)).toEqual(['video_project'])
+    expect((production?.schemas[0]?.parameters as unknown as JsonSchema).properties?.action?.enum)
+      .toEqual(['view', 'update', 'generate', 'reorder', 'export'])
   })
 
   it('harvests search tools without depending on the generator process PATH', async () => {

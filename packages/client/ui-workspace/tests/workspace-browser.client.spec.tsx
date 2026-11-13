@@ -14,6 +14,8 @@ import { createWorkspaceViewStore, FLAT_SESSION_ORDER_KEY } from '../src/client/
 import { UNGROUPED_KEY } from '../src/client/tree.ts'
 import { WorkspaceBrowser } from '../src/client/rows/WorkspaceBrowser.tsx'
 import { zh } from '../src/client/locales.ts'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
+import type { WorkspaceSessionPresentation } from '../src/client/contract/presentations.ts'
 
 afterEach(cleanup)
 beforeEach(() => { localStorage.clear(); createWorkspaceViewStore().create().actions.setOrderBy('manual') })
@@ -85,6 +87,7 @@ function mount(overrides: Partial<WorkspaceBrowserProps> = {}) {
     createWorkspace: vi.fn(async () => workspace('created', [])),
     useDirectoryFlow: bindSnapshotSelector({ getSnapshot: () => true, subscribe: () => () => {} }),
     useHostInfo: selector => selector({ home: undefined, isLoopback: true }),
+    useSessionPresentations: selector => selector([]),
     renderSlot: ((_name: string, owner: { open: boolean }) => (owner.open ? <div data-testid="directory-flow" /> : null)) as never,
     t,
     ...overrides,
@@ -100,6 +103,39 @@ function rerender(b: ReturnType<typeof mount>, overrides: Partial<WorkspaceBrows
 }
 
 describe('WorkspaceBrowser', () => {
+  it('keeps two restored blank projects navigable when selection moves and searches their feature titles', async () => {
+    const one = summary('one', 20, { blank: true })
+    const two = summary('two', 10, { blank: true })
+    const empty = summary('empty', 5, { blank: true })
+    const sessions = createSnapshotStore(sessionState([one, two, empty], { current: one.id }))
+    const presentations = createSnapshotStore<readonly WorkspaceSessionPresentation[]>([
+      { sessionId: one.id, displayTitle: 'Project One' }, { sessionId: two.id, displayTitle: 'Project Two' },
+    ])
+    const open = vi.fn((id: SessionId) => { sessions.update((value) => { value.current = id }) })
+    mount({
+      useSessions: bindSnapshotSelector(sessions),
+      useSessionPresentations: bindSnapshotSelector(presentations),
+      useWorkspaces: hook(workspaceState([workspace('alpha', ['one', 'two', 'empty'])])), open,
+    })
+    expect(screen.getByText('Project One')).toBeTruthy()
+    expect(screen.getByText('Project Two')).toBeTruthy()
+    expect(screen.queryByText('新会话')).toBeNull()
+    fireEvent.click(screen.getByText('Project Two'))
+    expect(open).toHaveBeenCalledWith(two.id)
+    expect(screen.getByText('Project One')).toBeTruthy()
+    fireEvent.click(screen.getByText('Project One'))
+    expect(open).toHaveBeenLastCalledWith(one.id)
+    expect(screen.getByText('Project Two')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '搜索会话' }))
+    fireEvent.change(screen.getByPlaceholderText('搜索会话…'), { target: { value: 'Project Two' } })
+    expect(screen.getByText('Project Two')).toBeTruthy()
+    expect(screen.queryByText('Project One')).toBeNull()
+    expect(sessions.getSnapshot().byId[one.id]?.blank).toBe(true)
+    expect(sessions.getSnapshot().byId[two.id]?.blank).toBe(true)
+    act(() => { presentations.set([{ sessionId: one.id, displayTitle: 'Project One' }]) })
+    await waitFor(() => { expect(screen.queryByText('Project Two')).toBeNull() })
+  })
+
   it('workspace hover card shows a POSIX home descendant as ~', () => {
     vi.useFakeTimers()
     try {

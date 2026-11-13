@@ -40,3 +40,7 @@
         - 'button "展开设置: 网页搜索"':
           - text: 网页搜索 DeepSeek 搜索提供方。
           - img
+      - listitem:
+        - 'button "展开设置: REA 实验功能"':
+          - text: REA 实验功能 向助手开放本机 REA 服务公布的全部工具。
+          - img

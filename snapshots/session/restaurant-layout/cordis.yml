@@ -1,0 +1,15 @@
+- id: tool-bash
+  disabled: true
+
+- id: tool-pwsh
+  disabled: true
+
+- insert:
+    - id: restaurant-project
+      name: '../../../restaurant-design/src/service.ts'
+      config:
+        sourceHtml: !!js "process.cwd() + '/restaurant.html'"
+        projectPath: !!js "process.cwd() + '/layout.json'"
+
+    - id: restaurant-tools
+      name: '../../../restaurant-design/src/plugin.ts'

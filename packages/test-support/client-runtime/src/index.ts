@@ -363,8 +363,8 @@ export class SlotTestRuntime {
    * {@link SlotTestRuntime.renderRoot} — the host face exists only inside the
    * installed renderer, exactly as in production.
    * @param key - slot key whose first entry declares the store.
-   * @param scopeKey - session id for session-scope slots; omit for root scope.
-   * @returns the live store instance.
+   * @param scopeKey - Session id for scoped slots; omit for root or an absent optional Session.
+   * @returns The live store, or the read-only initial source for an absent optional Session.
    */
   storeOf(key: keyof SlotMap & string, scopeKey?: string): StoreInstanceLike {
     if (this.host === undefined) {
@@ -378,7 +378,9 @@ export class SlotTestRuntime {
     if (scopeKey !== undefined && scopeBinding === undefined) {
       throw new Error(`storeOf('${key}'): no live Session binding for '${scopeKey}'`)
     }
-    const instance = this.host.storeOf(entry, scopeBinding)
+    const spec = this.host.specOf(key)
+    if (spec === undefined) throw new Error(`storeOf('${key}'): the slot is not declared`)
+    const instance = this.host.storeOf(entry, scopeBinding, spec.scope)
     if (instance === undefined) throw new Error(`storeOf('${key}'): the entry declares no store`)
     return instance
   }

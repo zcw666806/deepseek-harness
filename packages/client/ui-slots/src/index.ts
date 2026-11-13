@@ -452,6 +452,7 @@ export type ComposedProps<
  * strict session slots receive a definite framework-resolved `sessionId`;
  * session-maybe slots receive the current id or `undefined`; a declared store
  * appends the baked `actions` (the same callbacks the component receives).
+ * An optional Session without a binding receives rejecting actions over a read-only initial source.
  * Business data access happens through the apply closure's ctx — no binding
  * object parameter exists.
  */
@@ -460,7 +461,7 @@ export type InjectParams<K extends keyof SlotMap & string, H> =
     ? ([H] extends [StoreDecl] ? [sessionId: SessionIdOf, actions: BoundActions<HandleOf<H>>] : [sessionId: SessionIdOf])
     : ScopeOf<K> extends 'session-maybe'
       ? ([H] extends [StoreDecl]
-        ? [sessionId: SessionIdOf | undefined, actions: BoundActions<HandleOf<H>> | undefined]
+        ? [sessionId: SessionIdOf | undefined, actions: BoundActions<HandleOf<H>>]
         : [sessionId: SessionIdOf | undefined])
       : ([H] extends [StoreDecl] ? [actions: BoundActions<HandleOf<H>>] : [])
 
@@ -677,7 +678,7 @@ export class SlotCore {
   private records = new Map<string, SlotRecord>()
   private mutateListeners = new Set<(key: string) => void>()
   /** Shared-handle scope ledger: handle → the scope it first mounted under + live mount count. */
-  private handleScopes = new Map<object, { scope: SlotScope; count: number }>()
+  private handleScopes = new Map<object, { scope: 'root' | 'session'; count: number }>()
   // Dirty records, not keys: records are never removed, so holding the
   // reference skips a lookup (and an unreachable missing-record branch) at flush.
   private dirty = new Set<SlotRecord>()
@@ -828,16 +829,17 @@ export class SlotCore {
         }
       }
     }
-    // Shared handles pin their scope on first mount; factories are exempt
+    // Shared handles pin their root or Session axis on first mount; factories are exempt
     // (the framework creates per-entry instances, no shared identity exists).
     if (options.store !== undefined && typeof options.store !== 'function') {
       const pinned = this.handleScopes.get(options.store)
-      if (pinned && pinned.scope !== spec.scope) {
+      const axis = spec.scope === 'root' ? 'root' : 'session'
+      if (pinned && pinned.scope !== axis) {
         throw new Error(
           `store handle mounted under "${options.name}" (scope "${spec.scope}") is already mounted under scope "${pinned.scope}" — one handle, one scope`)
       }
       if (pinned) pinned.count += 1
-      else this.handleScopes.set(options.store, { scope: spec.scope, count: 1 })
+      else this.handleScopes.set(options.store, { scope: axis, count: 1 })
     }
 
     const entry: StoredEntry = {

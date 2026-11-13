@@ -7,6 +7,9 @@ export type { AttachmentId } from './brand.ts'
 /** Raster image formats accepted by the version-one attachment path. */
 export type ImageMediaType = 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif'
 
+/** Video formats accepted by the version-one attachment path. */
+export type VideoMediaType = 'video/mp4' | 'video/webm'
+
 /** Durable, serializable reference to one immutable normalized image. */
 export interface ImageAttachmentRef {
   /** Opaque storage identifier; never a filesystem path or bearer URL. */
@@ -29,6 +32,24 @@ export interface ImageAttachmentRef {
     width: number
     height: number
   }
+}
+
+/** Durable, serializable reference to one immutable video. */
+export interface VideoAttachmentRef {
+  /** Opaque storage identifier; never a filesystem path or bearer URL. */
+  attachmentId: AttachmentId
+  /** Media type verified from the stored bytes. */
+  mediaType: VideoMediaType
+  /** Exact encoded byte length. */
+  bytes: number
+  /** Intrinsic video width in pixels, if known. */
+  width?: number | undefined
+  /** Intrinsic video height in pixels, if known. */
+  height?: number | undefined
+  /** Duration in seconds, if known. */
+  durationSeconds?: number | undefined
+  /** Optional display name stripped of local path information. */
+  name?: string | undefined
 }
 
 /** Deployment-resolved limits used by upload admission and request buffering. */
@@ -81,9 +102,30 @@ export interface SaveImageAttachment {
   name?: string
 }
 
+/** Request to validate and durably commit one video. */
+export interface SaveVideoAttachment {
+  data: Uint8Array
+  /** Caller-declared media type. */
+  mediaType: VideoMediaType
+  /** Optional display name; it is never interpreted as a path. */
+  name?: string | undefined
+  /** Duration in seconds, if known. */
+  durationSeconds?: number | undefined
+  /** Intrinsic width in pixels, if known. */
+  width?: number | undefined
+  /** Intrinsic height in pixels, if known. */
+  height?: number | undefined
+}
+
 /** Stored image bytes returned after reference and digest verification. */
 export interface StoredImageAttachment {
   ref: ImageAttachmentRef
+  data: Uint8Array
+}
+
+/** Stored video bytes returned after reference and digest verification. */
+export interface StoredVideoAttachment {
+  ref: VideoAttachmentRef
   data: Uint8Array
 }
 

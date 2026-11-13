@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-10-27-restaurant-design-pilot.md
+2026-10-27-restaurant-design-pilot.md: 03dd954fc7f046974d9c4e7ea558ceac6cd0a95b
+2026-10-27-restaurant-design-pilot.zh.md: 3a9efd6dc291cd12ec43df0390a9a360ef772c75

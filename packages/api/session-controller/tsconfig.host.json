@@ -18,7 +18,8 @@
     "src/history.ts",
     "src/list.ts",
     "src/model-selection-projection.ts",
-    "src/skill-catalog.ts"
+    "src/skill-catalog.ts",
+    "src/video-attachment.ts"
   ],
   "references": [
     { "path": "../../../vendor/cordis" },
@@ -32,6 +33,7 @@
     { "path": "../../interaction/permission-presets" },
     { "path": "../../jobs/jobs" },
     { "path": "../../llm/llm" },
+    { "path": "../../mcp/mcp-client" },
     { "path": "../../util/deque" },
     { "path": "../../util/native-command" },
     { "path": "../../preset/agent-presets" },

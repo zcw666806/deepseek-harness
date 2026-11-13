@@ -26,6 +26,8 @@ Chat 与 Trajectory 可以识别同一个持久 event family，但各自保留�
 
 shell 拥有 View 选择，并在 binding 创建、被选为 current 或 View roster 变化时，于渲染前解析已注册的偏好 View 或 Chat fallback。assembler 只接收解析后的 target id，不自行选择 Chat 或其他默认 target。第三方 View 使用相同的选择与激活操作。
 
+已存在的 blank Session 可在首次消息前选择已注册的非 Chat View。blank Chat 保留常驻 Hero，选中的非 Chat View 拥有自己的空数据内容。header 公开 View 导航，不显示 blank Session 的标题与工具行。返回 Chat，或在 Chat 仍注册时移除所选 View，会恢复 Hero，不改变 Session 生命周期数据。
+
 ## 可回放 event family
 
 编写 Definition 前先选定稳定的业务 id。构成同一个 Node 的每条事件都必须携带该 id，或只凭自身 payload 独立推导出该 id；Client 绝不能把 update 猜测为属于“最近一个未完成”的 Context。

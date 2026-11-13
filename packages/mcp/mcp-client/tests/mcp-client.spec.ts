@@ -43,6 +43,7 @@ function createMockClient(tools: MockTool[], callResult: MockCallResult = { cont
     _options?: unknown,
   ): Promise<Record<string, unknown>> => ({ ...callResult }))
   return {
+    getServerCapabilities: () => ({}),
     listTools,
     callTool,
     request: vi.fn(async (

@@ -25,7 +25,7 @@ kind: "package-reference"
 <a id="use-this-package"></a>
 ## 使用本包
 
-用侧边栏浏览 Workspace 及其 Session、重排它们并新建会话；在 Session Intent 主视觉区用选择器为新会话选择 Workspace。打开的 Workspace 默认显示五条非空白 Session，并在首条提示词落地前把当前选中的空白**新会话**作为一条临时额外行。**展开其余**会显示隐藏条目；关闭再打开 Workspace 会恢复该折叠投影。
+用侧边栏浏览 Workspace 及其 Session、重排它们并新建会话；在 Session Intent 主视觉区用选择器为新会话选择 Workspace。打开的 Workspace 默认显示五条有内容的行，并把当前选中的临时**新会话**作为额外行。**展开其余**会显示隐藏条目；关闭再打开 Workspace 会恢复该折叠投影。
 
 ### 重排序与视图选项
 
@@ -58,6 +58,10 @@ Session 行渲染运行时的实时 `pendingInteraction` 分类：审批显示**
 <summary>实现细节——点击展开</summary>
 
 本包是一条组合：两个目标 slot 都由其他插件声明，因此 `apply` 使用 `slots.inject()` 在各自的声明生命周期内完成注册，并在目标 slot 的声明恢复后重新注册。
+
+[导航服务](src/client/navigation.ts)通过受effect生命周期管理的`registerSessionReuseGuard`回调检查空对话记录无法反映的业务数据。只有所有检查均允许，并且检查后的工作区归属与空白状态仍有效时，才复用候选会话。检查拒绝或失败会创建新会话。撤销注册会等待已接纳的检查完成，不修改会话日志或其`blank`值。
+
+功能通过 `registerSessionPresentation` 注册权威的 `ObservableSnapshot<readonly WorkspaceSessionPresentation[]>`。展示项仅包含 Session 标识及显示标题。存在展示项时，即使对话记录为空，含项目内容的 Session 在切换后仍可见且可搜索，并用项目标题替代临时占位名称。普通非空白对话保持 Session 自有标题。来源按注册顺序聚合，同标识由首个来源的标题优先；来源更新或注销会更新侧边栏，不修改 Session 元数据或视图 store。仅有项目的行不提供 Session 重命名或对话分叉；用户在所属项目视图修改项目名称，打开、归档和复制显示标题仍可用。
 
 ### 目录流子 slot
 

@@ -1,5 +1,5 @@
 /**
- * Tool bridge: discovers MCP tools, registers them on the harness ToolRuntime
+ * Tool bridge: discovers MCP tools and on-demand resource operations, registers them on the harness ToolRuntime
  * under deterministic server-qualified public names, and handles re-sync when
  * the server's tool list changes.
  *
@@ -25,6 +25,7 @@ import type { ToolDefinition, ToolExecution, ToolExecutionResult } from '@deepse
 import { assertSupportedJsonSchema } from '@deepseek-ai/dsh-tools'
 import type { JsonSchemaNode } from '@deepseek-ai/dsh-tools'
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
+import { resourceDefinitions } from './resources.ts'
 
 /** Resolved options relevant to tool bridging. */
 export interface ToolBridgeOptions {
@@ -118,7 +119,7 @@ export function publicToolName(serverName: string, rawName: string): string {
 }
 
 /**
- * Sync the MCP server's tool list into the harness ToolRuntime.
+ * Sync the MCP server's tools and advertised resource operations into the harness ToolRuntime.
  *
  * Two phases keep the swap safe:
  *
@@ -148,9 +149,14 @@ export async function syncTools(
   previous: ToolDisposers,
 ): Promise<ToolDisposers> {
   // Phase 1: fetch and build the next generation without touching the registry.
-  const definitions = new Map<string, ToolDefinition>()
+  const definitions = new Map<string, ToolDefinition>(
+    resourceDefinitions(client, opts).map(definition => [definition.name, definition]),
+  )
+  const capabilities = client.getServerCapabilities()
   let cursor: string | undefined
-  do {
+  // Resource-only servers need no tools/list method. Missing capability metadata
+  // keeps the existing tool discovery for servers that omit their declarations.
+  while (capabilities?.resources === undefined || capabilities.tools !== undefined) {
     const response = await listToolsUncached(client, cursor)
     for (const tool of response.tools) {
       const publicName = publicToolName(opts.serverName, tool.name)
@@ -172,7 +178,8 @@ export async function syncTools(
       ))
     }
     cursor = response.nextCursor
-  } while (cursor)
+    if (!cursor) break
+  }
 
   // Phase 2: swap generations.
   for (const dispose of previous.values()) dispose()

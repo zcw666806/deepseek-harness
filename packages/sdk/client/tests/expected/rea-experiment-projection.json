@@ -1,0 +1,73 @@
+{
+  "selectionData": [
+    {
+      "command": "node",
+      "args": [
+        "rea-fixture.mjs"
+      ],
+      "toolCallTimeoutMs": 600000
+    }
+  ],
+  "rawEventTypes": [
+    "rea-experiment/selected",
+    "permission/preset",
+    "sandbox/mode",
+    "approval/policy",
+    "agent/inbox/spliced",
+    "turn/start",
+    "agent/inbox/spliced",
+    "step/start",
+    "user/message",
+    "session/title",
+    "request/header",
+    "request/context",
+    "assistant/chunk",
+    "assistant/chunk",
+    "assistant/chunk",
+    "assistant/chunk",
+    "assistant/chunk",
+    "assistant/message",
+    "tool/call",
+    "tool/result",
+    "step/end",
+    "step/start",
+    "assistant/chunk",
+    "assistant/chunk",
+    "assistant/chunk",
+    "assistant/chunk",
+    "assistant/chunk",
+    "assistant/message",
+    "step/end",
+    "turn/end"
+  ],
+  "eventTypes": [
+    "agent/inbox/spliced",
+    "turn/start",
+    "agent/inbox/spliced",
+    "step/start",
+    "user/message",
+    "session/title",
+    "request/header",
+    "request/context",
+    "assistant/chunk",
+    "assistant/chunk",
+    "assistant/chunk",
+    "assistant/chunk",
+    "assistant/chunk",
+    "assistant/message",
+    "tool/call",
+    "tool/result",
+    "step/end",
+    "step/start",
+    "assistant/chunk",
+    "assistant/chunk",
+    "assistant/chunk",
+    "assistant/chunk",
+    "assistant/chunk",
+    "assistant/message",
+    "step/end",
+    "turn/end"
+  ],
+  "finalResponse": "REA_EXPERIMENT_REQUEST_OK",
+  "finishReason": "completed"
+}

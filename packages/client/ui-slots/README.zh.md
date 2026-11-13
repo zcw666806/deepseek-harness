@@ -35,9 +35,11 @@ kind: "package-library"
 
 register 调用可以用 `store: defineStore(...)` 声明 store 席位：`init` 推断状态 schema，`actions` 是完整的 draft-transform 写入集合。组件经 selector 钩子读取、经烘焙回调写入；`defineStore` 的引擎实现位于 runtime 包，并满足这里导出的 `DefineStore` 约定。
 
+共享 handle 属于 root 轴或 Session 轴。选中 Session 时，`session` 与 `session-maybe` 条目共享同一 handle × Session 实例；root 条目不能共享该 handle。没有 Session 时，可选条目获得身份稳定、冻结的 `init` 快照，以及在选中 Session 前明确拒绝的 actions。该 absent source 不创建 live store，也不读取或写入无后缀的持久化键。
+
 ### 声明纪律
 
-声明即认领：注册条目成为唯一被允许渲染该键的条目；注册未声明 slot、声明已声明过的子项、在两个 scope 下挂载同一个共享 handle、或注册缺少 `select` 的 chain，都会在加载时抛出。条目的 disposer 会递归移除其声明的子 slot——账本行、贡献与 store 挂载都随同一生命周期结束而移除。
+声明即认领：注册条目成为唯一被允许渲染该键的条目；注册未声明 slot、声明已声明过的子项、跨 root 与 Session 轴挂载同一个共享 handle、或注册缺少 `select` 的 chain，都会在加载时抛出。条目的 disposer 会递归移除其声明的子 slot——账本行、贡献与 store 挂载都随同一生命周期结束而移除。
 
 -----
 

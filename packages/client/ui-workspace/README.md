@@ -25,7 +25,7 @@ English | [中文](README.zh.md)
 <a id="use-this-package"></a>
 ## Use this package
 
-Use the sidebar to browse Workspaces and their Sessions, reorder them, and start new ones; use the picker in the Session Intent hero to choose a Workspace for a new session. An open Workspace shows five non-blank Sessions by default and keeps the selected blank **New Session** as one provisional extra row until its first prompt. **Show more** reveals the hidden remainder; closing and reopening the Workspace restores this folded projection.
+Use the sidebar to browse Workspaces and their Sessions, reorder them, and start new ones; use the picker in the Session Intent hero to choose a Workspace for a new session. An open Workspace shows five content-bearing rows by default and keeps the selected provisional **New Session** as an extra row. **Show more** reveals the hidden remainder; closing and reopening the Workspace restores this folded projection.
 
 ### Reordering and view options
 
@@ -58,6 +58,10 @@ The value is intentionally best effort for cold Sessions. An identity-matching u
 <summary>Implementation internals — click to expand</summary>
 
 The package is one composition: both target slots are declared by other plugins, so `apply` uses `slots.inject()` to register for each declaration lifetime and re-register after a declaring slot is restored.
+
+The [navigation service](src/client/navigation.ts) accepts effect-owned `registerSessionReuseGuard` callbacks for feature data that an empty transcript does not describe. A candidate is reused only when every guard permits it and its Workspace membership and blank status still hold after inspection. Rejected or failed probes cause creation of a fresh Session. Guard withdrawal waits for admitted probes; it does not change the Session log or its `blank` value.
+
+Features register an authoritative `ObservableSnapshot<readonly WorkspaceSessionPresentation[]>` through `registerSessionPresentation`. A presentation contains only a Session identity and display title. Its presence keeps a project-bearing transcript-blank Session visible and searchable after navigation; its title replaces the provisional label. Ordinary non-blank conversations keep their Session-owned titles. Sources aggregate in registration order, with the first source's title winning duplicates, and source changes or disposal update the sidebar without modifying Session metadata or the viewing store. Session rename and transcript fork remain unavailable for project-only rows; users rename a project in its owning view, while opening, archiving, and copying its displayed title remain available.
 
 ### The directory-flow hole
 

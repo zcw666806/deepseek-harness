@@ -216,13 +216,16 @@ export type ConvViewProps = PropsRuntime<'conversation.view'>
 export interface ConversationInjected {
   /** Connect and open a blank Session in the selected Workspace. */
   selectWorkspace: (workspaceId: WorkspaceId) => Promise<void>
-  /** Session-addressed composer block source, or the stable absent source. */
-  hooks: { composerBlock: ObservableSnapshot<ComposerBlock | undefined> }
+  /** Resident-shell sources: Session composer blocking and the shared registered View roster. */
+  hooks: {
+    composerBlock: ObservableSnapshot<ComposerBlock | undefined>
+    conversationViews: ObservableSnapshot<readonly ViewTab[]>
+  }
 }
 
 /** Business callbacks injected into the strict Session body. */
 export interface ConversationSessionInjected {
-  /** Package-owned View roster source bound only for the Conversation body. */
+  /** Package-owned View roster source used by the strict Conversation body. */
   readonly hooks: { readonly conversationViews: ObservableSnapshot<readonly ViewTab[]> }
   /** Bind input draft persistence to the Session-owned store instance. */
   bindDraftMirror: (write: (text: string) => void) => () => void
@@ -232,7 +235,7 @@ export interface ConversationSessionInjected {
 
 /** Business callbacks injected into the strict Session header. */
 export interface ConversationSessionHeaderInjected {
-  /** Package-owned View roster source bound only for the Conversation header. */
+  /** Package-owned View roster source used by the strict Conversation header. */
   readonly hooks: { readonly conversationViews: ObservableSnapshot<readonly ViewTab[]> }
   /** Select a Session through the Session Controller. */
   open: (sessionId: SessionId) => void
@@ -332,6 +335,7 @@ export type ConversationSlotProps =
     | 'conversation.hero.workspace'
     | 'conversation.hero.agentPreset'
   >
+  & PropsStore<ConversationStore>
   & InjectFace<ConversationInjected>
   & PropsLocale<'conversation'>
 

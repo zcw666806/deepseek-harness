@@ -1,0 +1,104 @@
+{
+  "formatVersion": 1,
+  "revision": 2,
+  "title": "餐厅布置方案",
+  "base": {
+    "walls": [],
+    "windows": [],
+    "slides": [],
+    "doors": [],
+    "rooms": [],
+    "bounds": {
+      "x": 0,
+      "y": 0,
+      "w": 10000,
+      "h": 8000
+    }
+  },
+  "state": {
+    "furniture": [
+      {
+        "id": "table-1",
+        "type": "table",
+        "name": "Table",
+        "cx": 2000,
+        "cy": 2000,
+        "w": 1000,
+        "d": 600,
+        "rot": 0,
+        "color": "#cccccc"
+      },
+      {
+        "id": "chair-1",
+        "type": "chair",
+        "name": "Chair",
+        "cx": 4000,
+        "cy": 2000,
+        "w": 400,
+        "d": 400,
+        "rot": 0,
+        "color": "#aaaaaa"
+      }
+    ],
+    "rooms": {},
+    "demolished": [],
+    "measures": []
+  },
+  "groups": [],
+  "keepouts": [],
+  "history": {
+    "past": [],
+    "future": [
+      {
+        "formatVersion": 1,
+        "revision": 1,
+        "title": "餐厅布置方案",
+        "base": {
+          "walls": [],
+          "windows": [],
+          "slides": [],
+          "doors": [],
+          "rooms": [],
+          "bounds": {
+            "x": 0,
+            "y": 0,
+            "w": 10000,
+            "h": 8000
+          }
+        },
+        "state": {
+          "furniture": [
+            {
+              "id": "table-1",
+              "type": "table",
+              "name": "Table",
+              "cx": 2300,
+              "cy": 2000,
+              "w": 1000,
+              "d": 600,
+              "rot": 0,
+              "color": "#cccccc"
+            },
+            {
+              "id": "chair-1",
+              "type": "chair",
+              "name": "Chair",
+              "cx": 4000,
+              "cy": 2000,
+              "w": 400,
+              "d": 400,
+              "rot": 0,
+              "color": "#aaaaaa"
+            }
+          ],
+          "rooms": {},
+          "demolished": [],
+          "measures": []
+        },
+        "groups": [],
+        "keepouts": []
+      }
+    ]
+  },
+  "baselineIssues": []
+}

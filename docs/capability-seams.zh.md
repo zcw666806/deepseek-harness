@@ -64,6 +64,8 @@ flowchart LR
   pkg_settings_file["settings-file"]
   pkg_tool_subagent["tool-subagent"]
   svc_subagentModelSelection["ctx.subagentModelSelection<br/>Subagent model-selection preference"]
+  pkg_mcp_client["mcp-client"]
+  svc_reaExperiment["ctx.reaExperiment<br/>Session-scoped REA experiment"]
   pkg_credentials["credentials"]
   svc_credentials["ctx.credentials<br/>Credential seam"]
   pkg_credentials_local["credentials-local"]
@@ -210,6 +212,15 @@ flowchart LR
   svc_workflowEngine["ctx.workflowEngine<br/>Workflow script engine"]
   pkg_workflow_worker_thread["workflow-worker-thread"]
   pkg_tool_workflow["tool-workflow"]
+  pkg_video_production["video-production"]
+  svc_videoProduction["ctx.videoProduction<br/>Video production projects"]
+  pkg_video_comfyui["video-comfyui"]
+  pkg_client_ui_video_production["client-ui-video-production"]
+  svc_videoWorkflows["ctx.videoWorkflows<br/>Video workflow configuration"]
+  pkg_client_ui_capabilities["client-ui-capabilities"]
+  pkg_capability_manager["capability-manager"]
+  svc_capabilities["ctx.capabilities<br/>Installed capability management"]
+  pkg_video_comfyui_runtime["video-comfyui-runtime"]
   pkg_webhook["webhook"]
   svc_webhookRuntime["ctx.webhookRuntime<br/>Webhook rule runtime"]
   pkg_webhook_github["webhook-github"]
@@ -236,6 +247,7 @@ flowchart LR
   pkg_authorization --> svc_authorization
   pkg_bash_local --> svc_shell
   pkg_bash_sandbox --> svc_shell
+  pkg_capability_manager --> svc_capabilities
   pkg_client_modules --> svc_clientModules
   pkg_code_runtime --> svc_codeRuntime
   pkg_code_runtime_worker_thread --> svc_codeRuntime
@@ -267,10 +279,13 @@ flowchart LR
   pkg_jobs_local --> svc_jobs
   pkg_llm --> svc_llm
   pkg_llm_deepseek --> svc_llm
+  pkg_llm_pi_ai --> svc_capabilities
   pkg_llm_pi_ai --> svc_llm
+  pkg_llm_pi_ai --> svc_videoProduction
   pkg_llm_replay --> svc_llm
   pkg_lsp --> svc_lsp
   pkg_lsp_stdio --> svc_lsp
+  pkg_mcp_client --> svc_reaExperiment
   pkg_message_feedback --> svc_messageFeedback
   pkg_permission_presets --> svc_permissionPresets
   pkg_plan_mode --> svc_planMode
@@ -325,6 +340,12 @@ flowchart LR
   pkg_typert_registry --> svc_typert
   pkg_user_approval --> svc_approval
   pkg_user_questions --> svc_userQuestions
+  pkg_video_comfyui --> svc_capabilities
+  pkg_video_comfyui --> svc_videoProduction
+  pkg_video_comfyui --> svc_videoWorkflows
+  pkg_video_comfyui_runtime --> svc_capabilities
+  pkg_video_production --> svc_capabilities
+  pkg_video_production --> svc_videoProduction
   pkg_web --> svc_web
   pkg_web_fetch_http --> svc_web
   pkg_web_search_deepseek --> svc_web
@@ -351,6 +372,9 @@ flowchart LR
   svc_attachments --> pkg_llm_pi_ai
   svc_attachments --> pkg_tool_fs
   svc_authorization --> pkg_llm_pi_ai
+  svc_capabilities --> pkg_client_ui_capabilities
+  svc_capabilities --> pkg_video_comfyui
+  svc_capabilities --> pkg_video_production
   svc_clientModules --> pkg_client_hmr
   svc_codeRuntime --> pkg_tools
   svc_compaction --> pkg_compaction_basic
@@ -376,6 +400,7 @@ flowchart LR
   svc_llm --> pkg_agent_loop
   svc_llm --> pkg_compaction_basic
   svc_lsp --> pkg_tool_lsp
+  svc_reaExperiment --> pkg_api_session_controller
   svc_sandbox --> pkg_bash_sandbox
   svc_sandbox --> pkg_terminal_bash
   svc_sandboxPolicy --> pkg_bash_sandbox
@@ -451,6 +476,9 @@ flowchart LR
   svc_typert --> pkg_api_gateway
   svc_typert --> pkg_typert_loader
   svc_userQuestions --> pkg_tool_ask_user
+  svc_videoProduction --> pkg_client_ui_video_production
+  svc_videoProduction --> pkg_video_production
+  svc_videoWorkflows --> pkg_client_ui_capabilities
   svc_web --> pkg_tool_web
   svc_webServer --> pkg_client_connection
   svc_webServer --> pkg_client_hmr
@@ -484,6 +512,7 @@ flowchart LR
 | `ctx.sessionPersistence` | `seam` | [`session-persistence`](../packages/session/session-persistence) | [`session-persistence-jsonl`](../packages/session/session-persistence-jsonl) | [`agent-loop`](../packages/core/agent-loop), [`tool-bash`](../packages/shell/tool-bash), [`hooks-claude-code`](../packages/hooks/hooks-claude-code), [`hooks-codex`](../packages/hooks/hooks-codex), [`session-query`](../packages/session-query/session-query), [`session-query-sqlite`](../packages/session-query/session-query-sqlite), [`message-feedback`](../packages/feedback/message-feedback) | - | JSONL backend 把 SessionEvent 词汇持久化为每个 Session 一份产物。 |
 | `ctx.settings` | `seam` | [`settings`](../packages/settings/settings) | [`settings-file`](../packages/settings/settings-file) | [`api-settings-controller`](../packages/api/settings-controller), [`llm-deepseek`](../packages/llm/llm-deepseek), [`llm-pi-ai`](../packages/llm/llm-pi-ai) | - | 插件注册命名空间 schema 并解析分层值；提供方存储原始文档。LLM（大语言模型）适配器在用户分区下将其入口配置注册为组合基础；settings controller 提供经过脱敏的分层描述符，并写入用户层。 |
 | `ctx.subagentModelSelection` | `core` | [`tool-subagent`](../packages/subagent/tool-subagent) | - | [`tool-subagent`](../packages/subagent/tool-subagent) | - | 拥有默认关闭的设置命名空间；Agent 作用域的委派工具会在组合新顶层 Session 时读取它。 |
+| `ctx.reaExperiment` | `core` | [`mcp-client`](../packages/mcp/mcp-client) | - | [`api-session-controller`](../packages/api/session-controller) | - | 拥有默认关闭的启动设置，并为每个选择启用的 Web 会话准备独立的 MCP 连接。恢复与 fork 使用持久化的启动选择。 |
 | `ctx.credentials` | `seam` | [`credentials`](../packages/credentials/credentials) | [`credentials-local`](../packages/credentials/credentials-local) | [`api-settings-controller`](../packages/api/settings-controller), [`llm-deepseek`](../packages/llm/llm-deepseek), [`llm-pi-ai`](../packages/llm/llm-pi-ai) | - | 配置携带对机密信息的引用；提供方拥有实际值。消费方按操作解析，因此轮换后的凭据会在紧接着的下一次请求中生效；settings controller 提供不含实际值的视图和只写存储。 |
 | `ctx.authorization` | `seam` | [`authorization`](../packages/credentials/authorization) | - | [`llm-pi-ai`](../packages/llm/llm-pi-ai) | - | flow 由知道如何取得某份凭据的插件注册，并以其写入的记录为键；seam 拥有这段对话与"每个键同时只跑一次尝试"的生命周期，而非协议本身。 |
 | `ctx.sessionTelemetry` | `seam` | [`session-telemetry`](../packages/session/session-telemetry) | [`session-telemetry-otel`](../packages/session/session-telemetry-otel) | - | - | 该 seam 捕获会话记录、进行脱敏并交给一个后端；没有其他组件消费该服务，其输出会离开当前进程。 |
@@ -530,6 +559,9 @@ flowchart LR
 | `ctx.webServer` | `core` | [`host-webserver`](../packages/host/webserver) | - | [`client-connection`](../packages/client/connection), [`client-modules`](../packages/client/modules), [`client-hmr`](../packages/client/hmr) | - | 普通的 node:http 载体：具名路由注册表、索引转换 tap，以及静态 dist 回退；Web 传输插件注册自己的路由。 |
 | `ctx.clientModules` | `core` | [`client-modules`](../packages/client/modules) | - | [`client-hmr`](../packages/client/hmr) | - | 通过增量 `dsh.client` 扫描组合 __DSH_BOOT__ 入口图，提供插件组合包，并通知重建／图变更订阅方。 |
 | `ctx.workflowEngine` | `seam` | [`workflow`](../packages/workflow/workflow) | [`workflow-worker-thread`](../packages/workflow/workflow-worker-thread) | [`tool-workflow`](../packages/workflow/tool-workflow), [`tool-ralph`](../packages/workflow/tool-ralph) | - | 每个上下文使用一个引擎，与 bash 相同，且没有具名提供方注册表；通用工作流与固定 Ralph 消费方启动运行，其中的 agent() 调用通过 ctx.subagents 扇出。 |
+| `ctx.videoProduction` | `seam` | [`video-production`](../packages/video/video-production) | [`llm-pi-ai`](../packages/llm/llm-pi-ai), [`video-comfyui`](../packages/video/video-comfyui) | [`video-production`](../packages/video/video-production), [`client-ui-video-production`](../packages/client/ui-video-production) | - | 项目所有者持久保存参考素材、顺序镜头、生成版本与导出；命名生成器返回持久片段，模型工具与浏览器 Remote 共享项目操作。 |
+| `ctx.videoWorkflows` | `seam` | [`video-comfyui`](../packages/video/video-comfyui) | [`video-comfyui`](../packages/video/video-comfyui) | [`client-ui-capabilities`](../packages/client/ui-capabilities) | - | 工作流编辑器验证可迁移 API 模板及带修订号的设置，保留宿主凭据，并以禁用状态保存工作流以待显式启用，不启动引擎。 |
+| `ctx.capabilities` | `seam` | [`capability-manager`](../packages/capability/capability-manager) | [`video-comfyui-runtime`](../packages/video/video-comfyui-runtime), [`video-comfyui`](../packages/video/video-comfyui), [`llm-pi-ai`](../packages/llm/llm-pi-ai), [`video-production`](../packages/video/video-production) | [`client-ui-capabilities`](../packages/client/ui-capabilities), [`video-production`](../packages/video/video-production), [`video-comfyui`](../packages/video/video-comfyui) | - | 已安装提供方拥有实测前置条件、固定生命周期操作和可迁移设置；目录串行管理操作并报告缺失提供方，不从项目包安装代码。 |
 | `ctx.webhookRuntime` | `core` | [`webhook`](../packages/webhook/webhook) | - | [`webhook-github`](../packages/webhook/webhook-github) | - | 提供方适配器分派已认证交付；可信插件注册独立的进程本地规则，runtime 把非 null 结果转换为普通的 Workspace-backed Session，不保留交付或完成状态。 |
 | `ctx.lsp` | `seam` | [`lsp`](../packages/lsp/lsp) | [`lsp-stdio`](../packages/lsp/lsp-stdio) | [`tool-lsp`](../packages/lsp/tool-lsp) | - | 提供方注册与选择，加上恰好四种操作的标准化查询执行；该 seam 不提供协议逃生口，后端必须转换为标准化请求和结果。 |
 | `ctx.dynamicCordisRunner` | `core` | [`cordis-host-runner`](../packages/extensions/cordis-host-runner) | - | [`tool-cordis`](../packages/extensions/tool-cordis) | - | 拥有内存定义注册表、Host 半的 vm 沙箱和 request-run 往返流程；浏览器页面通过其 Remote 命名空间在线访问同一服务。 |

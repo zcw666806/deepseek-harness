@@ -97,6 +97,8 @@ Renderer 还会根据声明的 store 创建 `useStore`，并根据声明的 loca
 
 注册项的 `inject` 选项是通常使用的功能私有注入点。它的 factory 在插件的 `apply` 世界中运行，可以闭包捕获已经注入的 Cordis service，并且只返回组件所需的数据与 callback。对于 `session` slot，它会收到 `sessionId`；对于 `session-maybe`，它收到 `sessionId | undefined`；声明 store 后，它还会收到该 store 绑定后的 actions。
 
+共享 store handle 使用 root 轴或 Session 轴。严格 `session` 与可选 `session-maybe` 条目共享相同 handle × Session 实例，跨 root 与 Session 轴共享则在注册时失败。缺少 Session binding 时，可选条目得到来自 `spec.init` 的身份稳定冻结快照，以及抛出缺少 Session 错误的 actions；渲染器不会调用 `handle.create`，也不访问无后缀持久化键。严格条目仍要求 binding。最后一个持有该 handle 的注册卸载时丢弃 absent source。渲染器宿主解析 store 时显式接收各条目声明的 scope。
+
 返回值中保留的 `hooks` 对象接收裸 `getSnapshot`／`subscribe` source。Renderer 把 `hooks: { status }` 转换为组件 prop `useStatus(selector)`，并按 source identity 缓存绑定。组件不会收到 source 本身，也不直接调用 `useSyncExternalStore`。
 
 当每个 occupant 都需要同一种能力时，slot owner 可以在 child 声明里放置 `inject` face。普通成员会原样交给所有 occupant；其 `hooks` 对象中的函数成员是 hook factory，它会收到 slot 的标准 props 与可选的逐次渲染 `hookContext`，再返回提供给 occupant 的受限 hook。`conversation.chat.node` 正是通过这种机制，为当前渲染的 node 提供 `useTurnData(key)`。

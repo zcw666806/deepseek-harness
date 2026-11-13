@@ -23,6 +23,7 @@ interface ContentBlockMap {
   'text': TextBlock
   'reasoning': ReasoningBlock
   'image': ImageBlock
+  'video': VideoBlock
   'tool-call': ToolCallBlock
   'tool-result': ToolResultBlock
 }
@@ -31,6 +32,8 @@ interface ContentBlockMap {
 The block interfaces (full fields in source): `TextBlock` (`text`), `ReasoningBlock` (thinking, distinct from visible text), `ImageBlock` (a durable [image attachment](attachment.md)), `ToolCallBlock` (`id: ToolCallId`, `name`, raw-JSON `arguments`), and `ToolResultBlock` (`toolCallId`, nested `content: ContentBlock[]`, `isError?`). `ContentBlock = ContentBlockMap[ContentBlockType]`. A new modality belongs in the merge-extensible map only when its adapter, UI, compaction, and durable replay paths honor it.
 
 Image access belongs to request serialization rather than the durable attachment or deterministic request-image version. `resolveImageAttachmentAccess()` combines the attachment provider's optional host object path with a mapping supplied by the consumer for the current tool execution filesystem. The result is available only for that request and does not participate in `variantId`.
+
+`VideoBlock` references a durable video attachment. Generated videos persist through tool-result text and presentation metadata; the type declaration does not imply video model-input support or playback UI.
 
 Source: [`packages/llm/llm/src/content.ts`](../../packages/llm/llm/src/content.ts)
 
@@ -497,6 +500,8 @@ interface LlmModelInfo {
   description?: string
   /** Accepted request modalities; absent means unknown, while an explicit omission is negative capability. */
   inputModalities?: readonly ModelModality[]
+  /** Produced response modalities; absent means text-only, while an explicit list declares output capability. */
+  outputModalities?: readonly ModelModality[]
 }
 ```
 

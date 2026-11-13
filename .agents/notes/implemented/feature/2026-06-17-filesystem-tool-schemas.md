@@ -66,7 +66,7 @@ Arguments:
 
 `edit` requires a prior observation of the file in the same execution context (any windowed read counts — authorization is version freshness, not a full-view requirement), or a prior write/edit by that context. The `dsh-fs-observation-policy` policy plugin derives the owner and supplies the recorded version as the stale guard; the provider's mutation lock enforces it.
 
-The first pass rejects Codex-style patch grammars and multi-mode edit APIs. It uses one strict literal replacement mode so the model-facing contract stays simple and the backend can own exact-match, duplicate-match, line-ending, and stale-version semantics.
+The first pass rejects Codex-style patch grammars and multi-mode edit APIs. It uses one strict literal replacement mode so the model-facing contract stays simple and the backend can own exact-match, duplicate-match, line-ending, and stale-version semantics. [Local mixed-line-ending edits](2026-10-19-qywork-capability-adoption.md) preserve unmatched text while returning normalized diff content.
 
 ## Result shape
 

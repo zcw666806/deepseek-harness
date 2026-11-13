@@ -17,6 +17,7 @@
 import { Service } from '@deepseek-ai/cordis'
 import type { Context } from '@deepseek-ai/cordis'
 import { SlotCore, standardHookPropName } from '@deepseek-ai/dsh-client-ui-slots'
+import { deepFreeze } from '@deepseek-ai/dsh-util-values'
 import type {
   HostObservable, LiveSlotNode, LocaleFace, OwnerOf, SlotEntryDef, SlotMap, SlotRenderer, SlotRendererHost,
   RootStandardSourceContribution, ScopedStandardSourceBinding, SlotScope, SlotScopeAdapter, SlotSpec,
@@ -58,8 +59,8 @@ type EngineStoreInstance = ReturnType<EngineStoreHandle['create']>
 
 /** Store axis record: one per live handle, dropped when the last holding entry unloads. */
 interface StoreAxisRecord {
-  /** Scope of the slot the handle mounted under (the core validated cross-scope conflicts). */
-  scope: SlotScope
+  /** Root or Session instance axis; strict and optional Session entries share the latter. */
+  scope: 'root' | 'session'
   /** Live registrations holding the handle. */
   refs: number
   /** Root scope: the single instance under {@link ROOT_INSTANCE_KEY}; session scope: one per session id. */
@@ -96,6 +97,7 @@ export class SlotRegistry extends Service {
   private readonly _core = new SlotCore()
   /** Store-instance axis: handle -> mounted scope, refcount, resolved instances. */
   private readonly _stores = new Map<EngineStoreHandle, StoreAxisRecord>()
+  private readonly _absentStores = new WeakMap<EngineStoreHandle, StoreInstanceLike>()
   /** Latest live Context generation for each scoped store key. */
   private readonly _storeScopeOwners = new Map<string, Context>()
   private _renderer: SlotRenderer | undefined
@@ -478,10 +480,10 @@ export class SlotRegistry extends Service {
       reportEntryError: (key, entry, error, info) => { this._core.reportEntryError(key, entry, error, info) },
       specOf: key => this._core.specDynamic(key),
       isLive: entry => this._core.isLive(entry),
-      storeOf: (entry, scopeBinding) =>
+      storeOf: (entry, scopeBinding, scope) =>
         entry.store === undefined
           ? undefined
-          : this.resolveStore(entry.store as unknown as EngineStoreHandle, scopeBinding),
+          : this.resolveStore(entry.store as unknown as EngineStoreHandle, scopeBinding, scope),
       root: this._rootSource,
       scopeRevision: this._scopeRevisionSource,
       scope: scope => service._scopes.get(scope === 'session-maybe' ? 'session' : scope),
@@ -527,9 +529,25 @@ export class SlotRegistry extends Service {
   private resolveStore(
     handle: EngineStoreHandle,
     scopeBinding: ScopedStandardSourceBinding | undefined,
+    scope: SlotScope,
   ): StoreInstanceLike {
     const record = this._stores.get(handle)
     if (record === undefined) throw new Error('store handle is not registered (entry unloaded, or the handle never went through register)')
+    if (scope === 'session-maybe' && scopeBinding === undefined) {
+      let absent = this._absentStores.get(handle)
+      if (absent === undefined) {
+        const rawInitial: unknown = handle.spec.init()
+        const initial = deepFreeze(rawInitial)
+        const actions = Object.fromEntries(Object.keys(handle.spec.actions as Record<string, unknown>).map(key => [key, () => {
+          throw new Error('Store actions require a selected Session.')
+        }]))
+        absent = Object.freeze({
+          getSnapshot: () => initial, subscribe: () => () => {}, actions: Object.freeze(actions),
+        })
+        this._absentStores.set(handle, absent)
+      }
+      return absent
+    }
     let key: string
     if (record.scope === 'root') {
       key = ROOT_INSTANCE_KEY
@@ -562,7 +580,7 @@ export class SlotRegistry extends Service {
   private _acquire(handle: EngineStoreHandle, scope: SlotScope): void {
     const record = this._stores.get(handle)
     if (record === undefined) {
-      this._stores.set(handle, { scope, refs: 1, instances: new Map() })
+      this._stores.set(handle, { scope: scope === 'root' ? 'root' : 'session', refs: 1, instances: new Map() })
       return
     }
     record.refs += 1
@@ -578,6 +596,7 @@ export class SlotRegistry extends Service {
     record.refs -= 1
     if (record.refs !== 0) return
     this._stores.delete(handle)
+    this._absentStores.delete(handle)
   }
 }
 

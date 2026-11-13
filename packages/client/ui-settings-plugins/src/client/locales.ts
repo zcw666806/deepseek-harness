@@ -17,6 +17,9 @@ export type PluginsSettingsLocaleKey =
   | 'subagentModelSelectionPartial' | 'subagentModelSelectionUnavailable'
   | 'subagentModelSelectionUnavailableGroup' | 'subagentModelSelectionEmpty'
   | 'subagentModelSelectionRequired' | 'subagentModelSelectionConflict' | 'subagentModelSelectionOff'
+  | 'reaTitle' | 'reaDescription' | 'reaToggle' | 'reaNewChats' | 'reaLocalAccess' | 'reaStartupFailure'
+  | 'reaAdvanced' | 'reaCommand' | 'reaCommandInvalid' | 'reaArgs' | 'reaArgsHint' | 'reaArgsInvalid'
+  | 'reaTimeout' | 'reaTimeoutInvalid' | 'reaConflict'
 
 /** English copy. */
 export const en: Record<PluginsSettingsLocaleKey, string> = {
@@ -72,6 +75,21 @@ export const en: Record<PluginsSettingsLocaleKey, string> = {
   subagentModelSelectionRequired: 'Select at least one model before saving.',
   subagentModelSelectionConflict: 'Settings changed elsewhere. Discard your draft and try again.',
   subagentModelSelectionOff: 'Subagents use configured defaults or inherit the parent agent\'s model. Saved model choices are retained.',
+  reaTitle: 'REA experiment',
+  reaDescription: 'Make every tool advertised by the local REA server available to the assistant.',
+  reaToggle: 'Enable all REA tools',
+  reaNewChats: 'Saving applies only to new chats. Existing experiment chats keep their REA configuration.',
+  reaLocalAccess: 'REA runs locally and its tools can read files and operate programs. Keep credentials out of the launch command and arguments.',
+  reaStartupFailure: 'Saving does not test the connection. Missing software or startup failures are reported when a new chat starts.',
+  reaAdvanced: 'Advanced configuration',
+  reaCommand: 'Launch program',
+  reaCommandInvalid: 'Enter a program name or path without NUL characters.',
+  reaArgs: 'Arguments (JSON array)',
+  reaArgsHint: 'Enter a JSON array of strings. Each string is one argument; no shell command is evaluated.',
+  reaArgsInvalid: 'Enter a JSON array containing only strings without NUL characters.',
+  reaTimeout: 'Tool call timeout (ms)',
+  reaTimeoutInvalid: 'Enter a whole number from 1 to 2147483647.',
+  reaConflict: 'Settings changed elsewhere. Discard your draft and try again.',
 }
 
 /** Simplified Chinese copy. */
@@ -128,4 +146,19 @@ export const zh: Record<PluginsSettingsLocaleKey, string> = {
   subagentModelSelectionRequired: '保存前请至少选择一个模型。',
   subagentModelSelectionConflict: '设置已在其他位置更新。请放弃修改后重试。',
   subagentModelSelectionOff: '关闭后，Subagent 使用配置的默认模型或继承父 Agent 的模型；已选模型会保留。',
+  reaTitle: 'REA 实验功能',
+  reaDescription: '向助手开放本机 REA 服务公布的全部工具。',
+  reaToggle: '启用全部 REA 工具',
+  reaNewChats: '保存仅对新建聊天生效；已有试验聊天保留其 REA 配置。',
+  reaLocalAccess: 'REA 在本机运行，其工具可以读取文件、操作程序。请勿在启动程序和参数中填写凭据。',
+  reaStartupFailure: '保存不会测试连接；缺少软件或启动失败会在新建聊天时明确报错。',
+  reaAdvanced: '高级配置',
+  reaCommand: '启动程序',
+  reaCommandInvalid: '请填写程序名或路径，且不能包含 NUL 字符。',
+  reaArgs: '启动参数（JSON 数组）',
+  reaArgsHint: '填写字符串组成的 JSON 数组；每个字符串是一个参数，不会作为 Shell 命令执行。',
+  reaArgsInvalid: '请填写仅含字符串的 JSON 数组，且不能包含 NUL 字符。',
+  reaTimeout: '工具调用超时（毫秒）',
+  reaTimeoutInvalid: '请填写 1 到 2147483647 之间的整数。',
+  reaConflict: '设置已在其他位置更新。请放弃修改后重试。',
 }

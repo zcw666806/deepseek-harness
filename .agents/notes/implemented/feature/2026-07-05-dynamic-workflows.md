@@ -38,9 +38,9 @@ The engine exposes an in-process `MessageChannel` test path because main-process
 
 ### The Consumer (`dsh-tool-workflow`)
 
-A `workflow` tool mirroring `dsh-tool-subagent`'s synchronous shape: start, await, `try/finally` dispose, abort-bridge `exec.signal`, non-`completed` → `isError`. Render intent: a `generic` card titled by the call's `meta.name` parameter (presentation is a pure function of args). The tool description IS the model-facing authoring spec. The usage policy ships with the tool as its own `tool:<toolName>` prompt section (explicit-ask-only guidance — tool guidance lives in tool plugins, never in the deployment persona); the harness has no ultracode-style effort gate.
+A `workflow` tool whose foreground calls use this lifecycle: start, await, `try/finally` dispose, abort-bridge `exec.signal`, non-`completed` → `isError`. Render intent: a `generic` card titled by the call's `meta.name` parameter (presentation is a pure function of args). The tool description IS the model-facing authoring spec. The usage policy ships with the tool as its own `tool:<toolName>` prompt section (explicit-ask-only guidance — tool guidance lives in tool plugins, never in the deployment persona); the harness has no ultracode-style effort gate.
 
-For a top-level tool execution, the same consumer also writes the run and actual member lifecycle into the calling parent Session as four log-only `tool-workflow/*` events. The recording path observes rather than controls execution: its first append failure disables later writes for that run and leaves a legal prefix without changing the tool result. [`ui-workflow-run`](../../../../packages/client/ui-workflow-run/README.md) rebuilds those facts through the Conversation Node engine as a separate keyed Chat row; the existing generic tool row remains its own presentation owner. The detailed persistence, replay, disclosure, and live-navigation decision lives in [durable workflow runs in Chat](2026-08-10-durable-workflow-runs-in-chat.md).
+For a foreground top-level tool execution, the same consumer also writes the run and actual member lifecycle into the calling parent Session as four log-only `tool-workflow/*` events. The recording path observes rather than controls execution: its first append failure disables later writes for that run and leaves a legal prefix without changing the tool result. [`ui-workflow-run`](../../../../packages/client/ui-workflow-run/README.md) rebuilds those facts through the Conversation Node engine as a separate keyed Chat row; the existing generic tool row remains its own presentation owner. The detailed persistence, replay, disclosure, and live-navigation decision lives in [durable workflow runs in Chat](2026-08-10-durable-workflow-runs-in-chat.md).
 
 ### The foundation: structured output on the subagent seam
 
@@ -56,11 +56,10 @@ Worker-side logic runs through an in-process `MessageChannel` so V8 coverage mea
 
 ## Deferred (documented non-goals)
 
-- **Background collection** (start tool → run id → completion notice → collect), designed alongside shell/subagent background unification.
 - **Journaling + resume** (`resumeFromRunId`, cached agent() prefixes) — implementing it reintroduces CC's determinism bans as a script-contract tightening (scripts may read the clock).
 - **Saved/bundled workflows** (a `.deepseek/workflows/` registry, slash-command API) and **script persistence to a run directory** (the tool-call event already records the script durably).
 - **Nested `workflow()`**, **token `budget`**, and the `effort`/`isolation`/`agentType` agent options (each rejects loud with a message naming it deferred).
-- **An overall run wall-clock timeout** — cancellation always frees the caller (result settles within the grace), so a cap on total run time is a policy knob for the background redesign, not a correctness need here.
+- **An overall run wall-clock timeout** — cancellation always frees the caller (result settles within the grace), so a cap on total run time remains a separate deployment policy.
 - **Engine hardening beyond worker threads**: an isolated-vm or separate-process engine behind the same seam (actual sandboxing; memory limits).
 - **ACP-backend structured output** and **`toolFilter`** (both still capability-gated `false`).
 
@@ -68,7 +67,7 @@ Worker-side logic runs through an in-process `MessageChannel` so V8 coverage mea
 
 - **Hostile-value containment in the host** (trap-free proxy rejection, accessor-never-invoked descriptor walks, realm-side pre-rendering of thrown values, realm-built promises/arrays/error clones with structural fatal recognition): rejected because every defense targets an author the trust premise accepts, while the thread's serialization boundary already makes cross-realm values total by construction.
 - **In-process `node:vm` execution**: mechanically simplest — no RPC, no thread — but `start()` blocks the caller for the script's initial synchronous slice, a synchronous spin past the first await cannot be killed in-process (the vm `timeout` covers only that first slice), and `dispose()` could only abandon an unsettling script on the host loop. The worker-thread engine keeps the same vm-context script API while unblocking the host and making termination real.
-- **Background execution as the default** (CC's shape): deferred; foreground-synchronous matches `dsh-tool-subagent`'s cut, and background semantics should be designed ONCE across shell/subagent/workflow rather than per-tool.
+- **Background execution as the default** (CC's shape): foreground remains the default so callers can await the final value. [Explicit background execution](2026-10-19-qywork-capability-adoption.md) shares existing jobs with shell and subagent work.
 - **Workflow-layer JSON parsing for `agent({schema})`**: duplicating a seam concern at one consumer while the seam's capability flag stayed dishonestly `false`.
 - **Meta embedded in the script as `export const meta = {...}`** (CC's exact format): keeps scripts self-contained and CC scripts drop-in, but obtaining meta requires evaluating model-written text on the host. Even an empty timed vm context cannot bound script-controlled getters when the host reads the resulting object. A JSON parameter removes the scanner, evaluation, and host-spin hole; the cost is that a CC script's meta header must move into the parameter (the body stays drop-in).
 - **`ValueSchemaSpec` as the `outputSchema` wire type**: the author form now has equivalent vocabulary, but a workflow supplies realm-foreign raw JSON Schema data; pretending that runtime data is a trusted author declaration would skip the raw-schema assertion boundary.

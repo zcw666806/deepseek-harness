@@ -294,6 +294,9 @@ function mount(
     useWorkspaces: bindSnapshotSelector(workspaces),
     useProjection: (() => undefined),
     useComposerBlock: select => select(options.composerBlock),
+    useConversationViews,
+    useStore: bindSnapshotSelector(store),
+    actions: store.actions,
     useInput,
     inputActions,
     renderSlot,
@@ -427,7 +430,7 @@ describe('ConversationRoot resident composer', () => {
     expect(seat?.contains(fallback)).toBe(true)
   })
 
-  it('hero phase: same textarea, hero chrome, no header, picker switches the workspace', () => {
+  it('hero phase keeps its textarea and workspace picker while exposing registered View navigation', () => {
     const b = mount(
       sessionSnapshotOf({ blank: true }),
       [
@@ -439,7 +442,9 @@ describe('ConversationRoot resident composer', () => {
     const host = b.view.container.querySelector('[data-conversation-scroll]')
     const header = b.view.container.querySelector('header')
     expect(host).not.toBeNull()
-    expect(header?.getAttribute('aria-hidden')).toBe('true')
+    expect(header?.getAttribute('aria-hidden')).toBeNull()
+    expect(b.view.getByRole('tab', { name: 'Trajectory' })).toBeTruthy()
+    expect(b.view.queryByRole('button', { name: 'Child' })).toBeNull()
     expect(b.view.getByText('探索未至之境')).toBeTruthy()
     expect(b.view.getByText('预览版')).toBeTruthy()
     expect(b.view.queryByTestId('view-chat')).toBeNull()
@@ -458,6 +463,29 @@ describe('ConversationRoot resident composer', () => {
     act(() => { owner.onPick(wid('second')) })
     expect(b.retargetWorkspace).toHaveBeenCalledWith(wid('second'))
     expect(b.view.getByText('Selected Folder')).toBeTruthy()
+  })
+
+  it('shows blank non-Chat content, returns to the Chat Hero and falls back when the selected View leaves', () => {
+    const viewTabs: ViewTab[] = [{ id: 'chat', label: 'Chat' }, { id: 'video', label: 'Video' }]
+    const b = mount(sessionSnapshotOf({ blank: true }), undefined, undefined, { viewTabs })
+    const composer = b.view.getByRole('textbox')
+    expect(b.view.getByText('探索未至之境')).toBeTruthy()
+    fireEvent.click(b.view.getByRole('tab', { name: 'Video' }))
+    expect(b.view.getByTestId('view-video')).toBeTruthy()
+    expect(b.view.container.querySelector('[data-width-handle]')).toBeNull()
+    expect(b.view.queryByText('探索未至之境')).toBeNull()
+    expect(b.view.container.querySelector('[data-phase]')?.getAttribute('data-phase')).toBe('active')
+    expect(b.session.getSnapshot().blank).toBe(true)
+    expect(b.sink).not.toHaveBeenCalled()
+    fireEvent.click(b.view.getByRole('tab', { name: 'Chat' }))
+    expect(b.view.getByText('探索未至之境')).toBeTruthy()
+    expect(b.view.queryByTestId('view-chat')).toBeNull()
+    expect(b.view.getByRole('textbox')).toBe(composer)
+    fireEvent.click(b.view.getByRole('tab', { name: 'Video' }))
+    viewTabs.pop()
+    b.rerender()
+    expect(b.view.getByText('探索未至之境')).toBeTruthy()
+    expect(b.view.queryByTestId('view-video')).toBeNull()
   })
 
   it('keeps a rejected first prompt engaging instead of returning to the Hero', () => {

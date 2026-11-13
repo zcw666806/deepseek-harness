@@ -1,6 +1,6 @@
 /**
  * MCP client bridge plugin: connects to an external MCP server and registers
- * its tools on `ctx.tools` under server-qualified public names
+ * its tools and on-demand resource operations on `ctx.tools` under server-qualified public names
  * (`mcp__<serverName>__<rawName>`). Each plugin instance connects to one MCP
  * server; load multiple instances in `cordis.yml` for multiple servers.
  *
@@ -31,7 +31,7 @@ export const name = 'mcp-client'
 /** Services required by this plugin. */
 export const inject = ['tools']
 
-/** Default timeout for individual MCP tool calls (ms). */
+/** Default timeout for individual MCP tool and resource requests (ms). */
 const DEFAULT_TOOL_CALL_TIMEOUT_MS = 60_000
 
 /** Valid `serverName`, kept below the public tool-name budget. */
@@ -64,7 +64,7 @@ export interface StdioConfig {
   env: Record<string, string>
   /** Working directory for the child process. */
   cwd: string
-  /** Per-tool-call timeout in milliseconds. */
+  /** Per-tool-call and resource-request timeout in milliseconds. */
   toolCallTimeoutMs: number
   /** Fail plugin activation when the initial connection or tool synchronization fails. */
   failOnStartupError: boolean
@@ -86,7 +86,7 @@ export interface StreamableHttpConfig {
   url: string
   /** Additional headers attached to MCP requests. */
   headers: Record<string, string>
-  /** Per-tool-call timeout in milliseconds. */
+  /** Per-tool-call and resource-request timeout in milliseconds. */
   toolCallTimeoutMs: number
   /** Fail plugin activation when the initial connection or tool synchronization fails. */
   failOnStartupError: boolean

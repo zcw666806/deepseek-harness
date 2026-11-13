@@ -7,7 +7,7 @@ Every model-facing tool a shipped plugin contributes to `ctx.tools`: the `name`,
 
 This file is GENERATED and verified fresh by `pnpm run verify-tool-catalog` (part of `doc-sync`) — do not edit it by hand. Unlike the cordis catalog (a pure source-AST pass), this generator BOOTS each tool plugin on a real context and reads `ctx.tools.schemas()`, because a tool schema is not statically knowable (runtime-spread enums, concatenated descriptions, config-driven names, raw-JSON-Schema MCP tools). A completeness guard globs `packages/*/tool-*` and fails if any package is missing from the generator's boot manifest, so a new tool cannot be silently undocumented. See [the tool-schema-catalog Agent Note](../.agents/notes/implemented/process/2026-07-02-tool-schema-catalog.md).
 
-Scope: shipped product tools under `packages/*/tool-*`, each booted with its DEFAULT config, except where a Config field is REQUIRED with no default — there the generator must choose, and the per-package note records which branch this page shows. The registered tool NAME can be a load-time config (e.g. `tool-subagent`'s `toolName`), so a deployment may expose a package under a different or additional name — a per-package note records those shipped aliases where they exist. The `examples/` demo tools (e.g. `echo`) are excluded, matching the cordis catalog's packages-only scope.
+Scope: shipped product tools under `packages/*/tool-*` and the service-owned tool contributions listed in the boot manifest, each booted with its DEFAULT config, except where a Config field is REQUIRED with no default — there the generator must choose, and the per-package note records which branch this page shows. The registered tool NAME can be a load-time config (e.g. `tool-subagent`'s `toolName`), so a deployment may expose a package under a different or additional name — a per-package note records those shipped aliases where they exist. The `examples/` demo tools (e.g. `echo`) are excluded, matching the cordis catalog's packages-only scope.
 
 ## Tool Package Map
 
@@ -39,8 +39,9 @@ This table connects model-visible tool names to the plugin package and service s
 | `@deepseek-ai/dsh-tool-jobs` | `job_kill`, `job_list`, `job_output` | `ctx.tools`, `ctx.jobs`, `ctx.systemPrompt` | `tool/call`, `tool/result`, `user/message via agent.inject() for background completion notices` | - | The kind-agnostic background-job controller: background bash commands, PTY sends, and subagents are read, listed, and killed through the same three tools. Loading the plugin attaches the controller that arms producers' `ctx.jobs.start()`. |
 | `@deepseek-ai/dsh-experimental-tool-agent-team` | `followup_task`, `interrupt_agent`, `list_agents`, `send_message`, `spawn_teammate`, `team_task_create`, `team_task_get`, `team_task_list`, `team_task_update`, `wait_agent` | `ctx.tools`, `ctx.systemPrompt`, `ctx.agentTeams`, `an exact live Team member Agent` | `tool/call`, `team/member`, `team/message/queued`, `team/message/delivered`, `team/task`, `tool/result` | - | All ten tools are scoped to implicit Team Leads and durable teammates. The shipped dsh-base bundle keeps the package disabled; the documented Agent Teams profile patch enables it while disabling the legacy continuable-child control names. |
 | `@deepseek-ai/dsh-tool-todo` | `todo_write` | `ctx.tools`, `owning Agent session` | `tool/call`, `todo/write`, `tool/result` | - | todo_write is session-owned state; UIs render the latest todo/write event as a checklist. `allowParallelInProgress` is required with no default, so the catalog states its choice: `true`, whose description invites several `in_progress` items. A deployment choosing `false` receives the same tool with a description asking for exactly one active task. |
-| `@deepseek-ai/dsh-tool-workflow` | `workflow` | `ctx.tools`, `ctx.workflowEngine`, `ctx.systemPrompt`, `a calling Agent (exec.agent parents the script children)` | `tool/call`, `tool/result` | - | - |
+| `@deepseek-ai/dsh-tool-workflow` | `workflow` | `ctx.tools`, `ctx.workflowEngine`, `ctx.systemPrompt`, `ctx.jobs at call time for run_in_background`, `a calling Agent (exec.agent parents the script children)` | `tool/call`, `tool/result` | - | - |
 | `@deepseek-ai/dsh-tool-web` | `web_fetch`, `web_search` | `ctx.tools`, `ctx.web`, `ctx.systemPrompt` | `tool/call`, `tool/result` | - | web_search and web_fetch keep provider selection behind ctx.web so model-visible schemas stay stable across backend swaps. |
+| `@deepseek-ai/dsh-video-production` | `video_project` | `ctx.tools`, `ctx.videoProduction`, `ctx.storageDomain`, `ctx.sessions`, `ctx.sessionPersistence`, `ctx.attachments`, `an owning Agent at execution time`, `a configured video generator (generation)`, `host-local ctx.fs + ctx.subprocess + FFmpeg/ffprobe (export)` | `tool/call`, `video_production storage-domain projects`, `durable video attachments (generation/export)`, `tool/result` | - | One revisioned video project belongs to one Session. Every action returns the complete project, including ordered shots, preserved generation versions, selected attachments, and export outcomes. Generation requires a registered video provider; film export requires host-local FFmpeg and ffprobe. Both operations wait for completion and retain failed or interrupted attempts. |
 
 <a id="deepseek-aidsh-tool-ask-user"></a>
 
@@ -2150,7 +2151,7 @@ Script-body hooks:
 
 Misused hooks (bad arguments, unknown options, unsupported schemas, tripped caps) throw errors that ALWAYS kill the script — they never dissolve into a per-item `null`.
 
-Constraints: concurrency and total-agent caps apply; no filesystem, network, timers, or Node.js APIs are provided — the agents do the work, the script only coordinates them. The run executes in the foreground: this call returns when the whole script finishes.
+Constraints: concurrency and total-agent caps apply; no filesystem, network, timers, or Node.js APIs are provided — the agents do the work, the script only coordinates them. By default this call returns when the whole script finishes. Set `run_in_background: true` to return a job id immediately and continue other work; use `job_output` to collect its result or `job_kill` to stop it. Background execution requires the jobs service and job-control tools. Completion arrives through the configured job notification policy; jobs do not survive process exit.
 
 ```json
 {
@@ -2216,6 +2217,10 @@ Constraints: concurrency and total-agent caps apply; no filesystem, network, tim
       "type": "object",
       "description": "Optional JSON input exposed to the script as the `args` global (wrap a bare list as a field, e.g. {\"files\": [...]}).",
       "additionalProperties": true
+    },
+    "run_in_background": {
+      "type": "boolean",
+      "description": "Return a job id immediately instead of waiting for the workflow. Requires background job controls; collect with job_output or stop with job_kill."
     }
   },
   "required": [
@@ -2277,3 +2282,58 @@ Search the web for current information. Provide 1–4 queries in the required qu
 Source: [`packages/web/tool-web/src/index.ts`](../packages/web/tool-web/src/index.ts)
 
 web_search and web_fetch keep provider selection behind ctx.web so model-visible schemas stay stable across backend swaps.
+
+<a id="deepseek-aidsh-video-production"></a>
+
+## `@deepseek-ai/dsh-video-production`
+
+### `video_project`
+
+Create and edit a storyboard with reusable character, scene, and prop images. Generate or retry individual shots, select completed versions, reorder shots, and export the selected clips as one MP4. View the project before updating and include its current revision. Every result includes the complete current project.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "action": {
+      "type": "string",
+      "enum": [
+        "view",
+        "update",
+        "generate",
+        "reorder",
+        "export"
+      ]
+    },
+    "input": {
+      "description": "For update: {revision,title,assets:[{id,name,kind,description,image?}],shots:[{id,title,prompt,duration,aspectRatio,resolution,assetIds,position:{x,y},selectedVersionId?,edit?:{trimStartSeconds?,trimEndSeconds?,volume?,captions:[{startSeconds,endSeconds,text}]}}]}. Caption times start at zero after trimming; volume 0 mutes and 1 preserves source audio. Use stable unique ids. Images must already belong to this Session or project."
+    },
+    "shotId": {
+      "type": "string",
+      "description": "Shot identity for generate."
+    },
+    "shotIds": {
+      "type": "array",
+      "description": "Complete ordered list of shot identities for reorder.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "generator": {
+      "type": "string",
+      "description": "Optional configured generation provider for generate."
+    },
+    "model": {
+      "type": "string",
+      "description": "Optional video model for generate."
+    }
+  },
+  "required": [
+    "action"
+  ]
+}
+```
+
+Source: [`packages/video/video-production/src/index.ts`](../packages/video/video-production/src/index.ts)
+
+One revisioned video project belongs to one Session. Every action returns the complete project, including ordered shots, preserved generation versions, selected attachments, and export outcomes. Generation requires a registered video provider; film export requires host-local FFmpeg and ffprobe. Both operations wait for completion and retain failed or interrupted attempts.

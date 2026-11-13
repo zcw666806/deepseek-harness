@@ -1,0 +1,29 @@
+{
+  "formatVersion": 1,
+  "revision": 0,
+  "title": "Synthetic restaurant",
+  "base": {
+    "walls": [],
+    "windows": [],
+    "slides": [],
+    "doors": [],
+    "rooms": [],
+    "bounds": { "x": 0, "y": 0, "w": 10000, "h": 8000 }
+  },
+  "state": {
+    "furniture": [
+      { "id": "table-1", "type": "table", "name": "Table", "cx": 5000, "cy": 4000, "w": 800, "d": 700, "rot": 0, "color": "#cccccc" },
+      { "id": "chair-1", "type": "chair", "name": "Chair", "cx": 5000, "cy": 3350, "w": 400, "d": 400, "rot": 180, "color": "#aaaaaa" },
+      { "id": "chair-2", "type": "chair", "name": "Chair", "cx": 5000, "cy": 4650, "w": 400, "d": 400, "rot": 0, "color": "#aaaaaa" }
+    ],
+    "rooms": {},
+    "demolished": [],
+    "measures": []
+  },
+  "groups": [
+    { "id": "dining-1", "name": "Two-seat table", "itemIds": ["table-1", "chair-1", "chair-2"] }
+  ],
+  "keepouts": [],
+  "history": { "past": [], "future": [] },
+  "baselineIssues": []
+}

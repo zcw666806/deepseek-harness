@@ -1,0 +1,42 @@
+{"type":"session","version":0,"id":"{{session:1}}","createdAt":1783951000000,"cwd":"{{cwd}}","delegationDepth":0}
+{"type":"permission/preset","data":{"preset":"danger-full-access"}}
+{"type":"sandbox/mode","data":{"mode":"danger-full-access"}}
+{"type":"approval/policy","data":{"policy":"never"}}
+{"type":"agent/inbox/spliced","data":{"target":"next-turn","start":0,"inserted":[{"content":[{"type":"text","text":"List the resources from MCP server docs, then read docs:guide and docs:binary. State the guide text and whether the binary content is included."}],"source":{"kind":"user"},"role":"user","id":"{{message:1}}"}]}}
+{"type":"turn/start","data":{"turn":1}}
+{"type":"agent/inbox/spliced","data":{"target":"next-turn","start":0,"removedCount":1,"inserted":[]}}
+{"type":"step/start","data":{"turn":1,"step":1}}
+{"type":"user/message","data":{"content":[{"type":"text","text":"List the resources from MCP server docs, then read docs:guide and docs:binary. State the guide text and whether the binary content is included."}],"source":{"kind":"user"},"role":"user","id":"{{message:1}}"},"surfaceOp":"append"}
+{"type":"user/message","data":{"content":[{"type":"text","text":"Current runtime context. This snapshot supersedes earlier runtime-context snapshots.\n\nCurrent DSH file policy: danger-full-access. The DSH file sandbox does not restrict file modifications by available operations.\n\nApproval prompts are disabled in this session: actions that require approval are rejected automatically — do not request sandbox escalation (do not set `sandbox_permissions`)."}],"source":{"kind":"plugin","plugin":"@deepseek-ai/dsh-system-prompt","form":"snapshot","sections":[{"name":"sandbox:policy","text":"Current DSH file policy: danger-full-access. The DSH file sandbox does not restrict file modifications by available operations."},{"name":"approval:policy","text":"Approval prompts are disabled in this session: actions that require approval are rejected automatically — do not request sandbox escalation (do not set `sandbox_permissions`)."}]},"role":"user","id":"{{message:2}}"},"surfaceOp":"append"}
+{"type":"session/title","data":{"title":"List the resources from MCP","messageSeqs":[7],"source":{"kind":"fallback"}}}
+{"type":"request/header","data":{"header":{"config":{"provider":"deepseek-official","model":"deepseek-v4-flash"},"system":"{{system}}","tools":"{{tools}}"},"reason":"initial"}}
+{"type":"request/context","data":{"provider":"deepseek-official","model":"deepseek-v4-flash"}}
+{"type":"assistant/chunk","data":{"turn":1,"step":1,"chunk":{"type":"block-start","index":0,"blockType":"tool-call"}}}
+{"type":"assistant/chunk","data":{"turn":1,"step":1,"chunk":{"type":"block-end","index":0,"block":{"type":"tool-call","id":"list-resources","name":"mcp_resource__docs__list","arguments":"{}"}}}}
+{"type":"assistant/chunk","data":{"turn":1,"step":1,"chunk":{"type":"usage","usage":{"inputTokens":3,"outputTokens":3}}}}
+{"type":"assistant/chunk","data":{"turn":1,"step":1,"chunk":{"type":"finish","reason":{"kind":"tool-calls"}}}}
+{"type":"assistant/message","data":{"turn":1,"step":1,"message":{"role":"assistant","content":[{"type":"tool-call","id":"list-resources","name":"mcp_resource__docs__list","arguments":"{}"}],"source":{"kind":"model","provider":"deepseek-official","model":"deepseek-v4-flash"},"id":"{{message:3}}"},"usage":{"inputTokens":3,"outputTokens":3}},"sourceEventSeqs":[[12,15]],"surfaceOp":"append"}
+{"type":"tool/call","data":{"turn":1,"step":1,"callId":"list-resources","name":"mcp_resource__docs__list","arguments":"{}"}}
+{"type":"tool/result","data":{"turn":1,"step":1,"message":{"source":{"kind":"tool","callId":"list-resources"},"content":[{"type":"tool-result","toolCallId":"list-resources","content":[{"type":"text","text":"{\"resources\":[{\"uri\":\"docs:guide\",\"name\":\"guide\",\"description\":\"Fixture guide\",\"mimeType\":\"text/markdown\"},{\"uri\":\"docs:binary\",\"name\":\"binary\",\"mimeType\":\"application/octet-stream\"}]}"}],"isError":false}],"role":"user","id":"{{message:4}}"}},"sourceEventSeqs":[17],"surfaceOp":"append"}
+{"type":"step/end","data":{"turn":1,"step":1}}
+{"type":"step/start","data":{"turn":1,"step":2}}
+{"type":"assistant/chunk","data":{"turn":1,"step":2,"chunk":{"type":"block-start","index":0,"blockType":"tool-call"}}}
+{"type":"assistant/chunk","data":{"turn":1,"step":2,"chunk":{"type":"block-end","index":0,"block":{"type":"tool-call","id":"read-guide","name":"mcp_resource__docs__read","arguments":"{\"uri\":\"docs:guide\"}"}}}}
+{"type":"assistant/chunk","data":{"turn":1,"step":2,"chunk":{"type":"block-start","index":1,"blockType":"tool-call"}}}
+{"type":"assistant/chunk","data":{"turn":1,"step":2,"chunk":{"type":"block-end","index":1,"block":{"type":"tool-call","id":"read-binary","name":"mcp_resource__docs__read","arguments":"{\"uri\":\"docs:binary\"}"}}}}
+{"type":"assistant/chunk","data":{"turn":1,"step":2,"chunk":{"type":"usage","usage":{"inputTokens":3,"outputTokens":3}}}}
+{"type":"assistant/chunk","data":{"turn":1,"step":2,"chunk":{"type":"finish","reason":{"kind":"tool-calls"}}}}
+{"type":"assistant/message","data":{"turn":1,"step":2,"message":{"role":"assistant","content":[{"type":"tool-call","id":"read-guide","name":"mcp_resource__docs__read","arguments":"{\"uri\":\"docs:guide\"}"},{"type":"tool-call","id":"read-binary","name":"mcp_resource__docs__read","arguments":"{\"uri\":\"docs:binary\"}"}],"source":{"kind":"model","provider":"deepseek-official","model":"deepseek-v4-flash"},"id":"{{message:5}}"},"usage":{"inputTokens":3,"outputTokens":3}},"sourceEventSeqs":[[21,26]],"surfaceOp":"append"}
+{"type":"tool/call","data":{"turn":1,"step":2,"callId":"read-guide","name":"mcp_resource__docs__read","arguments":"{\"uri\":\"docs:guide\"}"}}
+{"type":"tool/result","data":{"turn":1,"step":2,"message":{"source":{"kind":"tool","callId":"read-guide"},"content":[{"type":"tool-result","toolCallId":"read-guide","content":[{"type":"text","text":"Resource: docs:guide (text/markdown)\n# Resource guide\nResources are fetched on demand."}],"isError":false}],"role":"user","id":"{{message:6}}"}},"sourceEventSeqs":[28],"surfaceOp":"append"}
+{"type":"tool/call","data":{"turn":1,"step":2,"callId":"read-binary","name":"mcp_resource__docs__read","arguments":"{\"uri\":\"docs:binary\"}"}}
+{"type":"tool/result","data":{"turn":1,"step":2,"message":{"source":{"kind":"tool","callId":"read-binary"},"content":[{"type":"tool-result","toolCallId":"read-binary","content":[{"type":"text","text":"Resource: docs:binary (application/octet-stream)\n[binary resource omitted; its bytes are not available in this result]"}],"isError":false}],"role":"user","id":"{{message:7}}"}},"sourceEventSeqs":[30],"surfaceOp":"append"}
+{"type":"step/end","data":{"turn":1,"step":2}}
+{"type":"step/start","data":{"turn":1,"step":3}}
+{"type":"assistant/chunk","data":{"turn":1,"step":3,"chunk":{"type":"block-start","index":0,"blockType":"text"}}}
+{"type":"assistant/chunk","data":{"turn":1,"step":3,"chunk":{"type":"block-end","index":0,"block":{"type":"text","text":"The guide says: Resources are fetched on demand. Binary content is identified but omitted."}}}}
+{"type":"assistant/chunk","data":{"turn":1,"step":3,"chunk":{"type":"usage","usage":{"inputTokens":3,"outputTokens":3}}}}
+{"type":"assistant/chunk","data":{"turn":1,"step":3,"chunk":{"type":"finish","reason":{"kind":"stop"}}}}
+{"type":"assistant/message","data":{"turn":1,"step":3,"message":{"role":"assistant","content":[{"type":"text","text":"The guide says: Resources are fetched on demand. Binary content is identified but omitted."}],"source":{"kind":"model","provider":"deepseek-official","model":"deepseek-v4-flash"},"id":"{{message:8}}"},"usage":{"inputTokens":3,"outputTokens":3}},"sourceEventSeqs":[[34,37]],"surfaceOp":"append"}
+{"type":"step/end","data":{"turn":1,"step":3}}
+{"type":"turn/end","data":{"turn":1,"reason":{"kind":"completed"}}}

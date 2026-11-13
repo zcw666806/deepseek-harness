@@ -58,7 +58,7 @@ function WorkspaceProbe({ open }: EmptyWorkspaceOwnerProps) {
   )
 }
 
-async function bench(opts?: { blank?: boolean }) {
+async function bench(opts?: { blank?: boolean; prompt?: ISession['prompt'] }) {
   const runtime = await SlotTestRuntime.create()
   runtime.ctx.provide('uiWorkspace', { connectWorkspace: vi.fn(async () => SID) } as never)
   runtime.ctx.provide('settingsScope', { bind: () => stubSettingsScope().scope } as never)
@@ -71,7 +71,7 @@ async function bench(opts?: { blank?: boolean }) {
     ...(opts?.blank === true ? { snapshot: { blank: true } } : {}),
     session: {
       loadOlder: vi.fn<ISession['loadOlder']>(),
-      prompt: vi.fn<ISession['prompt']>(async () => ({ ok: true, value: { accepted: true } })),
+      prompt: opts?.prompt ?? vi.fn<ISession['prompt']>(async () => ({ ok: true, value: { accepted: true } })),
     },
   })
   await runtime.root.declare(LAYOUT_CHILDREN, AppRoot)
@@ -80,6 +80,48 @@ async function bench(opts?: { blank?: boolean }) {
 }
 
 describe('resident composer', () => {
+  it('opens a blank Session View without a prompt and restores Chat Hero after navigation or View unload', async () => {
+    const prompt = vi.fn<ISession['prompt']>(async () => ({ ok: true, value: { accepted: true } }))
+    const runtime = await bench({ blank: true, prompt })
+    runtime.slots.register({ name: 'conversation.view', id: 'chat', order: 0, label: 'Chat' },
+      () => <div data-testid="chat-view">Chat body</div>)
+    const removeVideo = runtime.slots.register({ name: 'conversation.view', id: 'video', order: 20, label: 'Video' },
+      () => <div data-testid="empty-project">Restore a project</div>)
+    const view = runtime.renderRoot()
+    try {
+      expect(view.getByText('探索未至之境')).toBeTruthy()
+      expect(view.queryByTestId('empty-project')).toBeNull()
+      const composer = view.container.querySelector('[data-composer-input]')
+      fireEvent.click(await view.findByRole('tab', { name: 'Video' }))
+      expect(view.getByTestId('empty-project')).toBeTruthy()
+      expect(view.queryByText('探索未至之境')).toBeNull()
+      expect(view.container.querySelector('[data-phase]')?.getAttribute('data-phase')).toBe('active')
+      expect(view.container.querySelector('[data-composer-input]')).toBe(composer)
+      fireEvent.click(view.getByRole('tab', { name: 'Chat' }))
+      expect(view.getByText('探索未至之境')).toBeTruthy()
+      expect(view.queryByTestId('chat-view')).toBeNull()
+      fireEvent.click(await view.findByRole('tab', { name: 'Video' }))
+      act(() => { removeVideo() })
+      expect(await view.findByText('探索未至之境')).toBeTruthy()
+      expect(view.queryByTestId('empty-project')).toBeNull()
+      expect(view.container.querySelector('header')?.getAttribute('aria-hidden')).toBe('true')
+      expect(prompt).not.toHaveBeenCalled()
+    } finally { await runtime.dispose() }
+  })
+
+  it('allows selecting the sole non-Chat View while Chat has not registered', async () => {
+    const runtime = await bench({ blank: true })
+    runtime.slots.register({ name: 'conversation.view', id: 'video', label: 'Video' },
+      () => <div data-testid="empty-project">Restore a project</div>)
+    const view = runtime.renderRoot()
+    try {
+      expect(view.getByText('探索未至之境')).toBeTruthy()
+      fireEvent.click(await view.findByRole('tab', { name: 'Video' }))
+      expect(view.getByTestId('empty-project')).toBeTruthy()
+      expect(view.queryByText('探索未至之境')).toBeNull()
+    } finally { await runtime.dispose() }
+  })
+
   it('renders the locked view state while no session exists at all', async () => {
     const runtime = await SlotTestRuntime.create()
     runtime.ctx.provide('uiWorkspace', { connectWorkspace: vi.fn(async () => SID) } as never)

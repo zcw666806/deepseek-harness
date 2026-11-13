@@ -1,0 +1,15 @@
+- article "测试能力（无进程）":
+  - heading "测试能力（无进程）" [level=3]
+  - text: 本机
+  - strong: 已停止
+  - paragraph: 仅用于验证固定操作与配置恢复。
+  - text: 引擎：fixture 只有由 DSH 启动的本地服务才能在此停止。
+  - heading "依赖条件" [level=4]
+  - list:
+    - listitem:
+      - strong: 测试运行环境
+      - text: 已具备
+  - button "检查"
+  - button "准备"
+  - button "启动"
+  - button "停止" [disabled]

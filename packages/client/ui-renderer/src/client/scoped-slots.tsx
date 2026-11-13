@@ -442,7 +442,7 @@ function standardKit(
   const scopedStoreBinding = scopeBinding?.key === undefined
     ? undefined
     : scopeBinding as ScopedStandardSourceBinding
-  const store = host.storeOf(entry, scopedStoreBinding)
+  const store = host.storeOf(entry, scopedStoreBinding, scope)
   if (store !== undefined) {
     // The instance IS an observable snapshot source (contract getSnapshot/
     // subscribe); the useStore hook binds here, cached per instance.

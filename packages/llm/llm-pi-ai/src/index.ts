@@ -56,6 +56,7 @@
  */
 
 import type { Context } from '@deepseek-ai/cordis'
+import { createModels } from '@earendil-works/pi-ai'
 import { launchEnvironmentOf } from '@deepseek-ai/dsh-launch-environment'
 import { assertUsableApiKey, LlmError, resolveImageAttachmentAccess } from '@deepseek-ai/dsh-llm'
 import type { AdapterRegistrationHandle, DirectoryRegistrationHandle, LlmConfigurableProvider } from '@deepseek-ai/dsh-llm'
@@ -65,10 +66,15 @@ import { deepEqualJson } from '@deepseek-ai/dsh-util-values'
 import { PiAiAdapter } from './adapter.ts'
 import { authContextFrom, credentialStoreFrom } from './auth.ts'
 import { catalogProviderIds } from './catalog.ts'
+import type { ModelWithOutput } from './catalog.ts'
 import { assertServiceable, Config, resolveProfiles } from './config.ts'
 import type { ResolvedPiAiProviderProfile } from './config.ts'
 import { discoverModels } from './discovery.ts'
 import { registerPiAiFlows } from './login.ts'
+import { registerGenerateVideoTool } from './tool-generate-video.ts'
+import { registerVideoProductionGenerator } from './video-production.ts'
+import { registerModelCapability } from './capabilities.ts'
+import type {} from '@deepseek-ai/dsh-capability-manager'
 
 export { PiAiAdapter } from './adapter.ts'
 export type { PiAiAdapterOptions } from './adapter.ts'
@@ -164,6 +170,10 @@ export function apply(ctx: Context, config: Config): void {
     return next
   }
   profiles()
+  ctx.inject(['capabilities'], (capabilityCtx) => {
+    const unregister = registerModelCapability(capabilityCtx, () => current(), profiles)
+    capabilityCtx.effect(() => unregister, 'model capability configuration')
+  })
 
   const resolveApiKey = async (
     provider: string,
@@ -194,6 +204,17 @@ export function apply(ctx: Context, config: Config): void {
   // through `ctx` per call, so they stay correct across the collection rebuilds
   // a configuration change causes, and a sign-in survives one.
   const auth = { credentials: credentialStoreFrom(ctx), authContext: authContextFrom(ctx) }
+  const resolveVideoApiKey = async (
+    provider: string,
+    profile: ResolvedPiAiProviderProfile,
+    signal?: AbortSignal,
+  ): Promise<string | undefined> => {
+    const explicit = await resolveApiKey(provider, profile)
+    if (explicit !== undefined) return explicit
+    const models = createModels(auth)
+    models.setProvider(profile.piProvider)
+    return (await models.getAuth(provider, signal === undefined ? undefined : { signal }))?.auth.apiKey
+  }
   const adapter = new PiAiAdapter({
     profiles,
     resolveApiKey,
@@ -293,6 +314,67 @@ export function apply(ctx: Context, config: Config): void {
   }
   ensureRegistrationFacts()
 
+  // The generate_video tool follows two facts: the tools service being present,
+  // and at least one route serving a model declaring video output. `ctx.inject`
+  // supplies the service-lifetime fiber (re-run when the service is replaced,
+  // and its disposal tears the registration down with it); the settings watcher
+  // below re-syncs the same state when profiles change. Each active fiber
+  // contributes one sync to the set, so exactly one registration exists per
+  // present tools service regardless of how many re-runs happened.
+  const videoRegistrationSyncs = new Set<() => void>()
+  const hasVideoModel = (): boolean => [...profiles().values()].some(profile =>
+    profile.piProvider.getModels().some(model => (model as ModelWithOutput).output?.includes('video')))
+  const syncVideoRegistrations = (): void => {
+    for (const sync of videoRegistrationSyncs) sync()
+  }
+  ctx.inject(['tools'], (toolsCtx) => {
+    let dispose: (() => void) | undefined
+    const sync = (): void => {
+      if (hasVideoModel() && dispose === undefined) {
+        dispose = registerGenerateVideoTool(toolsCtx, profiles, resolveVideoApiKey)
+      } else if (!hasVideoModel() && dispose !== undefined) {
+        // Double-dispose is a no-op, so a service teardown racing this call is safe.
+        dispose()
+        dispose = undefined
+      }
+    }
+    videoRegistrationSyncs.add(sync)
+    sync()
+    toolsCtx.effect(() => () => { videoRegistrationSyncs.delete(sync) })
+  })
+  ctx.inject(['videoProduction'], (productionCtx) => {
+    let dispose: (() => Promise<void>) | undefined
+    let retirement = Promise.resolve()
+    const retire = (): void => {
+      const previous = dispose
+      if (previous === undefined) return
+      dispose = undefined
+      retirement = Promise.allSettled([retirement, previous()]).then((results) => {
+        const failures: unknown[] = []
+        for (const result of results) if (result.status === 'rejected') failures.push(result.reason)
+        if (failures.length > 0) throw new AggregateError(failures, 'Video provider cleanup failed')
+      })
+      void retirement.catch((error: unknown) => {
+        ctx.logger.error('llm-pi-ai: video provider cleanup failed')
+        ctx.logger.error(error)
+      })
+    }
+    const sync = (): void => {
+      if (hasVideoModel() && dispose === undefined) {
+        dispose = registerVideoProductionGenerator(productionCtx, profiles, resolveVideoApiKey)
+      } else if (!hasVideoModel() && dispose !== undefined) {
+        retire()
+      }
+    }
+    videoRegistrationSyncs.add(sync)
+    sync()
+    productionCtx.effect(() => async () => {
+      videoRegistrationSyncs.delete(sync)
+      retire()
+      await retirement
+    })
+  })
+
   ctx.inject(['settings'], (settingsCtx) => {
     settingsCtx.settings.installSection(ctx, NS, Config, config, {
       // Refuse an unserviceable section where it is written: without this a
@@ -324,6 +406,13 @@ export function apply(ctx: Context, config: Config): void {
           ensureDirectory()
         } catch (error) {
           ctx.logger.error('llm-pi-ai: keeping the previous configurable-provider directory after a refused update')
+          ctx.logger.error(error)
+        }
+        // The video tool follows the same profiles the routes do.
+        try {
+          syncVideoRegistrations()
+        } catch (error) {
+          ctx.logger.error('llm-pi-ai: keeping the previous video registrations after a refused update')
           ctx.logger.error(error)
         }
       },

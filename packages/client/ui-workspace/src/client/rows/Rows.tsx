@@ -403,8 +403,10 @@ export function SessionNodeItem({ node, currentId, now, onOpen, onRename, onFork
   // touches the session log, so it is not styled as destructive and needs no
   // confirmation dialog.
   const sessionMenuItems = [
-    { id: 'rename', label: t('rename'), icon: <IconEditOutline16 /> },
-    { id: 'fork', label: t('menu.fork'), icon: <IconBranchOutline16 /> },
+    { id: 'rename', label: t(row.hasTranscript ? 'rename' : 'menu.projectRename'),
+      disabled: !row.hasTranscript, icon: <IconEditOutline16 /> },
+    { id: 'fork', label: t(row.hasTranscript ? 'menu.fork' : 'menu.forkConversationOnly'),
+      disabled: !row.hasTranscript, icon: <IconBranchOutline16 /> },
     // 20-native glyph in the menu's 16px icon slot (Menu.module.css .itemIcon).
     { id: 'archive', label: t('menu.archiveSession'), icon: <IconArchiveOutline20 size={16} /> },
   ]
@@ -457,7 +459,7 @@ export function SessionNodeItem({ node, currentId, now, onOpen, onRename, onFork
       {/* A blank New Session row is a provisional placeholder: nothing has
           happened in it yet, so a "now" timestamp and the row verbs
           (rename/fork/archive) would all act on content that does not
-          exist — both trailing cells stay off until the first prompt. */}
+          exist — both trailing cells stay off for this provisional row. */}
       {!row.blank && <span className={css.time}>{timeLabel(row.updatedAt, now, t)}</span>}
       {!row.blank && (
         <span className={css.rowActions}>
@@ -467,8 +469,8 @@ export function SessionNodeItem({ node, currentId, now, onOpen, onRename, onFork
             items={sessionMenuItems}
             onSelect={(id) => {
               setMenuOpen(false)
-              if (id === 'rename') onRename(node.id, row.title)
-              if (id === 'fork') onFork(node.id)
+              if (id === 'rename' && row.hasTranscript) onRename(node.id, row.title)
+              if (id === 'fork' && row.hasTranscript) onFork(node.id)
               if (id === 'archive') onArchive(node.id)
             }}
             portal

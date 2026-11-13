@@ -8,6 +8,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface SlotMap {
     'test.single': { kind: 'single'; scope: 'root' }
     'test.session': { kind: 'single'; scope: 'session' }
+    'test.maybe': { kind: 'single'; scope: 'session-maybe' }
     'test.list': { kind: 'list'; scope: 'root' }
     'test.keyed': { kind: 'keyed'; scope: 'session' }
     'test.chain': { kind: 'chain'; scope: 'session'; owner: { tags: string[] } }
@@ -33,6 +34,7 @@ function mountFrame(core: SlotCore) {
     children: {
       'test.single': { kind: 'single', scope: 'root' },
       'test.session': { kind: 'single', scope: 'session' },
+      'test.maybe': { kind: 'single', scope: 'session-maybe' },
       'test.list': { kind: 'list', scope: 'root' },
       'test.keyed': { kind: 'keyed', scope: 'session' },
       'test.chain': { kind: 'chain', scope: 'session' },
@@ -189,6 +191,21 @@ describe('store scope pinning', () => {
     core.register({ name: 'test.session', store: handle }, Comp as never)
     expect(() => core.register({ name: 'test.single', store: handle }, Comp as never))
       .toThrow('one handle, one scope')
+  })
+
+  it.each(['session', 'session-maybe'] as const)('shares a handle on the Session axis when %s registers first', (first) => {
+    const core = new SlotCore()
+    mountFrame(core)
+    const handle = fakeHandle()
+    const initial = first === 'session' ? 'test.session' : 'test.maybe'
+    const following = first === 'session' ? 'test.maybe' : 'test.session'
+    const removeFirst = core.register({ name: initial, store: handle }, Comp as never)
+    const removeSecond = core.register({ name: following, store: handle }, Comp as never)
+    expect(() => core.register({ name: 'test.single', store: handle }, Comp as never)).toThrow('one handle, one scope')
+    removeFirst()
+    expect(() => core.register({ name: 'test.single', store: handle }, Comp as never)).toThrow('one handle, one scope')
+    removeSecond()
+    expect(() => core.register({ name: 'test.single', store: handle }, Comp as never)).not.toThrow()
   })
 
   it('same handle under same scope is fine; full unmount releases the pin', () => {
@@ -370,7 +387,7 @@ describe('subscription API', () => {
     const off = core.onMutate(key => keys.push(key))
     mountFrame(core)
     // Contribution first, then each declared child key.
-    expect(keys).toEqual(['root', 'test.single', 'test.session', 'test.list', 'test.keyed', 'test.chain'])
+    expect(keys).toEqual(['root', 'test.single', 'test.session', 'test.maybe', 'test.list', 'test.keyed', 'test.chain'])
     keys.length = 0
     core.register({ name: 'test.list', id: 'a' }, Comp)
     expect(keys).toEqual(['test.list'])

@@ -53,6 +53,8 @@ kind: "package-reference"
 
 `createSlotRenderer` 把 slot 注册表连接到 React：条目列表成为响应式 source，每个 outlet 经已安装的渲染器渲染。业务插件通过带类型的 slot `hooks` 传递裸 observable source；渲染器经 uSES 适配器在 outlet 处完成绑定。
 
+Store handle 分属 root 与 Session 两轴。相同 handle 和 Session binding 下，严格及可选 Session 条目解析为同一 live 实例。可选条目没有 Session 时得到缓存的冻结初始 source 及明确拒绝的 actions，不创建 live store，也不访问持久化存储。最后一个持有该 handle 的注册退出时释放缓存；严格条目仍拒绝缺失 binding。
+
 ### 身份
 
 React、React DOM、Cordis、ui-slots 与 ui-primitives 通过 Web 外壳的静态模块表保持同一浏览器身份；本包则以动态客户端 bundle 到达。
