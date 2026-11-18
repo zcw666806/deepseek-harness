@@ -20,6 +20,10 @@
 - button "Settings":
   - img
   - text: Settings
+- banner:
+  - tablist:
+    - tab "Chat" [selected]
+    - tab "Trajectory"
 - text: Into the Unknown Preview
 - button "Choose workspace":
   - img
@@ -34,6 +38,10 @@
 - button "Commands":
   - img
 - 'button "Access mode, current: Workspace Write"': Workspace Write
+- button "Creation":
+  - img
+  - text: Creation
+  - img
 - button "Select model, current DeepSeek-V4-Flash":
   - text: DeepSeek-V4-Flash
   - img

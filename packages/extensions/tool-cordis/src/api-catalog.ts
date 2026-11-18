@@ -695,6 +695,42 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'the committed initial project.',
       },
       {
+        signature: '@Remote(\'storyboardGenerationTargets\') async storyboardGenerationTargets(signal?: AbortSignal): Promise<ComicImageGenerationTarget[]>',
+        description: 'List configured image generation targets whose Host credentials currently resolve.',
+        parameters: [{ name: 'signal', description: 'optional cancellation before returning the list.' }],
+        returns: 'selector entries without provider endpoints or credential references.',
+      },
+      {
+        signature: '@Remote(\'storyboardGenerationTarget\') async storyboardGenerationTarget(sessionId: SessionId, signal?: AbortSignal): Promise<ComicImageGenerationTargetId | undefined>',
+        description: 'Read the Session\'s image target, even if a configured choice has since become unavailable.',
+        parameters: [{ name: 'sessionId', description: 'attached Session selecting the owner Workspace.' }, { name: 'signal', description: 'optional cancellation while inspecting the Session.' }],
+        returns: 'the stored target, the sole configured target, or undefined when the Session has no target.',
+      },
+      {
+        signature: '@Remote(\'selectStoryboardGenerationTarget\') selectStoryboardGenerationTarget(sessionId: SessionId, targetId: ComicImageGenerationTargetId, signal?: AbortSignal): Promise<void>',
+        description: 'Durably choose the image route used for future generations in this Session.',
+        parameters: [{ name: 'sessionId', description: 'attached Session selecting the owner Workspace.' }, { name: 'targetId', description: 'configured image target with a usable credential.' }, { name: 'signal', description: 'optional cancellation before the selection is submitted for storage.' }],
+        returns: 'completion after the selected route is durable.',
+      },
+      {
+        signature: '@Remote(\'storyboardGenerationAvailable\') async storyboardGenerationAvailable(sessionId: SessionId, signal?: AbortSignal): Promise<boolean>',
+        description: 'Check whether the Session can generate artwork with its selected image route.',
+        parameters: [{ name: 'sessionId', description: 'Attached Session selecting the owner Workspace.' }, { name: 'signal', description: 'Cancellation before returning availability.' }],
+        returns: 'Whether the image route and its Host credential are available.',
+      },
+      {
+        signature: '@Remote(\'storyboardResult\') async storyboardResult(sessionId: SessionId, messageId: string, signal?: AbortSignal): Promise<ComicProject | undefined>',
+        description: 'Read the result saved for a storyboard or join its current generation.',
+        parameters: [{ name: 'sessionId', description: 'Attached Session selecting the owner Workspace.' }, { name: 'messageId', description: 'Original Assistant message identity in the Session.' }, { name: 'signal', description: 'Cancellation before delivering the project.' }],
+        returns: 'The saved project, or undefined before generation starts.',
+      },
+      {
+        signature: '@Remote(\'generateStoryboard\') async generateStoryboard( sessionId: SessionId, messageId: string, draft: ComicDraft, artDirection: string, signal?: AbortSignal, ): Promise<ComicProject>',
+        description: 'Draw the four panels together and publish one editable project for this source message.',
+        parameters: [{ name: 'sessionId', description: 'Attached Session selecting the destination Workspace.' }, { name: 'messageId', description: 'Original Assistant message identity in the Session.' }, { name: 'draft', description: 'Four ordered panels and their editable dialogue.' }, { name: 'artDirection', description: 'Visual style and recurring details from the storyboard.' }, { name: 'signal', description: 'Cancellation before accepting the request. Accepted work remains on the Host when a viewer leaves.' }],
+        returns: 'The saved project, including artwork for each panel. Repeated requests share active work or return the saved project.',
+      },
+      {
         signature: '@Remote(\'open\') open(sessionId: SessionId, projectId: ComicProjectId, signal?: AbortSignal): ComicProject',
         description: 'Open the current revision of a project in the Session\'s Workspace.',
         parameters: [{ name: 'sessionId', description: 'attached Session selecting the owner Workspace.' }, { name: 'projectId', description: 'stable project identity from the picker.' }, { name: 'signal', description: 'cancellation before reading the project.' }],
@@ -2835,6 +2871,30 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'selectable generator/model pairs and declared limits, without credentials.',
       },
       {
+        signature: '@Remote(\'conversationGenerationTargets\') conversationGenerationTargets(): VideoGenerationTarget[]',
+        description: 'List configured models served by the standalone video tool.',
+        parameters: [],
+        returns: 'Native video targets suitable for selection in a conversation.',
+      },
+      {
+        signature: '@Remote(\'conversationGenerationTarget\') async conversationGenerationTarget(sessionId: SessionId, signal?: AbortSignal): Promise<string | undefined>',
+        description: 'Read the saved selector value for the current Session lifecycle.',
+        parameters: [{ name: 'sessionId', description: 'Existing Session.' }, { name: 'signal', description: 'Caller cancellation during Session inspection.' }],
+        returns: 'Explicit model selection, even if its route was removed, or undefined when unset.',
+      },
+      {
+        signature: '@Remote(\'selectConversationGenerationTarget\') selectConversationGenerationTarget(sessionId: SessionId, model: string, signal?: AbortSignal): Promise<void>',
+        description: 'Save the standalone generation model separately from the conversational model.',
+        parameters: [{ name: 'sessionId', description: 'Existing Session to receive the selection.' }, { name: 'model', description: 'Exact currently configured native video model ID.' }, { name: 'signal', description: 'Caller cancellation before committing the selection.' }],
+        returns: 'Completion after the selection is durable.',
+      },
+      {
+        signature: 'selectedConversationVideoModel(sessionId: SessionId, sessionCreatedAt: number): string | undefined',
+        description: 'Resolve the user\'s standalone generation selection for the initiating tool call.',
+        parameters: [{ name: 'sessionId', description: 'Tool caller\'s Session identity.' }, { name: 'sessionCreatedAt', description: 'Tool caller\'s Session lifecycle timestamp.' }],
+        returns: 'Exact saved model or undefined when no selection belongs to this lifecycle.',
+      },
+      {
         signature: '@Remote(\'startBatch\') startBatch(sessionId: SessionId, input: VideoBatchInput): Promise<VideoBatch>',
         description: 'Start missing-shot work owned by the Host, independent of the calling page.',
         parameters: [{ name: 'sessionId', description: 'existing project Session.' }, { name: 'input', description: 'observed project revision and generation route.' }],
@@ -2881,6 +2941,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Read this Session\'s project without creating or resuming an Agent.',
         parameters: [{ name: 'sessionId', description: 'existing Session selecting the project.' }],
         returns: 'the current project, or an unpersisted revision-zero project.',
+      },
+      {
+        signature: '@Remote(\'importWorkspaceStoryboard\') async importWorkspaceStoryboard(sessionId: SessionId, path: string, signal?: AbortSignal): Promise<VideoProject>',
+        description: 'Open a saved project or initialize it from the Session workspace storyboard.',
+        parameters: [{ name: 'sessionId', description: 'existing Session selecting the workspace and project.' }, { name: 'path', description: 'the workspace\'s `storyboard.md` path.' }, { name: 'signal', description: 'cancellation until the project commit starts.' }],
+        returns: 'the saved project, including a concurrent first import if another caller won.',
       },
       {
         signature: '@Remote(\'update\') async update(sessionId: SessionId, input: VideoProjectInput): Promise<VideoProject>',
@@ -4048,6 +4114,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ComicImageChunk',
     declaration: 'export interface ComicImageChunk {\n    readonly data: string;\n    readonly offset: number;\n    readonly nextOffset: number;\n    readonly done: boolean;\n}',
+  },
+  {
+    name: 'ComicImageGenerationTarget',
+    declaration: 'export interface ComicImageGenerationTarget {\n    readonly id: ComicImageGenerationTargetId;\n    readonly title: string;\n    readonly model: string;\n}',
+  },
+  {
+    name: 'ComicImageGenerationTargetId',
+    declaration: 'export type ComicImageGenerationTargetId = Branded<\'ComicImageGenerationTargetId\'>;',
   },
   {
     name: 'ComicImageId',
@@ -5499,7 +5573,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'SessionPromptRequest',
-    declaration: 'export interface SessionPromptRequest {\n    readonly requestId: SessionRequestId;\n    readonly sessionId: SessionId;\n    readonly mode: \'queue\' | \'steer\';\n    readonly content: readonly PromptContentPart[];\n    readonly clientTimeZone?: string;\n}',
+    declaration: 'export interface SessionPromptRequest {\n    readonly requestId: SessionRequestId;\n    readonly sessionId: SessionId;\n    readonly mode: \'queue\' | \'steer\';\n    readonly content: readonly PromptContentPart[];\n    readonly clientTimeZone?: string;\n    readonly modelSelection?: ModelSelection;\n}',
   },
   {
     name: 'SessionPromptValue',
@@ -5575,7 +5649,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'SessionSelectModelRequest',
-    declaration: 'export interface SessionSelectModelRequest extends ModelSelection {\n    readonly sessionId: SessionId;\n}',
+    declaration: 'export interface SessionSelectModelRequest extends ModelSelection {\n    readonly sessionId: SessionId;\n    readonly sessionOnly?: boolean;\n}',
   },
   {
     name: 'SessionSelectModelValue',

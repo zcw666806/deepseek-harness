@@ -31,6 +31,60 @@ export async function newEnglishPage(browser: Browser, height = 1000): Promise<P
   return await browser.newPage({ viewport: { width: 1680, height }, locale: 'en-US' })
 }
 
+function creationLabels(locale: 'en' | 'zh') {
+  return locale === 'zh'
+    ? { trigger: '创作', comic: '漫画创作', video: '视频创作', existing: '已有项目', close: '关闭' }
+    : { trigger: 'Creation', comic: 'Comic creation', video: 'Video creation', existing: 'Existing projects', close: 'Close' }
+}
+
+/**
+ * Set the creation mode on the current conversation's composer.
+ * @param page - page with the active conversation.
+ * @param studio - creation mode to select.
+ * @param locale - language used by the page's controls.
+ */
+export async function selectCreationMode(
+  page: Page,
+  studio: 'comic' | 'video',
+  locale: 'en' | 'zh' = 'en',
+): Promise<void> {
+  const labels = creationLabels(locale)
+  const composer = page.locator('[data-composer-card]')
+  const active = composer.getByRole('button', { name: labels[studio], exact: true })
+  if (await active.isVisible()) return
+  const trigger = composer.getByRole('button', { name: labels.trigger, exact: true })
+  const otherMode = composer.getByRole('button', { name: labels[studio === 'comic' ? 'video' : 'comic'], exact: true })
+  await trigger.or(otherMode).click()
+  await page.getByRole('menuitem', { name: labels[studio], exact: true }).click()
+  await active.waitFor()
+}
+
+/**
+ * Open the editor for workbench projects from the composer's creation menu.
+ * @param page - page with the active conversation.
+ * @param studio - creation editor to open.
+ * @param locale - language used by the page's controls.
+ */
+export async function openCreationStudio(page: Page, studio: 'comic' | 'video', locale: 'en' | 'zh' = 'en'): Promise<void> {
+  const labels = creationLabels(locale)
+  await selectCreationMode(page, studio, locale)
+  await page.locator('[data-composer-card]').getByRole('button', { name: labels[studio], exact: true }).click()
+  await page.getByRole('menuitem', { name: labels.existing, exact: true }).click()
+  await page.getByRole('dialog', { name: labels[studio], exact: true }).waitFor()
+}
+
+/**
+ * Dismiss the existing project editor if it is open.
+ * @param page - page containing the editor.
+ * @param studio - creation editor to close.
+ * @param locale - language used by the page's controls.
+ */
+export async function closeCreationStudio(page: Page, studio: 'comic' | 'video', locale: 'en' | 'zh' = 'en'): Promise<void> {
+  const labels = creationLabels(locale)
+  const dialog = page.getByRole('dialog', { name: labels[studio], exact: true })
+  if (await dialog.isVisible()) await dialog.getByRole('button', { name: labels.close, exact: true }).click()
+}
+
 /**
  * Expand every currently eligible Turn-process group so a Tool-focused
  * scenario can exercise the original row contract beneath product-default

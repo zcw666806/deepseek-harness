@@ -8,7 +8,7 @@ import type {
   VideoAsset, VideoAssetId, VideoProject, VideoProjectInput, VideoShot,
   VideoShotId, VideoShotInput, VideoVersion, VideoVersionId,
 } from '@deepseek-ai/dsh-video-production/types'
-import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type { ProductionFace } from './controller.ts'
 import { gridPoint, type createVideoCanvasStore } from './canvas-store.ts'
 import { acceptsShot, generationTargetKey } from './generation-target.ts'
@@ -16,9 +16,9 @@ import { WorkflowCanvas } from './WorkflowCanvas.tsx'
 import { ClipEditor } from './ClipEditor.tsx'
 import css from './VideoProductionView.module.css'
 
-/** Props bound by the Conversation view entry and its private canvas store. */
+/** Props bound by the creation workbench and its private canvas store. */
 export type VideoProductionViewProps =
-  PropsRuntime<'conversation.view'>
+  PropsRuntime<'studio', 'video'>
   & PropsLocale<'videoProduction'>
   & PropsStore<ReturnType<typeof createVideoCanvasStore>>
   & InjectFace<ProductionFace>
@@ -89,8 +89,6 @@ export function VideoProductionView(props: VideoProductionViewProps) {
   const canvas = props.useStore(snapshot => snapshot)
   const [draft, setDraft] = useState<VideoProjectInput | null>(null)
   const [invalid, setInvalid] = useState(false)
-  const [targetKey, setTargetKey] = useState<string | null>(null)
-  const initializedTarget = useRef(false)
   const [assetName, setAssetName] = useState('')
   const [libraryPreference, setLibraryPreference] = useState<boolean | null>(null)
   const [assetKind, setAssetKind] = useState<VideoAsset['kind']>('character')
@@ -113,12 +111,9 @@ export function VideoProductionView(props: VideoProductionViewProps) {
     }
   }, [state.project, props.loadMedia])
 
-  useEffect(() => {
-    if (state.targets === null || initializedTarget.current) return
-    initializedTarget.current = true
-    const sole = state.targets.length === 1 ? state.targets[0] : undefined
-    if (sole !== undefined) setTargetKey(generationTargetKey(sole))
-  }, [state.targets])
+  const soleTarget = state.targets?.length === 1 ? state.targets[0] : undefined
+  const targetKey = canvas.generationTargetKey !== undefined ? canvas.generationTargetKey
+    : soleTarget === undefined ? null : generationTargetKey(soleTarget)
   const target = state.targets?.find(item => generationTargetKey(item) === targetKey)
   const selection = target === undefined ? null : {
     generator: target.generator, ...target.model === undefined ? {} : { model: target.model },
@@ -200,7 +195,7 @@ export function VideoProductionView(props: VideoProductionViewProps) {
       />
       <label className={css.targetField}>{t('generation.target')}<select
         aria-label={t('generation.target')} value={targetKey ?? ''} disabled={busy || state.targets === null}
-        onChange={(event) => { setTargetKey(event.target.value || null) }}
+        onChange={(event) => { actions.selectGenerationTarget(event.target.value || null) }}
       ><option value="">{t('generation.choose')}</option>{targetKey !== null && target === undefined ? <option value={targetKey}>{t('generation.unavailable')}</option> : null}{state.targets?.map(item => <option key={generationTargetKey(item)} value={generationTargetKey(item)}>{item.model === undefined ? item.title : t('generation.option', { title: item.title, model: item.model })}</option>)}</select></label>
       <span className={css.saveState}>{t(dirty ? 'project.unsaved' : 'project.saved')}</span>
       <button type="button" disabled={busy} onClick={() => { setDraft(null); lastSubmitted.current = null; props.refresh() }}>{t('project.refresh')}</button>

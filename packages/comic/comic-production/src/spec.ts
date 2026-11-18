@@ -1,10 +1,11 @@
 /** Admission and durable validation for manuscript geometry and image references. */
 import { brandString } from '@deepseek-ai/dsh-brand'
 import { defineDomain, domainTable } from '@deepseek-ai/dsh-storage-domain'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { WorkspaceId } from '@deepseek-ai/dsh-workspace/types'
 import { z } from 'zod'
 import type {
-  ComicBubbleId, ComicDraft, ComicImage, ComicImageId, ComicLayerId, ComicPackageImage,
+  ComicBubbleId, ComicDraft, ComicImage, ComicImageGenerationTargetId, ComicImageId, ComicLayerId, ComicPackageImage,
   ComicPageId, ComicPanelId, ComicProject, ComicProjectId,
 } from './types.ts'
 
@@ -16,6 +17,19 @@ const label = z.string().max(160)
 const details = z.string().max(8192)
 const rect = { x: coordinate, y: coordinate, width: dimension, height: dimension }
 const imageId = z.string().regex(/^[a-f0-9]{64}$/).transform(value => brandString<ComicImageId>(value))
+
+/** Stable deployment route identity admitted from config or durable preferences. */
+export const imageTargetId = z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,79}$/u)
+  .transform(value => brandString<ComicImageGenerationTargetId>(value))
+
+const selectionRecord = z.object({
+  targetId: imageTargetId,
+  sessionCreatedAt: z.number().int().nonnegative(),
+  workspaceId: uuid.transform(value => brandString<WorkspaceId>(value)),
+}).strict()
+
+/** A generation preference owned by one Session lifecycle and Workspace. */
+export type ComicImageGenerationSelection = z.infer<typeof selectionRecord>
 const image = z.object({ id: imageId, width: dimension, height: dimension, bytes: z.number().int().positive() }).strict()
 const layer = z.object({
   id: uuid.transform(value => brandString<ComicLayerId>(value)),
@@ -130,5 +144,8 @@ const projectRecord: z.ZodType<ComicProject> = z.object({
 /** One atomic project record owns its current revision and all live image references. */
 export const comicProductionDomain = defineDomain({
   name: 'comic_production', version: 1,
-  tables: { projects: domainTable<ComicProjectId, ComicProject>(projectRecord) },
+  tables: {
+    projects: domainTable<ComicProjectId, ComicProject>(projectRecord),
+    image_generation_selections: domainTable<SessionId, ComicImageGenerationSelection>(selectionRecord),
+  },
 })

@@ -17,6 +17,7 @@ import {
 } from 'react'
 import clsx from 'clsx'
 import type { ModelReasoningEffort, ModelSelection } from '@deepseek-ai/dsh-api-remotes/client'
+import type { ModelControlOwnerProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import {
   IconCheckOutline16, IconChevronDownOutline14, IconChevronRightOutline14,
   IconWarningOutline16, Toast,
@@ -42,8 +43,8 @@ interface EffortChoice {
  * @returns the trigger and, while open, the two-level menu.
  */
 export function ModelSelect(
-  { locked, available, directory, load, select, t }:
-  ModelSelectInjected & { locked: boolean } & PropsLocale<'model'>,
+  { locked, planning = false, available, directory, load, select, t }:
+  ModelSelectInjected & ModelControlOwnerProps & PropsLocale<'model'>,
 ) {
   const state = useSyncExternalStore(
     fn => directory.subscribe(fn),
@@ -168,13 +169,18 @@ export function ModelSelect(
     }
   }
 
+  const applySelection = (selection: ModelSelection): void => {
+    const result = planning ? select(selection, true) : select(selection)
+    void result.then(settleSelection)
+  }
+
   const choose = (selection: ModelSelection): void => {
     if (state.current?.provider === selection.provider && state.current.model === selection.model) {
       close(true)
       return
     }
     lastActionRef.current = 'select'
-    void select(selection).then(settleSelection)
+    applySelection(selection)
   }
 
   const chooseEffort = (effort: string | undefined): void => {
@@ -189,7 +195,7 @@ export function ModelSelect(
       ...effort === undefined ? {} : { reasoningEffort: effort },
     }
     lastActionRef.current = 'select'
-    void select(selection).then(settleSelection)
+    applySelection(selection)
   }
 
   const waiting = state.current === null && state.status === 'loading'
@@ -213,16 +219,16 @@ export function ModelSelect(
   }
 
   return (
-    <div ref={rootRef} className={css.root} onKeyDown={onRootKeyDown} onBlur={onBlur}>
+    <div ref={rootRef} className={clsx(css.root, planning && css.planning)} onKeyDown={onRootKeyDown} onBlur={onBlur}>
       <button
         ref={triggerRef}
         type="button"
         className={css.trigger}
-        aria-label={triggerAria}
+        aria-label={planning ? t('trigger.planningAria', { model: triggerLabel }) : triggerAria}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? `${id}-menu` : undefined}
-        title={triggerLabel}
+        title={planning ? t('trigger.planningAria', { model: triggerLabel }) : triggerLabel}
         disabled={locked}
         onClick={() => {
           if (open) {
@@ -232,6 +238,7 @@ export function ModelSelect(
           }
         }}
       >
+        {planning && <span className={css.planningCaption} aria-hidden>{t('trigger.planningLabel')}</span>}
         <span className={css.triggerLabel}>{modelLabel}</span>
         {effortLabel !== undefined && <span className={css.triggerEffort}>{effortLabel}</span>}
         <IconChevronDownOutline14 className={clsx(css.chevron, open && css.chevronOpen)} />

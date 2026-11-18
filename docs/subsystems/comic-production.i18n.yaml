@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/subsystems/comic-production.md
-comic-production.md: 17ac251426d380c601a7682aca76c52826dc0c81
-comic-production.zh.md: 7912d1b3109fb21289f20bbd592a16be896c6a2b
+comic-production.md: 26e2e156e6dc93d2496ec986d486588b0419d438
+comic-production.zh.md: 1ecfc969a9a117e3f8925c92e3827635aca71cf1

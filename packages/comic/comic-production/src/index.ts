@@ -1,20 +1,28 @@
 /** Workspace-owned manuscripts, revision-checked edits, and lossless artwork transfer. */
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { Service, type Context } from '@deepseek-ai/cordis'
 import { brandString } from '@deepseek-ai/dsh-brand'
 import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
+import type {} from '@deepseek-ai/dsh-session-persistence'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { KvTable } from '@deepseek-ai/dsh-storage-domain'
+import type {} from '@deepseek-ai/dsh-system-prompt'
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import type {} from '@deepseek-ai/dsh-workspace'
 import type { WorkspaceId } from '@deepseek-ai/dsh-workspace/types'
 import s from '@deepseek-ai/schemastery'
 import { failure } from './failure.ts'
 import { ComicImages, prepareImage, type PreparedImage } from './images.ts'
-import { comicProductionDomain, draftProblem, draftSchema, imagesOf, packageSchema, projectTitle, sameImage } from './spec.ts'
+import {
+  comicProductionDomain, draftProblem, draftSchema, imageTargetId, imagesOf, packageSchema, projectTitle, sameImage,
+  type ComicImageGenerationSelection,
+} from './spec.ts'
+import { automaticStoryboard, COMIC_STORYBOARD_PROMPT } from './storyboard-auto.ts'
+import { generateStoryboardArtwork, resolveImageProvider, type StoryboardImageProvider } from './storyboard-image.ts'
 import type {
-  ComicDraft, ComicImage, ComicImageChunk, ComicImageId, ComicLayerId, ComicPageId, ComicPanelId,
+  ComicDraft, ComicImage, ComicImageChunk, ComicImageGenerationConfig, ComicImageGenerationTarget,
+  ComicImageGenerationTargetId, ComicImageId, ComicLayerId, ComicPageId, ComicPanelId,
   ComicProject, ComicProjectId, ComicProjectPackage, ComicProjectSummary, Config,
 } from './types.ts'
 
@@ -35,6 +43,35 @@ const defaults = {
   maxPackageBytes: 32 * 1024 * 1024,
 }
 
+const imageGenerationFields = {
+  baseURL: s.string().required(),
+  credentialRef: s.string().required(),
+  model: s.string().required(),
+  timeoutMs: s.number().step(1).min(1_000).max(900_000).default(180_000),
+  imageOrigins: s.array(s.string()).max(10).default([]),
+}
+
+interface ImageRoute {
+  readonly target: ComicImageGenerationTarget
+  readonly provider: StoryboardImageProvider
+}
+
+function resolveImageRoutes(config: Config): Map<ComicImageGenerationTargetId, ImageRoute> {
+  const routes = new Map<ComicImageGenerationTargetId, ImageRoute>()
+  const add = (id: ComicImageGenerationTargetId, title: string, route: ComicImageGenerationConfig): void => {
+    if (routes.has(id)) throw new TypeError(`Duplicate comic image generation target ID "${id}".`)
+    if (!title.trim() || !route.model.trim()) throw new TypeError(`Comic image generation target "${id}" needs a title and model.`)
+    routes.set(id, { target: { id, title: title.trim(), model: route.model }, provider: resolveImageProvider(route) })
+  }
+  if (config.imageGeneration != null) add(imageTargetId.parse('default'), config.imageGeneration.model, config.imageGeneration)
+  for (const route of config.imageGenerationTargets ?? []) {
+    const id = imageTargetId.parse(route.id)
+    if (id === 'default') throw new TypeError('Comic image generation target ID "default" is reserved for imageGeneration.')
+    add(id, route.title, route)
+  }
+  return routes
+}
+
 function initialDraft(title: string): ComicDraft {
   return {
     title,
@@ -51,6 +88,45 @@ function initialDraft(title: string): ComicDraft {
 
 function snapshot({ title, pages }: ComicDraft): ComicDraft {
   return { title, pages }
+}
+
+function storyboardProjectId(workspaceId: WorkspaceId, sessionId: SessionId, messageId: string): ComicProjectId {
+  if (typeof messageId !== 'string' || messageId.length === 0 || messageId.length > 200) {
+    failure('storyboard-invalid', 'The storyboard source message identity is invalid.')
+  }
+  const hex = createHash('sha256').update(JSON.stringify([workspaceId, sessionId, messageId])).digest('hex')
+  return brandString<ComicProjectId>(`${hex.slice(0, 8)}-${hex.slice(8, 12)}-8${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20, 32)}`)
+}
+
+function validateStoryboard(draft: ComicDraft, artDirection: string): ComicDraft {
+  const result = draftSchema.safeParse(draft)
+  const page = result.success && result.data.pages.length === 1 ? result.data.pages[0] : undefined
+  if (!result.success || page?.panels.length !== 4 || typeof artDirection !== 'string' || artDirection.length > 8_192) {
+    failure('storyboard-invalid', 'Generation requires one page with four described panels and valid art direction.')
+  }
+  const [topLeft, topRight, bottomLeft, bottomRight] = page.panels
+  if (topLeft === undefined || topRight === undefined || bottomLeft === undefined || bottomRight === undefined
+    || topLeft.x + topLeft.width > topRight.x || topLeft.y + topLeft.height > bottomLeft.y
+    || topLeft.y !== topRight.y || bottomLeft.y !== bottomRight.y || topLeft.x !== bottomLeft.x || topRight.x !== bottomRight.x
+    || page.panels.some(panel => panel.description.trim() === '' || panel.layers.length !== 1
+      || panel.layers.some(layer => layer.imageId !== null || layer.versions.length !== 0))) {
+    failure('storyboard-invalid', 'Use four panels in a 2×2 grid in reading order, each with one empty artwork layer.')
+  }
+  return result.data
+}
+
+function adoptStoryboardArtwork(draft: ComicDraft, images: readonly PreparedImage[]): ComicDraft {
+  return {
+    title: draft.title,
+    pages: draft.pages.map(page => ({
+      ...page,
+      panels: page.panels.map((panel, index) => {
+        const image = images[index]?.ref
+        if (image === undefined) throw new Error('Comic image generation returned an incomplete panel set.')
+        return { ...panel, layers: panel.layers.map(layer => ({ ...layer, imageId: image.id, versions: [image] })) }
+      }),
+    })),
+  }
 }
 
 function packageEnvelope(draft: ComicDraft, images: ComicProjectPackage['images']): ComicProjectPackage {
@@ -100,7 +176,7 @@ function withArtwork(project: ComicProject, panelId: ComicPanelId, layerId: Comi
 
 /** Commit manuscript changes and transfer only PNGs referenced by an authorized project. */
 export class ComicProduction extends TypertRemoteService {
-  static inject = ['storageDomain', 'workspaceRegistry']
+  static inject = ['storageDomain', 'workspaceRegistry', 'sessionPersistence']
 
   /** Loader configuration for the private image store and manuscript admission limits. */
   static Config: s<Config> = s.object({
@@ -109,22 +185,35 @@ export class ComicProduction extends TypertRemoteService {
     maxImagePixels: s.number().step(1).min(1).max(64 * 1024 * 1024).default(defaults.maxImagePixels),
     maxProjectBytes: s.number().step(1).min(1024).max(4 * 1024 * 1024).default(defaults.maxProjectBytes),
     maxPackageBytes: s.number().step(1).min(1024).max(64 * 1024 * 1024).default(defaults.maxPackageBytes),
+    imageGeneration: s.union([s.const(null), s.object(imageGenerationFields)]),
+    imageGenerationTargets: s.array(s.object({
+      ...imageGenerationFields,
+      id: s.string().required(),
+      title: s.string().required(),
+    })).max(32).default([]),
   })
 
   private readonly images: ComicImages
   private readonly limits: typeof defaults
+  private readonly imageRoutes: ReadonlyMap<ComicImageGenerationTargetId, ImageRoute>
+  private readonly soleImageTargetId: ComicImageGenerationTargetId | undefined
   private readonly operations = new Set<Promise<unknown>>()
+  private readonly generations = new Map<ComicProjectId, Promise<ComicProject>>()
+  private readonly lifetime = new AbortController()
   private table?: KvTable<ComicProjectId, ComicProject>
+  private imageSelections?: KvTable<SessionId, ComicImageGenerationSelection>
   private closing = false
 
   /**
-   * @param ctx - context providing the Workspace registry and persistent storage.
+   * @param ctx - context providing the Workspace registry, Session persistence, and project storage.
    * @param config - optional deployment overrides for paths and admission limits.
    */
   constructor(ctx: Context, config: Config = {}) {
     super(ctx, 'comicProduction')
     const resolved = ComicProduction.Config(config)
     this.limits = { ...defaults, ...resolved }
+    this.imageRoutes = resolveImageRoutes(resolved)
+    this.soleImageTargetId = this.imageRoutes.size === 1 ? this.imageRoutes.keys().next().value : undefined
     this.images = new ComicImages(join(resolveDshHome(resolved.dshHome || undefined), 'comic-production', 'originals'))
   }
 
@@ -133,11 +222,41 @@ export class ComicProduction extends TypertRemoteService {
     await this.images.start()
     const domain = await this.ctx.storageDomain.open(comicProductionDomain)
     this.table = domain.table('projects')
+    this.imageSelections = domain.table('image_generation_selections')
     this.ctx.effect(() => async () => {
       this.closing = true
+      this.lifetime.abort()
       await Promise.allSettled(this.operations)
       await domain.close()
     }, 'comic manuscript operations and storage')
+    if (this.imageRoutes.size > 0) {
+      this.ctx.inject(['systemPrompt'], (ctx) => {
+        ctx.systemPrompt.section({
+          name: 'comic-production:storyboard',
+          order: ctx.systemPrompt.getSectionOrder('WEB_SURFACE'),
+          text: COMIC_STORYBOARD_PROMPT,
+        })
+      })
+      this.ctx.on('session/event', (session, event) => {
+        if (event.type !== 'turn/end' || event.data.reason.kind !== 'completed') return
+        const workspaceId = this.owningWorkspace(session.id)
+        if (workspaceId === undefined) return
+        const selection = this.imageSelectionTable().get(session.id)
+        const targetId = this.imageTargetFor(selection, workspaceId, session.header.createdAt)
+        if (targetId === undefined || !this.imageRoutes.has(targetId)) return
+        const storyboard = automaticStoryboard(session, event)
+        if (storyboard === undefined) return
+        void this.generateStoryboard(
+          session.id, storyboard.messageId, storyboard.draft, storyboard.artDirection,
+        ).catch((error: unknown) => {
+          if (!this.closing) {
+            this.ctx.logger.warn(
+              'Comic generation for Session %s did not complete: %s', session.id, error instanceof Error ? error.message : 'unknown error',
+            )
+          }
+        })
+      })
+    }
   }
 
   /**
@@ -169,6 +288,147 @@ export class ComicProduction extends TypertRemoteService {
       if (!parsed.success) failure('title-invalid', 'A project title must contain 1–160 characters.')
       return await this.createProject(this.workspace(sessionId), initialDraft(parsed.data))
     })
+  }
+
+  /**
+   * List configured image generation targets whose Host credentials currently resolve.
+   * @param signal - optional cancellation before returning the list.
+   * @returns selector entries without provider endpoints or credential references.
+   */
+  @Remote('storyboardGenerationTargets')
+  async storyboardGenerationTargets(signal?: AbortSignal): Promise<ComicImageGenerationTarget[]> {
+    signal?.throwIfAborted()
+    const credentials = this.ctx.get('credentials')
+    if (credentials === undefined) return []
+    const targets = await Promise.all(Array.from(this.imageRoutes.values(), async ({ target, provider }) =>
+      await credentials.resolve(provider.credentialRef) === undefined ? [] : [target]))
+    signal?.throwIfAborted()
+    return targets.flat()
+  }
+
+  /**
+   * Read the Session's image target, even if a configured choice has since become unavailable.
+   * @param sessionId - attached Session selecting the owner Workspace.
+   * @param signal - optional cancellation while inspecting the Session.
+   * @returns the stored target, the sole configured target, or undefined when the Session has no target.
+   */
+  @Remote('storyboardGenerationTarget')
+  async storyboardGenerationTarget(sessionId: SessionId, signal?: AbortSignal): Promise<ComicImageGenerationTargetId | undefined> {
+    signal?.throwIfAborted()
+    const workspaceId = this.workspace(sessionId)
+    const selection = this.imageSelectionTable().get(sessionId)
+    if (selection === undefined || selection.workspaceId !== workspaceId) return this.soleImageTargetId
+    const { meta } = await this.ctx.sessionPersistence.inspect(sessionId, signal)
+    if (this.workspace(sessionId) !== workspaceId) failure('workspace-changed', 'The Session moved to another Workspace.')
+    return this.imageTargetFor(selection, workspaceId, meta.createdAt)
+  }
+
+  /**
+   * Durably choose the image route used for future generations in this Session.
+   * @param sessionId - attached Session selecting the owner Workspace.
+   * @param targetId - configured image target with a usable credential.
+   * @param signal - optional cancellation before the selection is submitted for storage.
+   * @returns completion after the selected route is durable.
+   */
+  @Remote('selectStoryboardGenerationTarget')
+  selectStoryboardGenerationTarget(sessionId: SessionId, targetId: ComicImageGenerationTargetId, signal?: AbortSignal): Promise<void> {
+    return this.run(async () => {
+      const operationSignal = signal === undefined ? this.lifetime.signal : AbortSignal.any([signal, this.lifetime.signal])
+      operationSignal.throwIfAborted()
+      const workspaceId = this.workspace(sessionId)
+      const route = this.imageRoutes.get(targetId)
+      if (route === undefined) failure('generation-unavailable', 'Choose a configured image generation model.')
+      const { meta } = await this.ctx.sessionPersistence.inspect(sessionId, operationSignal)
+      const credential = await this.ctx.get('credentials')?.resolve(route.provider.credentialRef)
+      if (credential === undefined) failure('generation-unavailable', 'Configure a credential for the selected image generation model.')
+      const current = await this.ctx.sessionPersistence.inspect(sessionId, operationSignal)
+      operationSignal.throwIfAborted()
+      if (this.workspace(sessionId) !== workspaceId) failure('workspace-changed', 'The Session moved to another Workspace.')
+      if (current.meta.createdAt !== meta.createdAt) failure('session-changed', 'The Session changed while the image model was being selected.')
+      await this.imageSelectionTable().put(sessionId, { targetId, sessionCreatedAt: meta.createdAt, workspaceId })
+    })
+  }
+
+  /**
+   * Check whether the Session can generate artwork with its selected image route.
+   * @param sessionId - Attached Session selecting the owner Workspace.
+   * @param signal - Cancellation before returning availability.
+   * @returns Whether the image route and its Host credential are available.
+   */
+  @Remote('storyboardGenerationAvailable')
+  async storyboardGenerationAvailable(sessionId: SessionId, signal?: AbortSignal): Promise<boolean> {
+    signal?.throwIfAborted()
+    const targetId = await this.storyboardGenerationTarget(sessionId, signal)
+    const provider = targetId === undefined ? undefined : this.imageRoutes.get(targetId)?.provider
+    if (provider === undefined) return false
+    const credential = await this.ctx.get('credentials')?.resolve(provider.credentialRef)
+    signal?.throwIfAborted()
+    return credential !== undefined
+  }
+
+  /**
+   * Read the result saved for a storyboard or join its current generation.
+   * @param sessionId - Attached Session selecting the owner Workspace.
+   * @param messageId - Original Assistant message identity in the Session.
+   * @param signal - Cancellation before delivering the project.
+   * @returns The saved project, or undefined before generation starts.
+   */
+  @Remote('storyboardResult')
+  async storyboardResult(sessionId: SessionId, messageId: string, signal?: AbortSignal): Promise<ComicProject | undefined> {
+    signal?.throwIfAborted()
+    const workspaceId = this.workspace(sessionId)
+    const id = storyboardProjectId(workspaceId, sessionId, messageId)
+    const result = this.projectTable().get(id) ?? await this.generations.get(id)
+    signal?.throwIfAborted()
+    if (this.workspace(sessionId) !== workspaceId) failure('workspace-changed', 'The Session moved to another Workspace during generation.')
+    return result
+  }
+
+  /**
+   * Draw the four panels together and publish one editable project for this source message.
+   * @param sessionId - Attached Session selecting the destination Workspace.
+   * @param messageId - Original Assistant message identity in the Session.
+   * @param draft - Four ordered panels and their editable dialogue.
+   * @param artDirection - Visual style and recurring details from the storyboard.
+   * @param signal - Cancellation before accepting the request. Accepted work remains on the Host when a viewer leaves.
+   * @returns The saved project, including artwork for each panel. Repeated requests share active work or return the saved project.
+   */
+  @Remote('generateStoryboard')
+  async generateStoryboard(
+    sessionId: SessionId, messageId: string, draft: ComicDraft, artDirection: string, signal?: AbortSignal,
+  ): Promise<ComicProject> {
+    signal?.throwIfAborted()
+    const workspaceId = this.workspace(sessionId)
+    const id = storyboardProjectId(workspaceId, sessionId, messageId)
+    const existing = this.projectTable().get(id) ?? this.generations.get(id)
+    if (existing !== undefined) return await existing
+    const storyboard = validateStoryboard(draft, artDirection)
+    this.checkDraft(storyboard)
+    const operation = this.run(async () => {
+      const signal = this.lifetime.signal
+      const targetId = await this.storyboardGenerationTarget(sessionId, signal)
+      const provider = targetId === undefined ? undefined : this.imageRoutes.get(targetId)?.provider
+      if (provider === undefined) failure('generation-unavailable', 'Choose a configured image generation model to draw this storyboard.')
+      const credential = await this.ctx.get('credentials')?.resolve(provider.credentialRef)
+      if (credential === undefined) failure('generation-unavailable', 'Configure the image provider credential to draw this storyboard.')
+      signal.throwIfAborted()
+      const artwork = await generateStoryboardArtwork(provider, credential.value, storyboard, artDirection, this.limits, signal)
+      const illustrated = adoptStoryboardArtwork(storyboard, artwork)
+      this.checkDraft(illustrated)
+      for (const image of artwork) {
+        signal.throwIfAborted()
+        await this.images.put(image)
+      }
+      signal.throwIfAborted()
+      if (this.workspace(sessionId) !== workspaceId) failure('workspace-changed', 'The Session moved to another Workspace during generation.')
+      return await this.createProject(workspaceId, illustrated, id)
+    })
+    this.generations.set(id, operation)
+    try {
+      return await operation
+    } finally {
+      this.generations.delete(id)
+    }
   }
 
   /**
@@ -340,15 +600,32 @@ export class ComicProduction extends TypertRemoteService {
     return this.table
   }
 
-  private workspace(sessionId: SessionId): WorkspaceId {
-    const workspace = this.ctx.workspaceRegistry.list().find(item => item.sessionIds.includes(sessionId))
-    if (workspace === undefined) failure('workspace-required', 'Open the comic workbench from a Session in a Workspace.')
-    return workspace.id
+  private imageSelectionTable(): KvTable<SessionId, ComicImageGenerationSelection> {
+    if (this.imageSelections === undefined) throw new Error('Comic storage is not ready.')
+    return this.imageSelections
   }
 
-  private async createProject(workspaceId: WorkspaceId, draft: ComicDraft): Promise<ComicProject> {
+  private imageTargetFor(
+    selection: ComicImageGenerationSelection | undefined, workspaceId: WorkspaceId, sessionCreatedAt: number,
+  ): ComicImageGenerationTargetId | undefined {
+    return selection?.workspaceId === workspaceId && selection.sessionCreatedAt === sessionCreatedAt
+      ? selection.targetId : this.soleImageTargetId
+  }
+
+  private workspace(sessionId: SessionId): WorkspaceId {
+    const workspaceId = this.owningWorkspace(sessionId)
+    if (workspaceId === undefined) failure('workspace-required', 'Open the comic workbench from a Session in a Workspace.')
+    return workspaceId
+  }
+
+  private owningWorkspace(sessionId: SessionId): WorkspaceId | undefined {
+    return this.ctx.workspaceRegistry.list().find(item => item.sessionIds.includes(sessionId))?.id
+  }
+
+  private async createProject(
+    workspaceId: WorkspaceId, draft: ComicDraft, id = brandString<ComicProjectId>(randomUUID()),
+  ): Promise<ComicProject> {
     this.checkDraft(draft)
-    const id = brandString<ComicProjectId>(randomUUID())
     const project = { id, workspaceId, revision: 1, ...snapshot(draft) }
     await this.projectTable().put(id, project)
     return project

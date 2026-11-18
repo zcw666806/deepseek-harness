@@ -18,7 +18,7 @@ import {
   assertFixtureInventory, captureStableAria, compareOrRefreshGolden, fixtureUserPrompts,
   launchWebScaffold, watchConsole, webSnapshotMode, type WebScaffold,
 } from './scaffold.ts'
-import { newEnglishPage, saveFailureShot } from './support.ts'
+import { newEnglishPage, openCreationStudio, saveFailureShot } from './support.ts'
 
 const SNAPSHOT_DIR = fileURLToPath(new URL('../../../snapshots/web/video-workflow', import.meta.url))
 const FIXTURE = join(SNAPSHOT_DIR, 'session.jsonl')
@@ -106,7 +106,9 @@ describe.skipIf(MODE === 'record')('recorded Web video workflow with full-access
     await group.waitFor()
     if (await group.getAttribute('aria-expanded') !== 'true') await group.click()
     await page.getByRole('treeitem').nth(1).click()
-    await page.getByRole('tab', { name: 'Video production', exact: true }).click()
+    await openCreationStudio(page, 'video')
+    const editor = page.getByRole('dialog', { name: 'Video creation', exact: true })
+    await editor.getByLabel('Video generation model', { exact: true }).waitFor()
     await expect.poll(() => page!.getByLabel('Project title', { exact: true }).inputValue()).toBe(planned.title)
     for (const kind of ['prompt', 'generation', 'video-result']) {
       await expect.poll(() => page!.locator(`[data-workflow-kind="${kind}"]`).count()).toBe(planned.shots.length)

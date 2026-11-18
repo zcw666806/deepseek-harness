@@ -21,7 +21,7 @@
       - text: ✦ Video generation
       - strong: Wide view
       - text: ✦
-      - strong: Choose a generation target
+      - strong: Choose a video generation model
       - text: {{duration}} · 16:9 · 480p
       - button "Generate shot" [disabled]
       - text: Text Reference images Video
@@ -44,7 +44,7 @@
       - text: ✦ Video generation
       - strong: Close view
       - text: ✦
-      - strong: Choose a generation target
+      - strong: Choose a video generation model
       - text: {{duration}} · 16:9 · 480p
       - button "Generate shot" [disabled]
       - text: Text Reference images Video

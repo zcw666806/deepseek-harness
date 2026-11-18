@@ -170,8 +170,8 @@ export function apply(ctx: ClientContext): void {
           load: () => {
             if (available) directory.load().catch(() => { /* surfaced on the store */ })
           },
-          select: (selection: ModelSelection) => available
-            ? directory.select(selection).then(() => true, () => false)
+          select: (selection: ModelSelection, sessionOnly?: boolean) => available
+            ? directory.select(selection, sessionOnly).then(() => true, () => false)
             : Promise.resolve(false),
         }
       },

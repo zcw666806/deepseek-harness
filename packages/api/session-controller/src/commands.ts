@@ -28,6 +28,7 @@ import {
   inspectApiSession,
 } from './agent.ts'
 import type {
+  ModelSelection,
   SessionAttachmentRequest,
   SessionAttachmentValue,
   SessionVideoAttachmentRequest,
@@ -121,22 +122,9 @@ export class SessionCommandController {
   async selectModel(request: SessionSelectModelRequest): Promise<SessionSelectModelValue> {
     const agent = await this.resolveAgent(request.sessionId)
     return this.agents.serializeImageAdmission(agent, async () => {
-      try {
-        const resolved = await this.ctx.llm.resolveCallConfig({
-          provider: request.provider,
-          model: request.model,
-          ...(request.reasoningEffort === undefined
-            ? {}
-            : { reasoningEffort: ReasoningEffortId(request.reasoningEffort) }),
-        })
-        const selected: AgentModelSelection = {
-          provider: resolved.provider,
-          model: resolved.model,
-          ...(resolved.reasoningEffort === undefined
-            ? {}
-            : { reasoningEffort: resolved.reasoningEffort }),
-        }
-        this.agents.selectForNextRequest(agent, selected)
+      const selected = await this.resolveModelSelection(request)
+      this.agents.selectForNextRequest(agent, selected)
+      if (request.sessionOnly !== true) {
         try {
           await this.ctx.agentDefaultModel.saveSelection(selected)
         } catch (error) {
@@ -144,16 +132,31 @@ export class SessionCommandController {
             `session-controller: model selection changed for the Session but the default was not saved: ${String(error)}`,
           )
         }
-        return { selected: { ...selected } }
-      } catch (error) {
-        if (remoteErrorOf(error) !== undefined) throw error
-        throw new RemoteError(
-          'session/model-unavailable',
-          error instanceof Error ? error.message : String(error),
-          { provider: request.provider, model: request.model },
-        )
       }
+      return { selected: { ...selected } }
     })
+  }
+
+  private async resolveModelSelection(request: ModelSelection): Promise<AgentModelSelection> {
+    try {
+      const resolved = await this.ctx.llm.resolveCallConfig({
+        provider: request.provider,
+        model: request.model,
+        ...(request.reasoningEffort === undefined
+          ? {}
+          : { reasoningEffort: ReasoningEffortId(request.reasoningEffort) }),
+      })
+      return {
+        provider: resolved.provider,
+        model: resolved.model,
+        ...(resolved.reasoningEffort === undefined ? {} : { reasoningEffort: resolved.reasoningEffort }),
+      }
+    } catch (error) {
+      if (remoteErrorOf(error) !== undefined) throw error
+      throw new RemoteError('session/model-unavailable', error instanceof Error ? error.message : String(error), {
+        provider: request.provider, model: request.model,
+      })
+    }
   }
 
   /**
@@ -294,9 +297,13 @@ export class SessionCommandController {
         { value: request.clientTimeZone },
       )
     }
+    const requestedModel = request.modelSelection
+    if (requestedModel !== undefined && request.mode !== 'queue') {
+      throw new RemoteError('gateway/bad-request', 'A prompt with a model selection must start a queued turn.', {})
+    }
     const agent = await this.resolveAgent(request.sessionId)
-    const selection = this.agents.selectionFor(agent).current
-    if (!routeServed(this.ctx, selection.provider)) {
+    const selection = requestedModel ?? this.agents.selectionFor(agent).current
+    if (requestedModel === undefined && !routeServed(this.ctx, selection.provider)) {
       throw new RemoteError(
         'session/model-unavailable',
         `no adapter serves provider "${selection.provider}"; select a model for this session`,
@@ -311,8 +318,9 @@ export class SessionCommandController {
     const hasImage = request.content.some(part => part.type === 'image')
     const admit = async (): Promise<SessionPromptValue> => {
       try {
+        const resolved = requestedModel === undefined ? undefined : await this.resolveModelSelection(requestedModel)
         if (hasImage) {
-          const current = this.agents.selectionFor(agent).current
+          const current = resolved ?? this.agents.selectionFor(agent).current
           const model = await this.ctx.llm.resolveModelInfo(current.provider, current.model)
           if (model.inputModalities !== undefined && !model.inputModalities.includes('image')) {
             throw new RemoteError(
@@ -324,6 +332,14 @@ export class SessionCommandController {
         }
         const content = await admitPromptContent(this.ctx.attachments, request.content)
         const message: UserMessage = createUserMessage({ content, source })
+        if (resolved !== undefined) {
+          if (agent.status !== 'idle' || agent.inbox.nextTurn.length > 0) {
+            throw new RemoteError('session/agent-busy', 'Wait for the current turn to finish before choosing a model for this prompt.', {
+              reason: 'model selection requires an idle Session',
+            })
+          }
+          this.agents.selectForNextRequest(agent, resolved)
+        }
         if (request.mode === 'steer') agent.steer(message)
         else agent.followup(message)
       } catch (error) {
@@ -335,7 +351,7 @@ export class SessionCommandController {
       }
       return { accepted: true }
     }
-    return hasImage ? this.agents.serializeImageAdmission(agent, admit) : admit()
+    return hasImage || requestedModel !== undefined ? this.agents.serializeImageAdmission(agent, admit) : admit()
   }
 
   /**

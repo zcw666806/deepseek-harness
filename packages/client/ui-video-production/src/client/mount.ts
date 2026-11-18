@@ -9,7 +9,7 @@ import type {} from '@deepseek-ai/dsh-api-session-controller/client'
 import type {} from '@deepseek-ai/dsh-video-production/remote'
 import type {} from '@deepseek-ai/dsh-capability-manager/remote'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
-import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import { ProjectDirectory } from './project-directory.ts'
@@ -17,6 +17,8 @@ import { ProductionController } from './controller.ts'
 import { createVideoCanvasStore } from './canvas-store.ts'
 import { VideoProductionView } from './VideoProductionView.tsx'
 import { GeneratedVideoCard, type GeneratedVideoFace } from './GeneratedVideoCard.tsx'
+import { ConversationVideoModel } from './ConversationVideoModel.tsx'
+import { StoryboardCanvasAction } from './StoryboardCanvasAction.tsx'
 import { en, NS, zh, type VideoProductionKey } from './locales.ts'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
@@ -112,16 +114,41 @@ function registerWorkspace(ctx: Context, batchPollIntervalMs: number): void {
   ctx.on('connection/reset', () => {
     for (const controller of controllers.values()) controller.resetConnection()
   })
-  const t = ctx.locale.bind(NS)
-  ctx.slots.inject('conversation.view', () => ctx.slots.register({
-    name: 'conversation.view', id: 'video-production', order: 20, locale: NS,
-    label: () => t('view.title'),
+  ctx.slots.inject('studio', () => ctx.slots.register({
+    name: 'studio', key: 'video', locale: NS,
     store: createVideoCanvasStore,
     inject: (sessionId: SessionId) => {
       const face = controllerFor(sessionId).inject()
       return { ...face, refresh: () => { directory?.refresh(); face.refresh() } }
     },
   }, VideoProductionView))
+  ctx.slots.inject('conversation.input.creation-model', () => ctx.slots.register({
+    name: 'conversation.input.creation-model', key: 'video', locale: NS,
+    inject: (sessionId: SessionId) => ({
+      load: async (signal: AbortSignal) => {
+        const [targets, selected] = await Promise.all([
+          unwrap(ctx.remote.videoProduction.conversationGenerationTargets()),
+          unwrap(ctx.remote.videoProduction.conversationGenerationTarget(sessionId, signal)),
+        ])
+        return { targets, selected }
+      },
+      select: (model: string, signal: AbortSignal) => unwrap(
+        ctx.remote.videoProduction.selectConversationGenerationTarget(sessionId, model, signal),
+      ),
+    }),
+  }, ConversationVideoModel))
+  ctx.inject(['layout'], (layoutCtx) => {
+    layoutCtx.slots.inject('conversation.chat.assistant-follow-up', () => layoutCtx.slots.register({
+      name: 'conversation.chat.assistant-follow-up', id: 'video-storyboard', locale: NS,
+      inject: (sessionId: SessionId) => ({
+        openStoryboard: async (path: string, signal: AbortSignal) => {
+          await unwrap(layoutCtx.remote.videoProduction.importWorkspaceStoryboard(sessionId, path, signal))
+          signal.throwIfAborted()
+          if (layoutCtx.sessions.list.getSnapshot().current === sessionId) layoutCtx.layout.showStudio('video')
+        },
+      }),
+    }, StoryboardCanvasAction))
+  })
   ctx.slots.inject('tool.call.toolview', () => ctx.slots.register({
     name: 'tool.call.toolview', key: 'generate_video', locale: NS,
     inject: (sessionId: SessionId): GeneratedVideoFace => ({

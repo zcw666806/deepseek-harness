@@ -1,16 +1,21 @@
-/** Mount the comic project view and its generated Remote namespace. */
+/** Mount the comic creation workbench and its generated Remote namespace. */
 
 import type { Context } from '@deepseek-ai/cordis'
 import type { RemoteResult } from '@deepseek-ai/dsh-api-remotes/client'
 import type {} from '@deepseek-ai/dsh-api-session-controller/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
-import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
+import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
-import type { ComicProjectPackage } from '@deepseek-ai/dsh-comic-production/types'
+import type { ComicImageGenerationTargetId, ComicProjectId, ComicProjectPackage } from '@deepseek-ai/dsh-comic-production/types'
 import comicProductionRemote from '@deepseek-ai/dsh-comic-production/remote'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import { ComicWorkbench, type ComicWorkbenchApi } from './ComicWorkbench.tsx'
+import type { ComicWorkbenchApi } from './ComicWorkbench.tsx'
+import { ComicStudio, type ComicStudioInjected, type ComicProjectRequest } from './ComicStudio.tsx'
+import { ComicImageModel } from './ComicImageModel.tsx'
+import { imageModelApi } from './image-model-api.ts'
 import { en, NS, zh, type ComicProductionKey } from './locales.ts'
+import { StoryboardAction, type StoryboardActionApi, type StoryboardActionInjected } from './StoryboardAction.tsx'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
@@ -88,24 +93,73 @@ function projectApi(ctx: Context, sessionId: SessionId): ComicWorkbenchApi {
   }
 }
 
+function storyboardApi(ctx: Context, sessionId: SessionId): Omit<StoryboardActionApi, 'openEditor'> {
+  const remote = ctx.remote.comicProduction
+  return {
+    readImage: projectApi(ctx, sessionId).readImage,
+    generationAvailable: signal => unwrap(remote.storyboardGenerationAvailable(sessionId, signal)),
+    result: (messageId, signal) => unwrap(remote.storyboardResult(sessionId, messageId, signal)),
+    generate: (messageId, draft, artDirection) => unwrap(remote.generateStoryboard(sessionId, messageId, draft, artDirection)),
+    importProject: (data, signal) => unwrap(remote.importProject(sessionId, data, signal)),
+  }
+}
+
 /**
- * Mount the generated Remote contribution and the conversation view.
+ * Mount the generated Remote contribution and the creation workbench.
  * @param ctx - Browser context providing the Remote, slots, and locale services.
  * @returns Disposer for the view, locale, and Remote registration.
  */
 export async function apply(ctx: Context): Promise<() => Promise<void>> {
   const disposeRemote = await ctx.remote.$mount(comicProductionRemote)
-  const ui = ctx.inject(['remote.comicProduction', 'slots', 'locale'], (child) => {
+  const ui = ctx.inject(['remote.comicProduction', 'sessions', 'slots', 'locale', 'layout'], (child) => {
+    const projectRequest = createSnapshotStore<ComicProjectRequest | null>(null)
+    const generationChanges = createSnapshotStore<{ sessionId: SessionId } | null>(null)
     child.effect(() => child.locale.register(NS, { zh, en }), 'comic workspace dictionaries')
-    const t = child.locale.bind(NS)
-    child.slots.inject('conversation.view', () => child.slots.register({
-      name: 'conversation.view',
-      id: 'comic-production',
-      order: 22,
+    child.slots.inject('studio', () => child.slots.register({
+      name: 'studio',
+      key: 'comic',
       locale: NS,
-      label: () => t('view.title'),
-      inject: (sessionId: SessionId) => ({ api: projectApi(child, sessionId) }),
-    }, ComicWorkbench))
+      inject: (sessionId: SessionId): ComicStudioInjected => ({
+        api: projectApi(child, sessionId),
+        hooks: { projectRequest },
+        completeProjectRequest: (request) => {
+          if (projectRequest.getSnapshot() === request) projectRequest.set(null)
+        },
+      }),
+    }, ComicStudio))
+    child.slots.inject('conversation.input.creation-model', () => child.slots.register({
+      name: 'conversation.input.creation-model',
+      key: 'comic',
+      locale: NS,
+      inject: (sessionId: SessionId) => {
+        const api = imageModelApi(child, sessionId)
+        return {
+          api: {
+            ...api,
+            select: async (target: ComicImageGenerationTargetId) => {
+              await api.select(target)
+              generationChanges.set({ sessionId })
+            },
+          },
+        }
+      },
+    }, ComicImageModel))
+    child.slots.inject('conversation.chat.assistant-follow-up', () => child.slots.register({
+      name: 'conversation.chat.assistant-follow-up',
+      id: 'comic-storyboard',
+      locale: NS,
+      inject: (sessionId: SessionId): StoryboardActionInjected => ({
+        hooks: { generationChanges },
+        api: {
+          ...storyboardApi(child, sessionId),
+          openEditor: (projectId: ComicProjectId) => {
+            if (child.sessions.list.getSnapshot().current !== sessionId) return
+            projectRequest.set({ sessionId, projectId })
+            child.layout.showStudio('comic')
+          },
+        },
+      }),
+    }, StoryboardAction))
   })
   try {
     await ui

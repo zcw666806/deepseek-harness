@@ -20,6 +20,7 @@ import { createLayoutStore } from '@deepseek-ai/dsh-client-ui-layout/src/client/
 import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { WorkspaceSnapshot } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { ConvOwnerProps, StudioKind } from '@deepseek-ai/dsh-client-ui-layout/client'
 
 // Session selection controls for the SessionProvider and useSessions stubs.
 const selectedSession = { current: 's-test' as SessionId | undefined }
@@ -29,6 +30,8 @@ const workspacesReady = { current: true }
 type AttentionSnapshot = Parameters<Parameters<AppFrameProps['useSessionPendingInteraction']>[0]>[0]
 const noAttention: AttentionSnapshot = new Map()
 const useSessionPendingInteraction: AppFrameProps['useSessionPendingInteraction'] = selector => selector(noAttention)
+const nativeDialogShow = HTMLDialogElement.prototype.showModal
+const nativeDialogClose = HTMLDialogElement.prototype.close
 
 // Provider contract stub fed through the standard seat prop (the renderer
 // injects the real one in production): session mode renders children and
@@ -54,7 +57,7 @@ function hookOf<T>(inst: { subscribe: (fn: () => void) => () => void; getSnapsho
   return function useSelector<S>(sel: (s: T) => S): S { return sel(useSyncExternalStore(inst.subscribe, inst.getSnapshot)) }
 }
 
-function mountFrame() {
+function mountFrame(studios: readonly StudioKind[] = []) {
   window.innerWidth = frameWidth // first-render viewport source before the observer fires
   const instance = createLayoutStore().create()
   const slotCalls: { key: string; props: unknown }[] = []
@@ -64,6 +67,7 @@ function mountFrame() {
     if (key === 'conversation') return <div data-testid="center-content" />
     if (key === 'details') return <div data-testid="details-content" />
     if (key === 'conversation.empty') return <div data-testid="empty-content" />
+    if (key === 'studio') return <div data-testid="workbench" />
     return <div data-testid="other-content" />
   }) as AppFrameProps['renderSlot']
   const useSessions = ((sel: (s: SessionListState) => unknown) => {
@@ -97,6 +101,7 @@ function mountFrame() {
       actions={instance.actions}
       renderSlot={renderSlot}
       useSessions={useSessions}
+      useStudios={selector => selector(studios)}
       useSessionPendingInteraction={useSessionPendingInteraction}
       useWorkspaces={((sel: (s: WorkspaceSnapshot) => unknown) => sel(workspaceState)) as never}
       SessionProvider={SessionProviderStub}
@@ -124,6 +129,8 @@ function drag(handle: Element, fromX: number, toX: number): void {
 }
 
 beforeEach(() => {
+  HTMLDialogElement.prototype.showModal = function () { this.open = true }
+  HTMLDialogElement.prototype.close = function () { this.open = false }
   frameWidth = 1920
   selectedSession.current = 's-test' as SessionId
   selectedSessionBlank.current = false
@@ -146,6 +153,8 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup()
+  HTMLDialogElement.prototype.showModal = nativeDialogShow
+  HTMLDialogElement.prototype.close = nativeDialogClose
   document.title = ''
   vi.useRealTimers()
   vi.unstubAllGlobals()
@@ -153,6 +162,22 @@ afterEach(() => {
 })
 
 describe('AppFrame', () => {
+  it('opens the existing project editor above the mounted conversation', () => {
+    const { slotCalls, getByTestId, getByRole, queryByRole } = mountFrame(['comic'])
+    const owner = <Props,>(key: string): Props =>
+      slotCalls.findLast(call => call.key === key)?.props as Props
+    const navigation = owner<ConvOwnerProps>('conversation').studioNavigation
+    expect(navigation?.entries).toEqual([{ kind: 'comic', label: 'studio.comic' }])
+    const conversation = getByTestId('center-content')
+    act(() => { navigation?.openExisting('comic') })
+    expect(getByTestId('workbench')).toBeTruthy()
+    expect(getByRole('dialog', { name: 'studio.comic' })).toBeTruthy()
+    expect(getByTestId('center-content')).toBe(conversation)
+    act(() => { getByRole('button', { name: 'close' }).click() })
+    expect(queryByRole('dialog')).toBeNull()
+    expect(getByTestId('center-content')).toBe(conversation)
+  })
+
   it('localizes the product title when the build does not supply one', () => {
     mountFrame()
     expect(document.title).toBe('DSH Local Build')

@@ -11,6 +11,9 @@
 import type { BoundActions } from '@deepseek-ai/dsh-client-ui-slots'
 import type { createLayoutStore } from './stores.ts'
 
+/** Dedicated creation workspace identity. */
+export type StudioKind = 'comic' | 'video'
+
 /** The layout store's bound action set (framework-baked, draft params peeled). */
 export type PanelActions = BoundActions<ReturnType<typeof createLayoutStore>>
 
@@ -27,6 +30,11 @@ export interface ILayout {
   openDetails(): void
   /** Close the details panel. */
   closeDetails(): void
+  /**
+   * Show a creation workspace or return to the current conversation.
+   * @param studio - workspace to show, or null for the conversation.
+   */
+  showStudio(studio: StudioKind | null): void
 }
 
 /** Cross-plugin panel-action face (ctx.layout). */
@@ -57,6 +65,14 @@ export class LayoutController implements ILayout {
   /** Close the details panel. */
   closeDetails(): void {
     this.#require().closeDetails()
+  }
+
+  /**
+   * Show a creation workspace or return to the current conversation.
+   * @param studio - workspace to show, or null for the conversation.
+   */
+  showStudio(studio: StudioKind | null): void {
+    this.#require().showStudio(studio)
   }
 
   #require(): PanelActions {

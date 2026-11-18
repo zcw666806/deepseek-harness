@@ -129,6 +129,7 @@ root
 │        ├─ settings.models.footer
 │        └─ settings.plugins.tab
 │           └─ settings.plugin.item
+├─ studio
 ├─ conversation
 │  ├─ conversation.session
 │  │  └─ conversation.view
@@ -149,6 +150,7 @@ root
 │  ├─ conversation.composer.bar
 │  │  ├─ conversation.input.attachments
 │  │  ├─ conversation.input.plan
+│  │  ├─ conversation.input.creation-model
 │  │  └─ conversation.input.model
 │  ├─ conversation.input.overlay
 │  ├─ conversation.input.dock

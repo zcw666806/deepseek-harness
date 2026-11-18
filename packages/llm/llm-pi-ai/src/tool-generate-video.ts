@@ -11,6 +11,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { ToolDefinition } from '@deepseek-ai/dsh-tools'
 import type {} from '@deepseek-ai/dsh-attachment'
+import type {} from '@deepseek-ai/dsh-video-production'
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import type { ResolvedPiAiProviderProfile } from './config.ts'
 import { generateConfiguredVideo } from './configured-video.ts'
@@ -119,13 +120,17 @@ export function registerGenerateVideoTool(
         resolution?: '480p' | '720p'
       }
 
+      const session = exec.agent?.session
+      const selected = session === undefined ? undefined
+        : ctx.get('videoProduction')?.selectedConversationVideoModel(session.id, session.header.createdAt)
+      const target = selected ?? model
       const videoBlock = await generateConfiguredVideo(
         ctx,
         profiles(),
         resolveApiKey,
         {
           prompt,
-          ...model === undefined ? {} : { model },
+          ...target === undefined ? {} : { model: target },
           ...duration !== undefined ? { duration } : {},
           ...aspect_ratio !== undefined ? { aspect_ratio } : {},
           ...resolution !== undefined ? { resolution } : {},

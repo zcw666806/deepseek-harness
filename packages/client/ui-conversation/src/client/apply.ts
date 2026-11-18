@@ -65,6 +65,7 @@ const ABSENT_MENU_LAUNCHER = {
   getSnapshot: (): string | null => null,
   subscribe: () => () => {},
 }
+const ABSENT_CREATION_MODE = createSnapshotStore(null)
 
 interface WorkspaceNavigation {
   connectWorkspace(
@@ -281,6 +282,7 @@ export function apply(ctx: Context): void {
       'conversation.input.attachments': { kind: 'single', scope: 'session-maybe' },
       'conversation.input.plan': { kind: 'single', scope: 'session' },
       'conversation.input.model': { kind: 'single', scope: 'session' },
+      'conversation.input.creation-model': { kind: 'keyed', scope: 'session' },
     },
     inject: (sessionId: SessionId | undefined): ComposerBarInjected => {
       if (sessionId === undefined) {
@@ -294,10 +296,12 @@ export function apply(ctx: Context): void {
           toggleCommandMenu: undefined,
           stop: undefined,
           command: undefined,
+          setCreationMode: undefined,
           hooks: {
             notices: ABSENT_NOTICES,
             lexicon: ABSENT_LEXICON,
             menuLauncher: ABSENT_MENU_LAUNCHER,
+            creationMode: ABSENT_CREATION_MODE,
           },
         }
       }
@@ -349,10 +353,12 @@ export function apply(ctx: Context): void {
           const result = await session.command(line)
           return result.ok && result.value.matched
         },
+        setCreationMode: (kind) => { shell.creationMode.set(kind) },
         hooks: {
           notices: shell.notices,
           lexicon: shell.lexicon,
           menuLauncher: inputTriggers?.launcher ?? ABSENT_MENU_LAUNCHER,
+          creationMode: shell.creationMode,
         },
       }
     },

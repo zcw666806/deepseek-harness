@@ -2,6 +2,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { useSyncExternalStore } from 'react'
 import type { AttachmentId, ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
 import type { VideoAssetId, VideoBatchId, VideoProject, VideoProjectInput, VideoVersionId } from '@deepseek-ai/dsh-video-production/types'
 import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
@@ -14,6 +15,7 @@ import { project, SESSION, SHOT_A, SHOT_B, VERSION_A, VIDEO } from './fixtures.t
 
 // jsdom has no layout observer; browser tests own canvas geometry and pointer connections.
 beforeEach(() => {
+  localStorage.removeItem(`dsh.video-production.workflow-canvas.v1.${SESSION}`)
   vi.stubGlobal('ResizeObserver', class {
     observe() {}
     unobserve() {}
@@ -31,7 +33,7 @@ function props(overrides: Partial<VideoProductionViewProps> = {}) {
     targets: [{ generator: 'fixture', title: 'Fixture' }], operation: null, error: null, media: {}, mediaLoading: [], mediaErrors: {} }
   return {
     sessionId: SESSION, t: makeTranslate(zh, commonZh), actions: canvas.actions,
-    useStore: selector => selector(canvas.getSnapshot()),
+    useStore: selector => selector(useSyncExternalStore(canvas.subscribe, canvas.getSnapshot)),
     useProduction: selector => selector(snapshot),
     restoreCapabilities: vi.fn(), exportProject: vi.fn(), importProject: vi.fn(), refresh: vi.fn(),
     save: vi.fn(), generate: vi.fn(), reorder: vi.fn(), exportFilm: vi.fn(),
@@ -88,7 +90,7 @@ describe('video production workspace', () => {
     const value = props({ useProduction: selector => selector(snapshot) })
     const rendered = render(<VideoProductionView {...value} />)
     expect(screen.getByRole<HTMLButtonElement>('button', { name: '重新生成' }).disabled).toBe(true)
-    fireEvent.change(screen.getByLabelText('本次生成目标'), { target: { value: JSON.stringify([comfy.generator, null]) } })
+    fireEvent.change(screen.getByLabelText('视频生成模型'), { target: { value: JSON.stringify([comfy.generator, null]) } })
     fireEvent.click(screen.getByRole('button', { name: '重新生成' }))
     expect(value.generate).toHaveBeenCalledExactlyOnceWith(SHOT_A, { generator: comfy.generator })
     fireEvent.click(screen.getByRole('button', { name: '生成缺失镜头' }))
@@ -100,7 +102,8 @@ describe('video production workspace', () => {
     rendered.rerender(<VideoProductionView {...value} />)
     expect(screen.getByRole('alert').textContent).toContain('请重新选择')
     expect(screen.getByRole<HTMLButtonElement>('button', { name: '重新生成' }).disabled).toBe(true)
-    expect(screen.getByLabelText<HTMLSelectElement>('本次生成目标').value).toBe(JSON.stringify([comfy.generator, null]))
+    expect(screen.getByLabelText<HTMLSelectElement>('视频生成模型').value).toBe(JSON.stringify([comfy.generator, null]))
+    expect(createVideoCanvasStore().create(SESSION).getSnapshot().generationTargetKey).toBe(JSON.stringify([comfy.generator, null]))
   })
 
   it('does not advertise unconfigured targets or enable generation outside declared limits', () => {
@@ -117,7 +120,7 @@ describe('video production workspace', () => {
       batch: null,
       targets: [{ generator: 'limited', title: 'Limited fixture', limits: { durations: [1] } }] }
     rendered.rerender(<VideoProductionView {...value} />)
-    fireEvent.change(screen.getByLabelText('本次生成目标'), { target: { value: JSON.stringify(['limited', null]) } })
+    fireEvent.change(screen.getByLabelText('视频生成模型'), { target: { value: JSON.stringify(['limited', null]) } })
     expect(screen.getByRole<HTMLButtonElement>('button', { name: '重新生成' }).disabled).toBe(true)
     expect(screen.getByRole<HTMLButtonElement>('button', { name: '生成缺失镜头' }).disabled).toBe(true)
   })

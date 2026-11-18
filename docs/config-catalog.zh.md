@@ -433,10 +433,10 @@ export interface Config {
 
 ## `@deepseek-ai/dsh-comic-production`
 
-依赖：`storageDomain` · `workspaceRegistry`
+依赖：`storageDomain` · `workspaceRegistry` · `sessionPersistence`
 
 ```ts config-catalog
-/** Deployment limits for manuscript metadata, PNG admission, and project transfers. */
+/** Deployment limits and optional storyboard image generation. */
 export interface Config {
   /** Harness home containing the private original PNG store. Defaults to the active Harness home. */
   readonly dshHome?: string
@@ -448,10 +448,36 @@ export interface Config {
   readonly maxProjectBytes?: number
   /** Maximum UTF-8 byte length of the portable project, including base64 artwork. */
   readonly maxPackageBytes?: number
+  /** Optional single image route, exposed under the reserved ID `default`. */
+  readonly imageGeneration?: ComicImageGenerationConfig | null
+  /** Additional selectable image routes, each with a provider endpoint and credential reference. */
+  readonly imageGenerationTargets?: ComicImageGenerationTargetConfig[]
+}
+
+/** OpenAI-compatible image service used to draw a storyboard in one request. */
+export interface ComicImageGenerationConfig {
+  /** API base URL ending at the provider's version path, such as `/v1`. */
+  readonly baseURL: string
+  /** Credential reference resolved on the Host when a request starts. */
+  readonly credentialRef: string
+  /** Provider's image model ID. */
+  readonly model: string
+  /** Time limit in milliseconds for the request and any image download. */
+  readonly timeoutMs?: number
+  /** HTTPS origins allowed to serve artwork when a provider returns a URL. */
+  readonly imageOrigins?: string[]
+}
+
+/** Named image route a deployment makes available to comic Sessions. */
+export interface ComicImageGenerationTargetConfig extends ComicImageGenerationConfig {
+  /** Stable route ID unique within the deployment. */
+  readonly id: string
+  /** Display label for the model picker. */
+  readonly title: string
 }
 ```
 
-来源：[`packages/comic/comic-production/src/types.ts:114`](../packages/comic/comic-production/src/types.ts)
+来源：[`packages/comic/comic-production/src/types.ts:145`](../packages/comic/comic-production/src/types.ts)
 
 <a id="deepseek-aidsh-compaction-basic"></a>
 

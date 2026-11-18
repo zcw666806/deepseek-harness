@@ -13,7 +13,7 @@ import type { VideoShotId } from '@deepseek-ai/dsh-video-production/types'
 import type {} from '@deepseek-ai/dsh-video-production'
 import type {} from '@deepseek-ai/dsh-api-session-controller'
 import { launchWebScaffold, seedSession, watchConsole, webSnapshotMode, type WebScaffold } from './scaffold.ts'
-import { REPO_ROOT, ZH_BROWSER_LOCALE, saveFailureShot } from './support.ts'
+import { openCreationStudio, REPO_ROOT, ZH_BROWSER_LOCALE, saveFailureShot } from './support.ts'
 
 const execute = promisify(execFile)
 const FFMPEG = process.env.DSH_TEST_FFMPEG_PATH
@@ -122,7 +122,7 @@ describe.skipIf(FFMPEG === undefined || FFPROBE === undefined || webSnapshotMode
     await page.goto(scaffold.authenticatedUrl, { waitUntil: 'load' })
     await page.getByRole('treeitem').first().click()
     await page.getByRole('treeitem').nth(1).click()
-    await page.getByRole('tab', { name: '视频制作', exact: true }).click()
+    await openCreationStudio(page, 'video', 'zh')
     await page.getByLabel('项目名称', { exact: true }).waitFor()
   })
 

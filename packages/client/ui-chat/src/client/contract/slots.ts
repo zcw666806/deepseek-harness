@@ -32,6 +32,14 @@ export interface AssistantActionOwnerProps {
   messageId: MessageId
 }
 
+/** Settled reply and navigation supplied to visible follow-up actions. */
+export interface AssistantFollowUpOwnerProps extends AssistantActionOwnerProps {
+  /** Visible prose from the settled reply. */
+  text: string
+  /** Open a Session View at an opaque focus identity. */
+  openView?: ((view: string, focus: string) => void) | undefined
+}
+
 /** Optional prose file-mention provider consumed by Chat. */
 export interface ChatFileMentions {
   /**
@@ -65,6 +73,8 @@ export interface ChatNodeOwnerProps {
   cwd?: string | undefined
   openFile: (path: string) => void
   inspectCall: (callId: ToolCallId) => void
+  /** Open a Session View at an opaque focus identity. */
+  openView?: ((view: string, focus: string) => void) | undefined
   forkAt: (seq: number) => void
   renderMessageImages: RenderMessageImages
   fileMentions: (owner: TurnTailOwnerProps) => MarkdownFileMentions | undefined
@@ -202,6 +212,8 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * that entry. With no entries, the standard action row remains unchanged.
      */
     'conversation.chat.assistant-actions': { kind: 'list'; scope: 'session'; owner: AssistantActionOwnerProps }
+    /** Ordered follow-ups below a settled reply, including earlier turns. */
+    'conversation.chat.assistant-follow-up': { kind: 'list'; scope: 'session'; owner: AssistantFollowUpOwnerProps }
     /**
      * Whole details-panel body for the selected Tool call. The component receives
      * the running or settled block and optional workspace root. A registration

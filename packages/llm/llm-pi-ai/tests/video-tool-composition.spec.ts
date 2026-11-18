@@ -14,7 +14,7 @@ import FileSettingsProvider from '@deepseek-ai/dsh-settings-file'
 import LocalAttachmentStore from '@deepseek-ai/dsh-attachment-local'
 import type { VideoAttachmentRef } from '@deepseek-ai/dsh-attachment'
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
-import { SessionId } from '@deepseek-ai/dsh-session'
+import { Session, SessionId } from '@deepseek-ai/dsh-session'
 import type { DescribeVideoGenerator, VideoGenerator } from '@deepseek-ai/dsh-video-production/types'
 import * as LlmPiAi from '@deepseek-ai/dsh-llm-pi-ai'
 
@@ -37,6 +37,8 @@ class ProjectGeneratorRegistry extends Service {
     })
     return () => { void dispose() }
   }
+
+  selectedConversationVideoModel(): string | undefined { return undefined }
 }
 
 afterEach(async () => {
@@ -124,6 +126,23 @@ function execute(ctx: Context, args: Record<string, JsonValue> = { prompt: 'A ca
 }
 
 describe('generate_video Loader composition', () => {
+  it('uses the initiating Session selection ahead of the tool model argument', async () => {
+    const { requests } = mockGeneration()
+    const { ctx, home } = await loadComposition(true)
+    await ctx.loader.create({ name: 'test-attachments', config: { dshHome: home } })
+    await ctx.loader.await()
+    const session = Session.create(SessionId('video-model-selection'))
+    session.append('turn/start', { turn: 1 })
+    const selection = vi.spyOn(ctx.videoProduction, 'selectedConversationVideoModel').mockReturnValue('first-video')
+    const result = await ctx.tools.execute({
+      signal: new AbortController().signal, callId: ToolCallId('video-call'),
+      name: 'generate_video', arguments: { prompt: 'A lake in autumn', model: 'unconfigured-video' },
+      agent: { id: session.id, session } as NonNullable<Parameters<typeof ctx.tools.execute>[0]['agent']>,
+    })
+    expect(result.isError).toBe(false)
+    expect(selection).toHaveBeenCalledWith(session.id, session.header.createdAt)
+    expect(requests[0]?.body).toMatchObject({ model: 'first-video' })
+  })
   it.each(['active', 'retiring'] as const)('awaits %s project generation when the adapter unloads', async (state) => {
     const submitted = Promise.withResolvers<boolean>()
     const releaseProvider = Promise.withResolvers<boolean>()

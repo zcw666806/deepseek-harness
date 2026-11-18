@@ -34,6 +34,7 @@ import { DecoratorPortals } from '../input/editor/DecoratorPortals.tsx'
 import { registerComposerKeymap } from '../input/editor/keymap.ts'
 import { attachmentErrorText, imageSizeText } from '../image-labels.ts'
 import { ContextMeter } from './ContextMeter.tsx'
+import { CreationMenu } from './CreationMenu.tsx'
 import { PermissionSelect } from './PermissionSelect.tsx'
 import css from './InputBar.module.css'
 
@@ -42,15 +43,21 @@ export type InputBarProps = ComposerBarProps
 export function InputBar({
   useSession, useInput, inputActions, keyboard, addImages, removeImage, draftImages,
   resolveSubmitMode, toggleCommandMenu, stop, command, t,
-  renderSlot, useNotices, useLexicon, useMenuLauncher,
+  renderSlot, useNotices, useLexicon, useMenuLauncher, useCreationMode, setCreationMode,
   useProjection, sessionId, variant, disabled: inert = false, blocked,
-  workspacePickerOpen = false, onRequestWorkspace,
+  workspacePickerOpen = false, onRequestWorkspace, studioNavigation,
   placeholder, accessory, overlay, leftItems, rightItems, footer,
 }: InputBarProps) {
   const input = useInput(s => s)
   const notice = useNotices(s => s)
   void useLexicon // hook seat stays bound by the inject compartment; text-ref decoration rides the shell's editor transforms
   const commandMenuOpen = useMenuLauncher(source => source === 'command')
+  const selectedCreation = useCreationMode(kind => kind)
+  const creation = studioNavigation?.entries.some(entry => entry.kind === selectedCreation) === true
+    ? selectedCreation : null
+  useEffect(() => {
+    if (selectedCreation !== null && creation === null) setCreationMode?.(null)
+  }, [creation, selectedCreation, setCreationMode])
   const promptError = useSession(s => s.promptError) ?? null
   const running = useSession(s => s.running) ?? false
   const subagent = useSession(s => s.subagent) ?? null
@@ -123,6 +130,7 @@ export function InputBar({
   // the composer asking for the only thing it prevents. The other reasons to
   // be disabled do lock it — there is no session to choose a model for.
   const modelSeatLocked = removed || inert || !live
+  const showCreationModels = creation !== null && sessionId !== undefined && !modelSeatLocked && subagent === null
   const machineBusy = input?.phase === 'adjudicating' || input?.phase === 'submitting'
   // The no-workspace surface remains the resident DOM node but acts as the
   // existing picker trigger. Message controls stay locked until a Session
@@ -403,6 +411,12 @@ export function InputBar({
             size: imageSizeText(imageLimits.maxImageBytes),
           },
         })}
+        {showCreationModels && (
+          <div className={css.creationModels} data-creation-models={variant}>
+            {renderSlot('conversation.input.model', { locked: modelSeatLocked, planning: true })}
+            {renderSlot('conversation.input.creation-model', {}, { entryKey: creation })}
+          </div>
+        )}
         {/* One scrollport, one text surface: the contenteditable grows with
             its content and .scroll — capped at 14 lines in CSS — is the only
             thing that scrolls. Chips are decorator portals inside the same
@@ -453,12 +467,17 @@ export function InputBar({
             <div className={css.modes}>
               {accessSelect}
               {sessionId === undefined ? null : renderSlot('conversation.input.plan', { locked })}
+              {studioNavigation === undefined ? null : (
+                <CreationMenu key={sessionId} navigation={studioNavigation} selected={creation}
+                  chatLabel={t('creation.chat')} select={(kind) => { setCreationMode?.(kind) }}
+                  disabled={modelSeatLocked || machineBusy || subagent !== null} />
+              )}
             </div>
             {leftItems}
           </div>
           <div className={css.trailing}>
             {rightItems}
-            {sessionId === undefined ? null : renderSlot('conversation.input.model', { locked: modelSeatLocked })}
+            {sessionId !== undefined && !showCreationModels && renderSlot('conversation.input.model', { locked: modelSeatLocked })}
             <ContextMeter useProjection={useProjection} t={t} />
             {interruptible && (
               <Tooltip label={t('input.stop')} side="top" delayMs={500}>

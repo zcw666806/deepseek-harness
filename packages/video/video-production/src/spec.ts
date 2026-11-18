@@ -118,6 +118,12 @@ export interface ProjectRow {
   readonly project: VideoProject
 }
 
+/** Explicit video model selected for one Session lifecycle. */
+export interface ConversationVideoModelRow {
+  readonly sessionCreatedAt: number
+  readonly model: string
+}
+
 /** One revisioned project per Session; backend selection belongs to storage-domain. */
 export const videoProductionDomain = defineDomain({
   name: 'video_production',
@@ -126,6 +132,10 @@ export const videoProductionDomain = defineDomain({
     projects: domainTable<SessionId, ProjectRow>(z.object({
       sessionCreatedAt: z.number().int().nonnegative(),
       project: projectRecord,
+    }).strict()),
+    conversation_models: domainTable<SessionId, ConversationVideoModelRow>(z.object({
+      sessionCreatedAt: z.number().int().nonnegative(),
+      model: z.string().min(1),
     }).strict()),
   },
 })

@@ -34,31 +34,43 @@ describe('ui-layout client apply', () => {
     expect(inject).toEqual(['slots', 'theme', 'locale'])
   })
 
-  it('provides ctx.layout and registers AppFrame into root with the three child declarations', async () => {
+  it('provides ctx.layout and registers AppFrame into root with the column and creation declarations', async () => {
     const { ctx, slots } = await bench()
     const fiber = ctx.plugin({ inject: [...inject], apply })
     await fiber.await()
     expect(ctx.get('layout')).toBeInstanceOf(LayoutController)
     // The one register() call occupied 'root'…
     expect(slots.entries('root')).toHaveLength(1)
-    // …and declared the three children in the ledger.
     expect(slots.spec('sidebar')).toEqual({ kind: 'single', scope: 'root' })
     expect(slots.spec('conversation')).toEqual({ kind: 'single', scope: 'session-maybe' })
     expect(slots.spec('details')).toEqual({ kind: 'single', scope: 'session' })
+    expect(slots.spec('studio')).toEqual({ kind: 'keyed', scope: 'session' })
   })
 
-  it('injects no business face and attaches the layout actions', async () => {
+  it('tracks live creation workspace entries and attaches the layout actions', async () => {
     const { ctx, slots } = await bench()
     const fiber = ctx.plugin({ inject: [...inject], apply })
     await fiber.await()
     const actions = {
-      setSidebar: vi.fn(), setDetails: vi.fn(), toggleSidebar: vi.fn(), openDetails: vi.fn(), closeDetails: vi.fn(),
+      setSidebar: vi.fn(), setDetails: vi.fn(), toggleSidebar: vi.fn(), openDetails: vi.fn(), closeDetails: vi.fn(), showStudio: vi.fn(),
     }
-    const injected = (slots.entries('root')[0]!.inject as (actions: never) => object)(actions as never)
-    expect(injected).toEqual({})
+    const injected = (slots.entries('root')[0]!.inject as (actions: never) => {
+      hooks: { studios: { getSnapshot(): readonly string[] } }
+    })(actions as never)
+    expect(injected.hooks.studios.getSnapshot()).toEqual([])
+    const removeVideo = slots.register({ name: 'studio', key: 'video' }, () => null)
+    const removeComic = slots.register({ name: 'studio', key: 'comic' }, () => null)
+    await Promise.resolve()
+    expect(injected.hooks.studios.getSnapshot()).toEqual(['comic', 'video'])
+    removeComic()
+    await Promise.resolve()
+    expect(injected.hooks.studios.getSnapshot()).toEqual(['video'])
+    removeVideo()
     const layout = ctx.get('layout') as LayoutController
     layout.toggleSidebar()
     expect(actions.toggleSidebar).toHaveBeenCalledOnce()
+    layout.showStudio('comic')
+    expect(actions.showStudio).toHaveBeenCalledWith('comic')
   })
 
   it('theme presenter applies the initial snapshot, follows theme/change, and unwinds on dispose', async () => {

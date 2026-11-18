@@ -319,6 +319,8 @@ export const LINK_MAP: Readonly<Record<string, string>> = {
   ComicPanelId: 'comic-production.md',
   ComicLayerId: 'comic-production.md',
   ComicImageId: 'comic-production.md',
+  ComicImageGenerationTarget: 'comic-production.md',
+  ComicImageGenerationTargetId: 'comic-production.md',
   ComicDraft: 'comic-production.md',
   ComicProject: 'comic-production.md',
   ComicProjectSummary: 'comic-production.md',

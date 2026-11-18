@@ -53,10 +53,13 @@ const MEASURE_STYLE: CSSProperties = { visibility: 'hidden', left: 0, top: 0 }
  * @param props.items - selectable rows and optional separators.
  * @param props.selectedId - row shown as selected.
  * @param props.selectedIds - rows shown as selected when a menu contains independent option groups.
+ * @param props.singleSelect - expose leaf items as radio menu items.
+ * @param props.label - accessible name of the menu.
  * @param props.onSelect - row click callback (not called for disabled rows or submenu parents that only open children).
  * @param props.onClose - invoked on outside click or Escape.
  * @param props.align - list alignment against the anchor (default 'start').
- * @param props.side - open below (`bottom`, default) or above (`top`) the anchor.
+ * @param props.side - open below, above, or to the right. A portaled `auto` menu prefers below and opens above if it needs more room.
+ * @param props.listId - DOM identity of the menu list for an associated trigger.
  * @param props.portal - render the list into document.body, fixed-positioned
  * from the anchor rect (repositions on scroll/resize while open). Use when an
  * ancestor's overflow clipping would crop the in-place list; default false
@@ -77,26 +80,30 @@ const MEASURE_STYLE: CSSProperties = { visibility: 'hidden', left: 0, top: 0 }
  * by a hairline; they stay visible while the items above scroll.
  * @returns anchor wrapper with the conditional list.
  */
-export function Menu({ open, anchor, items, selectedId, selectedIds, onSelect, onClose, align = 'start', side = 'bottom', portal = false, closeOnPointerLeave = false, dense = false, compact = false, getAnchorRect, footer, className }: {
+export function Menu({ open, anchor, items, selectedId, selectedIds, singleSelect = false, label, onSelect, onClose, align = 'start', side = 'bottom', portal = false, closeOnPointerLeave = false, dense = false, compact = false, getAnchorRect, footer, className, listId }: {
   open: boolean
   anchor: ReactNode
   items: readonly MenuEntry[]
   footer?: readonly MenuEntry[]
   selectedId?: string | undefined
   selectedIds?: readonly string[] | undefined
+  singleSelect?: boolean
+  label?: string
   onSelect: (id: string) => void
   onClose: () => void
   align?: 'start' | 'end'
-  side?: 'bottom' | 'top' | 'right'
+  side?: 'bottom' | 'top' | 'right' | 'auto'
   portal?: boolean
   closeOnPointerLeave?: boolean
   dense?: boolean
   compact?: boolean
   getAnchorRect?: () => DOMRect | null
-  className?: string
+  className?: string | undefined
+  listId?: string
 }) {
   const rootRef = useRef<HTMLSpanElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
+  const viewportRef = useRef<HTMLDivElement>(null)
   const [openSubmenuId, setOpenSubmenuId] = useState<string | null>(null)
   const [fixedPos, setFixedPos] = useState<CSSProperties | null>(null)
   const { arm: armClose, cancel: cancelClose } = usePointerGrace(onClose)
@@ -123,6 +130,21 @@ export function Menu({ open, anchor, items, selectedId, selectedIds, onSelect, o
       const listEl = listRef.current
       const lw = listEl?.offsetWidth ?? 0
       const lh = listEl?.offsetHeight ?? 0
+
+      if (side === 'auto') {
+        const above = Math.max(0, r.top - MARGIN - 4)
+        const below = Math.max(0, vh - r.bottom - MARGIN - 4)
+        const rows = viewportRef.current
+        const naturalHeight = lh + (rows === null ? 0 : rows.scrollHeight - rows.clientHeight)
+        const openAbove = naturalHeight > below && above > below
+        const x = align === 'start' ? r.left : r.right - lw
+        setFixedPos({
+          left: Math.min(Math.max(x, MARGIN), vw - lw - MARGIN),
+          ...(openAbove ? { top: 'auto', bottom: vh - r.top + 4 } : { top: r.bottom + 4 }),
+          maxHeight: openAbove ? above : below,
+        })
+        return
+      }
 
       let x: number
       let y: number
@@ -208,7 +230,8 @@ export function Menu({ open, anchor, items, selectedId, selectedIds, onSelect, o
       >
         <button
           type="button"
-          role="menuitem"
+          role={singleSelect && !hasSub ? 'menuitemradio' : 'menuitem'}
+          aria-checked={singleSelect && !hasSub ? selected : undefined}
           className={clsx(css.item, selected && css.selected, entry.danger === true && css.danger)}
           disabled={entry.disabled}
           aria-haspopup={hasSub ? 'menu' : undefined}
@@ -255,15 +278,17 @@ export function Menu({ open, anchor, items, selectedId, selectedIds, onSelect, o
   const list = open && (
     <div
       ref={listRef}
+      id={listId}
       className={clsx(css.list, dense && css.denseList, compact && css.compactList, scrollable && css.scrollable, portal && css.portal, side === 'top' && !portal && css.sideTop, align === 'end' && !portal && css.alignEnd)}
       style={portal ? fixedPos ?? MEASURE_STYLE : undefined}
       role="menu"
+      aria-label={label}
       // React portals bubble synthetic events through the REACT tree: without
       // this stop, an item click re-fires the anchor row's own onClick
       // (open/toggle) after onSelect.
       onClick={(e) => { e.stopPropagation() }}
     >
-      <div className={css.viewport} role="presentation">
+      <div ref={viewportRef} className={css.viewport} role="presentation">
         {items.map(renderEntry)}
       </div>
       {footer !== undefined && footer.length > 0 && (

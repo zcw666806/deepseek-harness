@@ -65,6 +65,7 @@ interface BenchOptions {
     mediaTypes: readonly ('image/png' | 'image/jpeg' | 'image/webp' | 'image/gif')[]
   }
   draft?: string
+  studioNavigation?: InputBarProps['studioNavigation']
   running?: boolean
   subagent?: Exclude<SessionSnapshot['subagent'], null>
   disabled?: boolean
@@ -184,6 +185,8 @@ function bench(over?: BenchOptions) {
     useNotices: bindSnapshotSelector(shell.notices),
     useLexicon: bindSnapshotSelector(shell.lexicon),
     useMenuLauncher: bindSnapshotSelector(menuLauncher),
+    useCreationMode: bindSnapshotSelector(shell.creationMode),
+    setCreationMode: (kind) => { shell.creationMode.set(kind) },
     stop,
     command: over?.command ?? (() => Promise.resolve(true)),
     // Mirrors the real lookup chain (conversation namespace, then common).
@@ -195,6 +198,7 @@ function bench(over?: BenchOptions) {
     ...(over?.workspacePickerOpen !== undefined ? { workspacePickerOpen: over.workspacePickerOpen } : {}),
     ...(over?.onRequestWorkspace !== undefined ? { onRequestWorkspace: over.onRequestWorkspace } : {}),
     ...(over?.placeholder !== undefined ? { placeholder: over.placeholder } : {}),
+    ...(over?.studioNavigation !== undefined ? { studioNavigation: over.studioNavigation } : {}),
     ...(over?.accessory !== undefined ? { accessory: over.accessory } : {}),
     ...(over?.overlay !== undefined ? { overlay: over.overlay } : {}),
     ...(over?.leftItems !== undefined ? { leftItems: over.leftItems } : {}),
@@ -1291,6 +1295,68 @@ describe('strips and variants', () => {
 })
 
 describe('command launcher chrome and control seats', () => {
+  it('selects a project workflow and sends the current draft from the same composer', async () => {
+    const openExisting = vi.fn()
+    const { view, sink, shell, button, slotCalls } = bench({ draft: 'A story about a fox', studioNavigation: {
+      label: '创作',
+      existingLabel: '已有项目',
+      entries: [{ kind: 'comic', label: '漫画创作' }, { kind: 'video', label: '视频创作' }],
+      openExisting,
+    } })
+    const trigger = view.getByRole('button', { name: '创作' })
+    trigger.focus()
+    fireEvent.keyDown(trigger, { key: 'ArrowDown' })
+    const comic = view.getByRole('menuitem', { name: '漫画创作' })
+    const video = view.getByRole('menuitem', { name: '视频创作' })
+    await vi.waitFor(() => { expect(document.activeElement).toBe(comic) })
+    fireEvent.keyDown(comic, { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(video)
+    fireEvent.keyDown(video, { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(comic)
+    fireEvent.keyDown(comic, { key: 'Escape' })
+    expect(view.queryByRole('menu')).toBeNull()
+    expect(document.activeElement).toBe(trigger)
+
+    fireEvent.click(trigger)
+    expect(view.getByRole('menu')).toBeTruthy()
+    fireEvent.pointerDown(document.body)
+    expect(view.queryByRole('menu')).toBeNull()
+
+    writeDraft(shell, 'A revised story about a fox')
+    fireEvent.click(trigger)
+    fireEvent.click(view.getByRole('menuitem', { name: '视频创作' }))
+    expect(shell.state.getSnapshot().draft).toBe('A revised story about a fox')
+    expect(sink).not.toHaveBeenCalled()
+    expect(slotCalls.findLast(call => call.key === 'conversation.input.model')?.owner)
+      .toMatchObject({ planning: true })
+    expect(slotCalls.findLast(call => call.key === 'conversation.input.creation-model')).toBeDefined()
+    fireEvent.click(trigger)
+    fireEvent.click(view.getByRole('menuitem', { name: '已有项目' }))
+    expect(openExisting).toHaveBeenCalledExactlyOnceWith('video')
+    fireEvent.click(button)
+    await vi.waitFor(() => {
+      expect(sink).toHaveBeenCalledExactlyOnceWith('A revised story about a fox', [], 'queue', expect.any(AbortSignal), 'video')
+    })
+
+    fireEvent.click(trigger)
+    fireEvent.click(view.getByRole('menuitem', { name: '普通对话' }))
+    expect(shell.creationMode.getSnapshot()).toBeNull()
+    expect(slotCalls.findLast(call => call.key === 'conversation.input.model')?.owner)
+      .not.toHaveProperty('planning')
+  })
+
+  it('requires a workspace before selecting a project workflow', () => {
+    const { view, shell } = bench({ inert: true, studioNavigation: {
+      label: '创作', entries: [{ kind: 'video', label: '视频创作' }],
+      existingLabel: '已有项目', openExisting: vi.fn(),
+    } })
+    const trigger = view.getByRole('button', { name: '创作' })
+    expect(trigger.hasAttribute('disabled')).toBe(true)
+    fireEvent.click(trigger)
+    expect(view.queryByRole('menuitem')).toBeNull()
+    expect(shell.creationMode.getSnapshot()).toBeNull()
+  })
+
   it('renders the command launcher; the Access chip is absent without the permissions projection; the control seats render EMPTY without entries', () => {
     const { view, slotCalls } = bench()
     expect(view.getByLabelText('指令')).toBeTruthy()

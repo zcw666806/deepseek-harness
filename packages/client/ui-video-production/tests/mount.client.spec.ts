@@ -62,12 +62,13 @@ async function bench(workspace?: UiWorkspace) {
   })
   ctx.slots.register({
     name: 'root', children: {
-      'conversation.view': { kind: 'list', scope: 'session' },
+      'studio': { kind: 'keyed', scope: 'session' },
+      'conversation.input.creation-model': { kind: 'keyed', scope: 'session' },
       'tool.call.toolview': { kind: 'keyed', scope: 'session' },
     },
   } as never, () => null)
   const dispose = await mountVideoProductionUi(ctx, videoProductionRemote, 1000)
-  const entry = ctx.slots.entries('conversation.view').find(value => value.options.id === 'video-production')
+  const entry = ctx.slots.entries('studio').find(value => value.options.key === 'video')
   if (entry === undefined) throw new Error('Video production workspace was not registered.')
   const face = (entry.inject as unknown as (sessionId: SessionId) => ProductionFace)(SESSION)
   face.refresh()
@@ -151,6 +152,7 @@ describe('video production browser mount', () => {
     const b = await bench()
     expect(b.ctx.get('remote.videoProduction')).toBeDefined()
     expect(b.ctx.slots.entries('tool.call.toolview').map(entry => entry.options.key)).toEqual(['generate_video'])
+    expect(b.ctx.slots.entries('conversation.input.creation-model').map(entry => entry.options.key)).toEqual(['video'])
     const names = videoProductionRemote.descriptors.map(descriptor => descriptor.method)
     expect(names).toContain('generate')
     expect(names).toContain('export')
@@ -198,7 +200,7 @@ describe('video production browser mount', () => {
 
     await b.dispose()
     expect(b.ctx.get('remote.videoProduction')).toBeUndefined()
-    expect(b.ctx.slots.entries('conversation.view')).toEqual([])
+    expect(b.ctx.slots.entries('studio')).toEqual([])
     expect(b.ctx.slots.entries('tool.call.toolview')).toEqual([])
   })
 
@@ -231,6 +233,6 @@ describe('video production browser mount', () => {
     vi.spyOn(b.ctx.slots, 'inject').mockImplementationOnce(() => { throw new Error('workspace slot unavailable') })
     await expect(mountVideoProductionUi(b.ctx, videoProductionRemote, 1000)).rejects.toThrow('workspace slot unavailable')
     expect(b.ctx.get('remote.videoProduction')).toBeUndefined()
-    expect(b.ctx.slots.entries('conversation.view')).toEqual([])
+    expect(b.ctx.slots.entries('studio')).toEqual([])
   })
 })

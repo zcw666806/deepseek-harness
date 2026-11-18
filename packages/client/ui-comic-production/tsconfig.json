@@ -11,7 +11,10 @@
     { "path": "../../runtime-diagnostics/invariants" },
     { "path": "../../util/crypto" },
     { "path": "../locale" },
-    { "path": "../ui-conversation" },
+    { "path": "../ui-chat" },
+    { "path": "../store" },
+    { "path": "../ui-layout" },
+    { "path": "../ui-primitives" },
     { "path": "../ui-renderer" },
     { "path": "../ui-slots" }
   ]

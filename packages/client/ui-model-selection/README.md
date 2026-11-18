@@ -31,6 +31,8 @@ Mount this plugin alongside `ui-conversation` and the commands package; the comp
 
 Models stay grouped by provider. The menu shows model and effort names only; catalog descriptions remain available to other consumers. The `/model` popup applies the selected model's default effort; the composer can then choose any advertised effort. An adapter without reasoning metadata leaves the Effort row absent; there is no arbitrary effort input.
 
+In comic or video creation mode, the composer labels its conversation model as the planning model and applies the choice to the current Session. The composer offers a separate generation selector for the active mode.
+
 ### Unroutable sessions
 
 When the Host reports that no adapter serves the session's route, this plugin raises a composer block and the input goes inert with its own copy; recovering clears it without a reload. A `null` before the first load or after one failed never blocks, and catalog membership never blocks either — a route serving a model it does not advertise is missing from the groups yet usable.

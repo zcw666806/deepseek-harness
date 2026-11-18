@@ -42,10 +42,36 @@
   cursor: default;
 }
 
+.planning .trigger {
+  gap: 6px;
+  max-width: 100%;
+  min-height: 28px;
+  padding-inline: 8px;
+  background: var(--dsw-specific-selector);
+  color: var(--dsw-alias-label-primary);
+  font-family: inherit;
+}
+
+@media (hover: hover) {
+  .planning .trigger:hover:not(:disabled, [aria-expanded='true']) {
+    background: var(--dsw-alias-interactive-bg-hover-solid);
+  }
+}
+
+.planning .trigger[aria-expanded='true'] {
+  background: var(--dsw-alias-interactive-bg-active);
+}
+
 .triggerLabel {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.planningCaption {
+  flex: none;
+  color: var(--dsw-alias-label-secondary);
   white-space: nowrap;
 }
 
@@ -55,10 +81,21 @@
   color: var(--dsw-alias-label-caption);
 }
 
+.planning .triggerEffort {
+  max-width: 25%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .chevron {
   flex: 0 0 auto;
   color: var(--dsw-alias-label-caption);
   transition: transform 120ms ease;
+}
+
+.planning .chevron {
+  color: var(--dsw-alias-label-secondary);
 }
 
 .chevronOpen {
@@ -94,6 +131,20 @@
      styles/scrollbar.css for the rebinding contract). */
   --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
   --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
+}
+
+.planning .menu {
+  right: auto;
+  bottom: calc(100% + 4px);
+  left: 0;
+  min-width: min(240px, 100cqw);
+  max-width: min(420px, 100cqw);
+  max-height: min(360px, calc(50dvh - 32px));
+}
+
+[data-creation-models='hero'] .planning .menu {
+  top: calc(100% + 4px);
+  bottom: auto;
 }
 
 .status,

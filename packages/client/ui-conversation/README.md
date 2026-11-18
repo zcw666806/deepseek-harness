@@ -48,6 +48,8 @@ Default sends commit optimistically: Enter clears the draft, occurrence table, a
 
 While a normal composer is running, its primary pointer action remains Stop when the draft is empty or input is unavailable. Actionable text or attachments switch the same seat to Queue Send; clearing or successfully submitting the draft restores Stop. The busy-Enter setting continues to select the Queue or Steer keyboard action. Continuable subagents keep separate Send and Stop actions ([decision](../../../.agents/notes/implemented/bug-fix/2026-08-20-running-draft-primary-send.md)).
 
+The **Creation** menu selects a project workflow for the current Session. Write the brief in the composer and send it to the planning model. The media model has its own selector. Choose **Regular chat** to return to ordinary sends, or **Existing projects** to open the editor for previously saved projects.
+
 <a id="temporary-composer-entries"></a>
 ## Temporary composer entries
 
@@ -99,11 +101,11 @@ The selector must be a pure function of the owner currency. Its non-null return 
 <a id="model-experience"></a>
 ## Model Experience
 
-None, as this package renders browser state and sends user-admitted inputs through Session Controller APIs without constructing model requests.
+Indirectly, through the user message that Session Controller records with the selected creation workflow instructions appended by the composer.
 
 #### KV Cache effect
 
-None; Conversation assembly and browser input state do not alter provider-side prompt caching.
+Provider caching uses the same settings as regular chat.
 
 ## Known Limitations and Deferred Work
 

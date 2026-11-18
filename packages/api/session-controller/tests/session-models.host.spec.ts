@@ -626,6 +626,26 @@ describe('Web session model selection', () => {
     await ctx.fiber.dispose()
   })
 
+  it('leaves the active turn model intact when a prompt requests a different model', async () => {
+    const { ctx, agent, sessionId } = await harness()
+    try {
+      const remote = createSessionTestRemote(ctx, {
+        defaultModelSelection: () => ({ provider: 'deepseek-official', model: 'deepseek-chat' }),
+        cwd: '/tmp',
+      })
+      const refused = await remote.prompt(promptRequest({
+        sessionId,
+        mode: 'queue',
+        content: [{ type: 'text', text: 'Draft a storyboard.' }],
+        modelSelection: { provider: 'deepseek-official', model: 'deepseek-reasoner' },
+      }))
+      expect(refused).toMatchObject({ ok: false, error: { code: 'session/agent-busy' } })
+      expect(agent.session.events.some(event => event.type === 'model/selection')).toBe(false)
+    } finally {
+      await ctx.fiber.dispose()
+    }
+  })
+
   it('serves a session and its catalog when the stored default names a route that is gone', async () => {
     const { ctx, sessionId } = await harness()
     createSessionTestRemote(ctx, {

@@ -1,7 +1,7 @@
 /**
  * Layout plugin, browser half: one register() call contributes AppFrame into
  * the runtime's built-in 'root' slot and, in the same breath, declares the
- * four child slots (declaration = exclusive render authority), seats the
+ * child slots (declaration = exclusive render authority), seats the
  * layout store (panel geometry), and wires the panel-action service face.
  * ctx.layout is the cross-plugin panel-action contract; navigation state lives
  * with the runtime sessions service. A second effect seats the theme
@@ -12,7 +12,8 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-theme/client'
-import type { PanelActions } from './service.ts'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
+import type { PanelActions, StudioKind } from './service.ts'
 import { AppFrame } from './AppFrame.tsx'
 import { createLayoutStore } from './stores.ts'
 import { LayoutController } from './service.ts'
@@ -24,7 +25,7 @@ import { ThemePresenter } from './theme-presenter.ts'
 // OwnerShare contracts below are the render-side halves registrants compose
 // against; the frame components and the store factory are package-internal.
 export { LayoutController } from './service.ts'
-export type { ILayout } from './service.ts'
+export type { ILayout, StudioKind } from './service.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -36,7 +37,7 @@ declare module '@deepseek-ai/cordis' {
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface SlotMap {
     // The 'root' entry itself is the runtime's built-in slot (declared
-    // there); these four are the frame's children, declared by the same
+    // there); these are the frame's children, declared by the same
     // register() call that contributes AppFrame. Session owners never pass
     // sessionId: the framework injects it as a standard prop.
     /**
@@ -63,6 +64,10 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * framework hooks of the `session-maybe` scope.
      */
     'conversation': { kind: 'single'; scope: 'session-maybe'; owner: ConvOwnerProps }
+    /** Session workbench for the selected creation workspace. */
+    'studio': { kind: 'keyed'; scope: 'session'; keyProps: Record<StudioKind, object> }
+    /** Generation selector for the active composer creation mode. */
+    'conversation.input.creation-model': { kind: 'keyed'; scope: 'session'; keyProps: Record<StudioKind, object> }
     /**
      * The right details column, shown when the layout opens it. OCCUPIED by
      * ui-conversation's DetailsPanel, which declares the tool-details seat
@@ -101,8 +106,20 @@ export interface SidebarOwnerProps {
   width: number
 }
 
+/** Localized creation actions available from the composer. */
+export interface StudioNavigation {
+  readonly entries: readonly { readonly kind: StudioKind; readonly label: string }[]
+  readonly label: string
+  readonly existingLabel: string
+  /** Open the editor for previously saved project data. */
+  readonly openExisting: (kind: StudioKind) => void
+}
+
 /** Conversation owner share: business state and actions belong to the registrant. */
-export interface ConvOwnerProps {}
+export interface ConvOwnerProps {
+  /** Creation options registered in the current profile. */
+  readonly studioNavigation?: StudioNavigation
+}
 
 /** Details owner share: empty — sessionId arrives as a framework-standard prop. */
 export interface DetailsOwnerProps {}
@@ -112,12 +129,22 @@ export const inject = ['slots', 'theme', 'locale']
 
 /**
  * Client plugin body: provide ctx.layout, then one register() call — AppFrame
- * into 'root' with the four child-slot declarations, the layout store seat,
+ * into 'root' with its child-slot declarations, the layout store seat,
  * and the inject hook that hands the store's bound actions to the service.
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
   const layout = new LayoutController()
+  const studios = createSnapshotStore<readonly StudioKind[]>([])
+  const refreshStudios = (): void => {
+    const entries = ctx.slots.entriesOfSlot('studio')
+    const order: readonly StudioKind[] = ['comic', 'video']
+    const next = order.filter(kind => entries.some(({ options }) => options.key === kind))
+    const previous = studios.getSnapshot()
+    if (next.length === previous.length && next.every((kind, index) => kind === previous[index])) return
+    studios.set(next)
+  }
+  ctx.effect(() => ctx.slots.subscribe('studio', refreshStudios), 'ui-layout: studio registrations')
   ctx.effect(() => {
     const disposeService = ctx.reflect.provide('layout', layout)
     const disposeRegistration = ctx.slots.register({
@@ -126,6 +153,7 @@ export function apply(ctx: ClientContext): void {
       children: {
         'sidebar': { kind: 'single', scope: 'root' },
         'conversation': { kind: 'single', scope: 'session-maybe' },
+        'studio': { kind: 'keyed', scope: 'session' },
         'details': { kind: 'single', scope: 'session' },
         'shell.overlay': { kind: 'list', scope: 'root' },
       },
@@ -136,9 +164,10 @@ export function apply(ctx: ClientContext): void {
       // conversation business actions belong to their registrants.
       inject: (actions: PanelActions) => {
         layout.attachPanels(actions)
-        return {}
+        return { hooks: { studios } }
       },
     }, AppFrame)
+    refreshStudios()
     return () => {
       disposeRegistration()
       // provide()'s disposer settles asynchronously; teardown is synchronous fire-and-forget.

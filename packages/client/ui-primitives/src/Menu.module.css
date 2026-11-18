@@ -115,6 +115,12 @@
   background: var(--dsw-alias-interactive-bg-hover);
 }
 
+.item[role='menuitemradio']:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline-offset: -2px;
+  background-color: var(--dsw-alias-interactive-bg-hover);
+}
+
 .denseList .item {
   min-height: 34px;
   padding-block: 5px;

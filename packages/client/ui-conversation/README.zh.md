@@ -48,6 +48,8 @@ Session 首次绑定或缓存的 Session 成为 current 时，shell 会在渲染
 
 普通 composer 运行时，如果草稿为空或输入不可用，主指针操作保持为 Stop。可提交的文字或附件会把同一位置切换为 Queue Send；清空或成功提交草稿后恢复 Stop。繁忙态 Enter 设置继续选择 Queue 或 Steer 键盘操作。可继续 subagent 保留独立的 Send 与 Stop 操作（[决策](../../../.agents/notes/implemented/bug-fix/2026-08-20-running-draft-primary-send.zh.md)）。
 
+输入框的「创作」菜单为当前会话选择项目流程。在输入框撰写需求后可发送给规划模型，媒体生成模型通过独立控件选择。选择「普通对话」可恢复普通发送，选择「已有项目」可编辑先前保存的项目。
+
 <a id="temporary-composer-entries"></a>
 ## 临时 composer entry
 
@@ -99,11 +101,11 @@ selector 必须是 owner currency 的纯函数。非 null 返回值作为 `match
 <a id="model-experience"></a>
 ## 模型体验
 
-无，因为本包渲染浏览器状态，并通过 Session Controller API 发送用户确认提交的输入，而不构造模型请求。
+对模型的间接影响来自 Session Controller 记录的用户消息。创作模式下，输入框会把所选流程的指引追加到消息中。
 
 #### KV Cache 影响
 
-无；Conversation 组装和浏览器输入状态不会改变提供方侧的 prompt cache。
+模型提供方的缓存沿用普通对话的设置。
 
 ## 已知限制与暂缓事项
 

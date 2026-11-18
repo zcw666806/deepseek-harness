@@ -47,6 +47,58 @@ Commit manuscript changes and transfer only PNGs referenced by an authorized pro
 @Remote('create') create(sessionId: SessionId, title: string, signal?: AbortSignal): Promise<ComicProject>
 
 /**
+ * List configured image generation targets whose Host credentials currently resolve.
+ * @param signal - optional cancellation before returning the list.
+ * @returns selector entries without provider endpoints or credential references.
+ */
+@Remote('storyboardGenerationTargets') async storyboardGenerationTargets(signal?: AbortSignal): Promise<ComicImageGenerationTarget[]>
+
+/**
+ * Read the Session's image target, even if a configured choice has since become unavailable.
+ * @param sessionId - attached Session selecting the owner Workspace.
+ * @param signal - optional cancellation while inspecting the Session.
+ * @returns the stored target, the sole configured target, or undefined when the Session has no target.
+ */
+@Remote('storyboardGenerationTarget') async storyboardGenerationTarget(sessionId: SessionId, signal?: AbortSignal): Promise<ComicImageGenerationTargetId | undefined>
+
+/**
+ * Durably choose the image route used for future generations in this Session.
+ * @param sessionId - attached Session selecting the owner Workspace.
+ * @param targetId - configured image target with a usable credential.
+ * @param signal - optional cancellation before the selection is submitted for storage.
+ * @returns completion after the selected route is durable.
+ */
+@Remote('selectStoryboardGenerationTarget') selectStoryboardGenerationTarget(sessionId: SessionId, targetId: ComicImageGenerationTargetId, signal?: AbortSignal): Promise<void>
+
+/**
+ * Check whether the Session can generate artwork with its selected image route.
+ * @param sessionId - Attached Session selecting the owner Workspace.
+ * @param signal - Cancellation before returning availability.
+ * @returns Whether the image route and its Host credential are available.
+ */
+@Remote('storyboardGenerationAvailable') async storyboardGenerationAvailable(sessionId: SessionId, signal?: AbortSignal): Promise<boolean>
+
+/**
+ * Read the result saved for a storyboard or join its current generation.
+ * @param sessionId - Attached Session selecting the owner Workspace.
+ * @param messageId - Original Assistant message identity in the Session.
+ * @param signal - Cancellation before delivering the project.
+ * @returns The saved project, or undefined before generation starts.
+ */
+@Remote('storyboardResult') async storyboardResult(sessionId: SessionId, messageId: string, signal?: AbortSignal): Promise<ComicProject | undefined>
+
+/**
+ * Draw the four panels together and publish one editable project for this source message.
+ * @param sessionId - Attached Session selecting the destination Workspace.
+ * @param messageId - Original Assistant message identity in the Session.
+ * @param draft - Four ordered panels and their editable dialogue.
+ * @param artDirection - Visual style and recurring details from the storyboard.
+ * @param signal - Cancellation before accepting the request. Accepted work remains on the Host when a viewer leaves.
+ * @returns The saved project, including artwork for each panel. Repeated requests share active work or return the saved project.
+ */
+@Remote('generateStoryboard') async generateStoryboard( sessionId: SessionId, messageId: string, draft: ComicDraft, artDirection: string, signal?: AbortSignal, ): Promise<ComicProject>
+
+/**
  * Open the current revision of a project in the Session's Workspace.
  * @param sessionId - attached Session selecting the owner Workspace.
  * @param projectId - stable project identity from the picker.

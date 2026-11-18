@@ -268,6 +268,8 @@ export interface SessionCreateValue {
 /** Session model-selection request. */
 export interface SessionSelectModelRequest extends ModelSelection {
   readonly sessionId: SessionId
+  /** Keep the choice scoped to the addressed Session. */
+  readonly sessionOnly?: boolean
 }
 
 /** Accepted model selection after Host resolution. */
@@ -306,6 +308,8 @@ export interface SessionPromptRequest {
   readonly mode: 'queue' | 'steer'
   readonly content: readonly PromptContentPart[]
   readonly clientTimeZone?: string
+  /** Apply this selection to an idle Session as part of sending a queued prompt. */
+  readonly modelSelection?: ModelSelection
 }
 
 /** Receipt after one prompt enters the target Agent inbox. */

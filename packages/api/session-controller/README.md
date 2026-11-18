@@ -23,6 +23,10 @@ English | [中文](README.zh.md)
 <a id="use-this-package"></a>
 ## Use this package
 
+Pass `sessionOnly: true` to `session.selectModel` to scope the model choice to the addressed Session.
+
+`session.prompt` accepts an optional `modelSelection` when starting a queued turn in an idle ordinary Session with no queued turns. The Host validates the route and records the Session-local selection before the prompt enters the queue.
+
 `session.videoAttachment` reads generated videos without activating an Agent. It authorizes a successful `generate_video` result in the addressed Session log and returns a base64 slice with raw-byte offsets, progress, and verified metadata. Each slice contains at most 256 KiB of raw bytes; clients assemble a local Blob for playback or download. Missing references, failed generations, and invalid ranges are rejected before bytes are returned.
 
 History pages and follow opening snapshots carry a discriminated `SessionHistoryRecord`. Both variants use `{ type, event }`: `type: 'event'` carries one raw `SessionWireEvent`, while `type: 'chunks'` carries one lossless `ChunkRowEvent` for consecutive same-block `assistant/chunk` deltas. Both inner values expose `type`, `seq`, `time`, and `data`, so the Client retains each accepted record as one `SessionEventLikeEntry` without record-by-record conversion. A packed event's `seq` and `time` identify its first member, and `data` retains the fragment and timestamp-gap arrays. Live follow frames remain individual `event` records. Tool arguments, result content, failures, and `tool/result.data.meta` pass through unchanged; the controller does not resolve a Tool definition, run a presenter, or attach UI data.

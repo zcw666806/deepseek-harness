@@ -13,6 +13,7 @@ export interface VideoCanvasState {
   selectedEdgeIds: string[]
   zoom: number
   selectedShotId: string | null
+  generationTargetKey?: string | null
 }
 
 type CanvasActions = {
@@ -22,6 +23,7 @@ type CanvasActions = {
   resetLayout: (draft: VideoCanvasState) => void
   move: (draft: VideoCanvasState, id: string, point: CanvasPoint) => void
   select: (draft: VideoCanvasState, id: string | null) => void
+  selectGenerationTarget: (draft: VideoCanvasState, key: string | null) => void
 }
 
 /**
@@ -52,6 +54,7 @@ export function createVideoCanvasStore(): EngineStoreHandle<VideoCanvasState, Ca
         draft.positions[id] = { x: point.x, y: point.y }
       },
       select: (draft, id) => { draft.selectedShotId = id },
+      selectGenerationTarget: (draft, key) => { draft.generationTargetKey = key },
     },
   })
 }

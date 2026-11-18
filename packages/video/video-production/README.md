@@ -31,11 +31,15 @@ The Web bundle mounts this service beside the existing attachment, storage-domai
 
 ### Editing and generation
 
+`importWorkspaceStoryboard` opens the Session's saved project or initializes it from a UTF-8 `storyboard.md` inside its workspace. The import uses the document title and ordered shot sections, reads at most `maxProjectBytes`, and requires valid shot timing and prompt or scene text. Concurrent requests keep the first saved project. The Markdown remains the source document for the initial import and generation requires a separate action.
+
 `update` replaces editable project fields using the revision returned by `view`. Stable shot identities retain their complete attempt history. A shot selects a completed version by its identity; `reorder` accepts a complete permutation of current shot identities. A reference image must belong to this project or already appear as an admitted image in this Session. `addAsset` admits an uploaded raster image and appends its asset after storage succeeds.
 
 `generate` appends one attempt and waits for the selected provider. Each shot passes its asset images in `assetIds` order; selecting an asset without an image fails before provider invocation. Attempts retain their original prompt, duration, aspect ratio, resolution, and ordered reference images after later project edits. A successful attempt becomes the selected version. Failures and cancellations retain their attempt record, and retrying creates another version. Per-Session mutation queues prevent overlapping operations from replacing each other's results. UI batches use `onlyIfMissing` to recheck the current shot inside that queue and skip generation when a completed video version already exists, including when another caller finishes while this request waits. Ordinary generation and retry still create new versions. Reads can observe an attempt while it is running.
 
 `generationTargets` lists current provider-owned generator/model pairs, titles, configuration revisions, and declared input limits without contacting a model. Generation requires exactly one matching current target and rejects unsupported settings before creating an attempt. Each new attempt freezes the selected generator identity, title, and available configuration revision beside its inputs. Historical attempts without these fields retain unknown provenance.
+
+`conversationGenerationTargets` lists the native video models served by `generate_video`. An explicit choice is saved for the current Session lifecycle and is independent of the production project's generation target. If a saved model is removed from configuration, choose a current model to resume standalone generation.
 
 ### Host-owned production batches
 

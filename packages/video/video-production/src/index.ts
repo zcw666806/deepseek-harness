@@ -19,10 +19,13 @@ import { resolveConfig, type ResolvedConfig } from './config.ts'
 import { exportVideo } from './export.ts'
 import { installExportCapability } from './export-capability.ts'
 import { ProjectTransfers } from './migration.ts'
+import { readWorkspaceStoryboard } from './read-storyboard.ts'
 import { ProductionBatches, batchShotInput } from './tasks.ts'
 import { videoBatchDomain } from './task-spec.ts'
 import type { VideoBatch, VideoBatchGuard, VideoBatchId, VideoBatchInput } from './task-types.ts'
 import { imageReference, projectInput, projectRecord, videoProductionDomain, videoReference, type ProjectRow } from './spec.ts'
+import type { ConversationVideoModelRow } from './spec.ts'
+import { parseWorkspaceStoryboard } from './workspace-storyboard.ts'
 import type {
   Config, DescribeVideoGenerator, VideoAssetUpload, VideoGenerationSelection, VideoGenerationTarget, VideoGenerator, VideoMediaChunk,
   VideoProject, VideoProjectInput, VideoProjectId, VideoProjectSummary, VideoShotId,
@@ -158,6 +161,7 @@ export class VideoProduction extends TypertRemoteService {
   private readonly transfers: ProjectTransfers
   private batches?: ProductionBatches
   private table?: KvTable<SessionId, ProjectRow>
+  private conversationModels?: KvTable<SessionId, ConversationVideoModelRow>
   private readonly tails = new Map<SessionId, Promise<void>>()
   private readonly generators = new Map<string, { generate: VideoGenerator; describe: DescribeVideoGenerator }>()
   private readonly lifetime = new AbortController()
@@ -184,6 +188,7 @@ export class VideoProduction extends TypertRemoteService {
   protected async [Service.init](): Promise<void> {
     const domain = await this.ctx.storageDomain.open(videoProductionDomain)
     this.table = domain.table('projects')
+    this.conversationModels = domain.table('conversation_models')
     this.ctx.effect(() => async () => {
       this.closing = true
       this.lifetime.abort(new Error('Video production service is unloading.'))
@@ -236,6 +241,65 @@ export class VideoProduction extends TypertRemoteService {
   @Remote('generationTargets')
   generationTargets(): VideoGenerationTarget[] {
     return [...this.generators].flatMap(([generator, entry]) => entry.describe().map(details => ({ ...details, generator })))
+  }
+
+  /**
+   * List configured models served by the standalone video tool.
+   * @returns Native video targets suitable for selection in a conversation.
+   */
+  @Remote('conversationGenerationTargets')
+  conversationGenerationTargets(): VideoGenerationTarget[] {
+    if (this.ctx.tools.get('generate_video') === undefined) return []
+    const generator = 'llm-pi-ai'
+    return this.generators.get(generator)?.describe().flatMap(details =>
+      details.model === undefined ? [] : [{ ...details, generator }]) ?? []
+  }
+
+  /**
+   * Read the saved selector value for the current Session lifecycle.
+   * @param sessionId - Existing Session.
+   * @param signal - Caller cancellation during Session inspection.
+   * @returns Explicit model selection, even if its route was removed, or undefined when unset.
+   */
+  @Remote('conversationGenerationTarget')
+  async conversationGenerationTarget(sessionId: SessionId, signal?: AbortSignal): Promise<string | undefined> {
+    const { meta } = await this.ctx.sessionPersistence.inspect(sessionId, signal)
+    return this.selectedConversationVideoModel(sessionId, meta.createdAt)
+  }
+
+  /**
+   * Save the standalone generation model separately from the conversational model.
+   * @param sessionId - Existing Session to receive the selection.
+   * @param model - Exact currently configured native video model ID.
+   * @param signal - Caller cancellation before committing the selection.
+   * @returns Completion after the selection is durable.
+   */
+  @Remote('selectConversationGenerationTarget')
+  selectConversationGenerationTarget(sessionId: SessionId, model: string, signal?: AbortSignal): Promise<void> {
+    return this.enqueue(sessionId, async () => {
+      const { meta } = await this.ctx.sessionPersistence.inspect(sessionId, signal)
+      if (!this.conversationGenerationTargets().some(target => target.model === model)) {
+        failure('generator-unavailable', 'Choose a configured video generation model for this conversation.')
+      }
+      const live = this.ctx.sessions.get(sessionId)
+      if (live !== undefined) {
+        if (live.header.createdAt !== meta.createdAt) failure('session-changed', 'The Session lifecycle changed.')
+        await this.ctx.sessionPersistence.ensureMaterialized(live)
+      }
+      signal?.throwIfAborted()
+      await this.requireConversationModels().put(sessionId, { sessionCreatedAt: meta.createdAt, model })
+    })
+  }
+
+  /**
+   * Resolve the user's standalone generation selection for the initiating tool call.
+   * @param sessionId - Tool caller's Session identity.
+   * @param sessionCreatedAt - Tool caller's Session lifecycle timestamp.
+   * @returns Exact saved model or undefined when no selection belongs to this lifecycle.
+   */
+  selectedConversationVideoModel(sessionId: SessionId, sessionCreatedAt: number): string | undefined {
+    const row = this.requireConversationModels().get(sessionId)
+    return row?.sessionCreatedAt === sessionCreatedAt ? row.model : undefined
   }
 
   /** Start missing-shot work owned by the Host, independent of the calling page.
@@ -345,6 +409,36 @@ export class VideoProduction extends TypertRemoteService {
   }
 
   /**
+   * Open a saved project or initialize it from the Session workspace storyboard.
+   * @param sessionId - existing Session selecting the workspace and project.
+   * @param path - the workspace's `storyboard.md` path.
+   * @param signal - cancellation until the project commit starts.
+   * @returns the saved project, including a concurrent first import if another caller won.
+   */
+  @Remote('importWorkspaceStoryboard')
+  async importWorkspaceStoryboard(sessionId: SessionId, path: string, signal?: AbortSignal): Promise<VideoProject> {
+    const { meta } = await this.ctx.sessionPersistence.inspect(sessionId, signal)
+    if (meta.cwd === undefined) failure('storyboard-path', 'This Session needs a workspace to open a storyboard.')
+    const existing = this.requireTable().get(sessionId)
+    if (existing?.sessionCreatedAt === meta.createdAt) return existing.project
+
+    const text = await readWorkspaceStoryboard(meta.cwd, path, this.config.maxProjectBytes, signal)
+    const parsed = parseWorkspaceStoryboard(text)
+    if (parsed === null || parsed.shots.length === 0 || parsed.shots.length > this.config.maxShots) {
+      failure('storyboard-format', 'The storyboard needs a title and a supported number of complete shot sections.')
+    }
+
+    const input = projectInput.parse({ revision: 0, assets: [], ...parsed })
+    return this.enqueue(sessionId, async () => {
+      signal?.throwIfAborted()
+      const row = await this.load(sessionId, signal)
+      if (row.sessionCreatedAt !== meta.createdAt) failure('session-changed', 'The Session lifecycle changed during this operation.')
+      if (row.project.revision > 0) return row.project
+      return this.replaceProject(row, input, signal)
+    })
+  }
+
+  /**
    * Replace editable fields while preserving attempts for retained shot identities.
    * @param sessionId - existing Session selecting the project.
    * @param input - observed revision and complete editable project fields.
@@ -355,35 +449,40 @@ export class VideoProduction extends TypertRemoteService {
     const parsed = projectInput.parse(input)
     return this.enqueue(sessionId, async () => {
       const row = await this.load(sessionId)
-      const current = row.project
-      this.assertRevision(current, parsed.revision)
-      const inspection = await this.ctx.sessionPersistence.inspect(sessionId)
-      const authorized = sessionImages(inspection.events)
-      for (const asset of current.assets) if (asset.image !== undefined) authorized.set(asset.image.attachmentId, asset.image)
-      for (const shot of current.shots) {
-        for (const version of shot.versions) {
-          for (const ref of version.referenceImages) authorized.set(ref.attachmentId, ref)
-        }
-      }
-      const assets = parsed.assets.map((asset) => {
-        if (asset.image === undefined) return asset
-        const image = authorized.get(asset.image.attachmentId)
-        if (image === undefined || JSON.stringify(image) !== JSON.stringify(asset.image)) {
-          failure('attachment-invalid', 'A reference image does not belong to this Session or project.')
-        }
-        return { ...asset, image }
-      })
-      const prior = new Map(current.shots.map(shot => [shot.id, shot]))
-      const shots = parsed.shots.map((shot) => {
-        const versions = prior.get(shot.id)?.versions ?? []
-        if (shot.selectedVersionId !== undefined
-          && !versions.some(version => version.id === shot.selectedVersionId && version.status === 'completed')) {
-          failure('version-invalid', 'The selected version is not a completed version of this shot.')
-        }
-        return { ...shot, versions }
-      })
-      return this.commit({ ...current, title: parsed.title, assets, shots }, row.sessionCreatedAt)
+      this.assertRevision(row.project, parsed.revision)
+      return this.replaceProject(row, parsed)
     })
+  }
+
+  private async replaceProject(row: ProjectRow, parsed: VideoProjectInput, signal?: AbortSignal): Promise<VideoProject> {
+    const current = row.project
+    const inspection = await this.ctx.sessionPersistence.inspect(current.sessionId, signal)
+    const authorized = sessionImages(inspection.events)
+    for (const asset of current.assets) if (asset.image !== undefined) authorized.set(asset.image.attachmentId, asset.image)
+    for (const shot of current.shots) {
+      for (const version of shot.versions) {
+        for (const ref of version.referenceImages) authorized.set(ref.attachmentId, ref)
+      }
+    }
+    const assets = parsed.assets.map((asset) => {
+      if (asset.image === undefined) return asset
+      const image = authorized.get(asset.image.attachmentId)
+      if (image === undefined || JSON.stringify(image) !== JSON.stringify(asset.image)) {
+        failure('attachment-invalid', 'A reference image does not belong to this Session or project.')
+      }
+      return { ...asset, image }
+    })
+    const prior = new Map(current.shots.map(shot => [shot.id, shot]))
+    const shots = parsed.shots.map((shot) => {
+      const versions = prior.get(shot.id)?.versions ?? []
+      if (shot.selectedVersionId !== undefined
+        && !versions.some(version => version.id === shot.selectedVersionId && version.status === 'completed')) {
+        failure('version-invalid', 'The selected version is not a completed version of this shot.')
+      }
+      return { ...shot, versions }
+    })
+    signal?.throwIfAborted()
+    return this.commit({ ...current, title: parsed.title, assets, shots }, row.sessionCreatedAt)
   }
 
   /**
@@ -708,6 +807,11 @@ export class VideoProduction extends TypertRemoteService {
   private requireTable(): KvTable<SessionId, ProjectRow> {
     if (this.table === undefined) throw new Error('Video production storage is not initialized.')
     return this.table
+  }
+
+  private requireConversationModels(): KvTable<SessionId, ConversationVideoModelRow> {
+    if (this.conversationModels === undefined) throw new Error('Video production storage is not initialized.')
+    return this.conversationModels
   }
 
   private async load(sessionId: SessionId, signal?: AbortSignal): Promise<ProjectRow> {

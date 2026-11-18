@@ -7,6 +7,7 @@ import { Context } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import Include from '@deepseek-ai/cordis-plugin-include'
 import { SessionId } from '@deepseek-ai/dsh-session'
+import { defineTool } from '@deepseek-ai/dsh-tools'
 import { remoteMethods } from '@deepseek-ai/dsh-typert-protocol'
 import { VideoShotId } from '../src/index.ts'
 import { modules, projectInput, signal, video } from './helpers.ts'
@@ -56,7 +57,8 @@ describe('video production through a real Loader composition', () => {
     await first.sessionPersistence.ensureMaterialized(session)
     expect(first.videoProduction.typertRemote.namespace).toBe('videoProduction')
     expect(remoteMethods(first.videoProduction).map(marker => marker.method)).toEqual([
-      'generationTargets', 'startBatch', 'batch', 'listBatches', 'pauseBatch', 'cancelBatch', 'resumeBatch',
+      'generationTargets', 'conversationGenerationTargets', 'conversationGenerationTarget', 'selectConversationGenerationTarget',
+      'startBatch', 'batch', 'listBatches', 'pauseBatch', 'cancelBatch', 'resumeBatch',
       'projectSummaries', 'view', 'update', 'addAsset', 'reorder', 'generate', 'export', 'readMedia',
       'prepareProjectExport', 'readProjectTransfer', 'beginProjectImport', 'writeProjectTransfer', 'commitProjectImport', 'cancelProjectTransfer',
     ])
@@ -90,10 +92,24 @@ describe('video production through a real Loader composition', () => {
     expect(restored.project).toMatchObject({ title: project.title, shots: project.shots, exports: project.exports })
     expect(restored.project.id).not.toBe(project.id)
     expect(restored.project.sessionId).toBe(restoredSession.id)
+    first.tools.register(defineTool({
+      name: 'generate_video', description: 'Video selection fixture.', parameters: {},
+      output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] },
+      execute: async () => 'fixture',
+    }))
+    first.videoProduction.registerGenerator('llm-pi-ai', async () => ({ attachment }), () => [
+      { title: 'Native video', model: 'native-video' },
+    ])
+    expect(first.videoProduction.conversationGenerationTargets().map(target => target.model)).toEqual(['native-video'])
+    await expect(first.videoProduction.selectConversationGenerationTarget(sessionId, 'recorded-video')).rejects.toThrow('Choose a configured')
+    await first.videoProduction.selectConversationGenerationTarget(sessionId, 'native-video')
+    expect(first.videoProduction.selectedConversationVideoModel(sessionId, session.header.createdAt + 1)).toBeUndefined()
     await first.fiber.dispose()
     contexts.splice(contexts.indexOf(first), 1)
     const second = await load(path)
     expect(second.sessions.get(sessionId)).toBeUndefined()
+    await expect(second.videoProduction.conversationGenerationTarget(sessionId)).resolves.toBe('native-video')
+    await expect(second.videoProduction.conversationGenerationTarget(restoredSession.id)).resolves.toBeUndefined()
     expect((await second.videoProduction.batch(sessionId))?.id).toBe(batch.id)
     expect((await second.videoProduction.batch(sessionId))?.status).toBe('completed')
     await expect(second.videoProduction.view(sessionId)).resolves.toEqual(project)

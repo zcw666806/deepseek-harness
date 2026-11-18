@@ -62,6 +62,10 @@
 - button "Commands":
   - img
 - 'button "Access mode, current: Read Only"': Read Only
+- button "Creation":
+  - img
+  - text: Creation
+  - img
 - button "Select model, current DeepSeek-V4-Flash":
   - text: DeepSeek-V4-Flash
   - img

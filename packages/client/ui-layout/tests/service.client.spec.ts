@@ -10,6 +10,7 @@ function fakePanels(): PanelActions {
     setNarrow: vi.fn(),
     openDetails: vi.fn(),
     closeDetails: vi.fn(),
+    showStudio: vi.fn(),
   }
 }
 

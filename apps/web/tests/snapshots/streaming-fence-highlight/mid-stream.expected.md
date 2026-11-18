@@ -28,6 +28,10 @@
 - button "Commands":
   - img
 - 'button "Access mode, current: Workspace Write"': Workspace Write
+- button "Creation":
+  - img
+  - text: Creation
+  - img
 - button "Select model, current streaming-fence-highlight-test/streaming-fence":
   - text: streaming-fence-highlight-test/streaming-fence
   - img

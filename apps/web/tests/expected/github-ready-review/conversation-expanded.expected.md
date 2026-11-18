@@ -52,6 +52,10 @@
 - button "Commands":
   - img
 - 'button "Access mode, current: Read Only"': Read Only
+- button "Creation":
+  - img
+  - text: Creation
+  - img
 - button "Select model, current github-webhook-review-test/reply":
   - text: github-webhook-review-test/reply
   - img

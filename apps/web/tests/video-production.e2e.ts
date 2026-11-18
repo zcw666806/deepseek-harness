@@ -11,7 +11,7 @@ import type { VideoGenerationInput } from '@deepseek-ai/dsh-video-production/typ
 import type {} from '@deepseek-ai/dsh-video-production'
 import { launchWebScaffold, seedSession, watchConsole, webSnapshotMode, type WebScaffold } from './scaffold.ts'
 import { browserReference, browserVideo } from './video-fixtures.ts'
-import { REPO_ROOT, ZH_BROWSER_LOCALE, saveFailureShot } from './support.ts'
+import { openCreationStudio, REPO_ROOT, ZH_BROWSER_LOCALE, saveFailureShot } from './support.ts'
 
 const FIXTURE = fileURLToPath(new URL('../../../snapshots/web/fresh-round-trip/session.jsonl', import.meta.url))
 const SESSION = SessionId('video-production-web-e2e')
@@ -101,7 +101,7 @@ describe.skipIf(webSnapshotMode() === 'record')('web e2e: video production works
     const session = page.getByRole('treeitem').nth(1)
     await session.waitFor({ timeout: 10_000 })
     await session.click()
-    await page.getByRole('tab', { name: '视频制作', exact: true }).click()
+    await openCreationStudio(page, 'video', 'zh')
     await page.getByLabel('项目名称', { exact: true }).waitFor({ timeout: 15_000 })
   }
 
@@ -149,7 +149,7 @@ describe.skipIf(webSnapshotMode() === 'record')('web e2e: video production works
     const session = page.getByRole('treeitem').nth(1)
     await session.waitFor({ timeout: 10_000 })
     await session.click()
-    await page.getByRole('tab', { name: '视频制作', exact: true }).click()
+    await openCreationStudio(page, 'video', 'zh')
     await page.getByLabel('项目名称', { exact: true }).waitFor({ timeout: 15_000 })
   }, 120_000)
 
@@ -179,7 +179,7 @@ describe.skipIf(webSnapshotMode() === 'record')('web e2e: video production works
     await poll(async () => (await scaffold.ctx.videoProduction.view(SESSION)).shots.map(shot => shot.title))
       .toEqual([SECOND, FIRST])
     await page.reload({ waitUntil: 'load' })
-    await page.getByRole('tab', { name: '视频制作', exact: true }).click()
+    await openCreationStudio(page, 'video', 'zh')
     await fitCanvas(page)
     await poll(() => page.getByLabel('镜头标题', { exact: true }).nth(0).inputValue()).toBe(SECOND)
     expect(await page.getByLabel('镜头标题', { exact: true }).nth(1).inputValue()).toBe(FIRST)
@@ -202,7 +202,8 @@ describe.skipIf(webSnapshotMode() === 'record')('web e2e: video production works
     await poll(() => page.getByRole('button', { name: '保存分镜', exact: true }).isDisabled()).toBe(true)
 
     expect(await page.getByRole('button', { name: '生成镜头', exact: true }).nth(0).isDisabled()).toBe(true)
-    await page.getByLabel('本次生成目标', { exact: true }).selectOption({ label: '浏览器测试目标 B · fixture-b' })
+    await page.getByRole('dialog', { name: '视频创作', exact: true }).getByLabel('视频生成模型', { exact: true })
+      .selectOption({ label: '浏览器测试目标 B · fixture-b' })
     expect(await page.getByRole('button', { name: '保存分镜', exact: true }).isDisabled()).toBe(true)
     await page.getByRole('button', { name: '生成镜头', exact: true }).nth(0).click()
     await poll(() => page.getByRole('button', { name: '重新生成', exact: true }).count()).toBe(1)
@@ -346,7 +347,8 @@ describe.skipIf(webSnapshotMode() === 'record')('web e2e: video production works
     await page.getByRole('button', { name: '保存分镜', exact: true }).click()
     await poll(async () => (await scaffold.ctx.videoProduction.view(SESSION)).shots.length).toBe(before.shots.length + 3)
     await poll(() => page.getByRole('button', { name: '保存分镜', exact: true }).isDisabled()).toBe(true)
-    await page.getByLabel('本次生成目标', { exact: true }).selectOption({ label: '浏览器测试目标 B · fixture-b' })
+    await page.getByRole('dialog', { name: '视频创作', exact: true }).getByLabel('视频生成模型', { exact: true })
+      .selectOption({ label: '浏览器测试目标 B · fixture-b' })
     const first = holdNextGeneration()
     const second = holdNextGeneration()
     await page.getByRole('button', { name: '生成缺失镜头', exact: true }).click()
@@ -379,7 +381,7 @@ describe.skipIf(webSnapshotMode() === 'record')('web e2e: video production works
     expect(cancelled?.shots.map(shot => shot.status)).toEqual(['completed', 'completed', 'pending'])
     expect(requests).toHaveLength(requestCount + 2)
     await page.reload({ waitUntil: 'load' })
-    await page.getByRole('tab', { name: '视频制作', exact: true }).click()
+    await openCreationStudio(page, 'video', 'zh')
     await page.getByText('后续制作已取消', { exact: true }).waitFor()
     expect((await scaffold.ctx.videoProduction.batch(SESSION))?.id).toBe(cancelled?.id)
     expect(requests).toHaveLength(requestCount + 2)

@@ -8,6 +8,7 @@ import type {
   ComicPage, ComicPageId, ComicPanel, ComicPanelId, ComicProject, ComicProjectId, ComicProjectSummary,
 } from '@deepseek-ai/dsh-comic-production/types'
 import type { ComicProductionKey } from './locales.ts'
+import type { ComicProjectRequest } from './ComicStudio.tsx'
 import { canvasPng, drawComicPage, pageArtwork, renderArtwork, type ComicArtwork } from './renderer.ts'
 import css from './ComicWorkbench.module.css'
 
@@ -30,6 +31,8 @@ export interface ComicWorkbenchApi {
 export interface ComicWorkbenchProps {
   readonly t: Translate<ComicProductionKey>
   readonly api: ComicWorkbenchApi
+  readonly projectRequest: ComicProjectRequest | null
+  readonly completeProjectRequest: (request: ComicProjectRequest) => void
 }
 
 type Box = { readonly x: number; readonly y: number; readonly width: number; readonly height: number }
@@ -342,7 +345,7 @@ function PageCanvas(props: {
  * @param props - Localized copy and authenticated project commands for the current Session.
  * @returns The project picker or the selected manuscript's workbench.
  */
-export function ComicWorkbench({ t, api }: ComicWorkbenchProps) {
+export function ComicWorkbench({ t, api, projectRequest, completeProjectRequest }: ComicWorkbenchProps) {
   const [projects, setProjects] = useState<readonly ComicProjectSummary[] | null>(null)
   const [project, setProject] = useState<ComicProject | null>(null)
   const [draft, setDraft] = useState<{ readonly revision: number; readonly value: ComicDraft } | null>(null)
@@ -365,7 +368,7 @@ export function ComicWorkbench({ t, api }: ComicWorkbenchProps) {
     return () => { controller.abort(); pending.current?.abort(); pending.current = null }
   }, [api])
 
-  const run = (task: (signal: AbortSignal) => Promise<void>): void => {
+  const run = useCallback((task: (signal: AbortSignal) => Promise<void>): void => {
     if (pending.current !== null) return
     const controller = new AbortController()
     pending.current = controller
@@ -376,9 +379,9 @@ export function ComicWorkbench({ t, api }: ComicWorkbenchProps) {
     }).finally(() => {
       if (pending.current === controller) { pending.current = null; setBusy(false) }
     })
-  }
+  }, [])
 
-  const remember = (value: ComicProject): void => {
+  const remember = useCallback((value: ComicProject): void => {
     setProject(value)
     setDraft(null)
     setProjects((items) => {
@@ -386,8 +389,8 @@ export function ComicWorkbench({ t, api }: ComicWorkbenchProps) {
       if (items?.some(item => item.id === value.id)) return items.map(item => item.id === value.id ? summary : item)
       return [summary, ...(items ?? [])]
     })
-  }
-  const open = (task: (signal: AbortSignal) => Promise<ComicProject>) => { run(async (signal) => {
+  }, [])
+  const open = useCallback((task: (signal: AbortSignal) => Promise<ComicProject>) => { run(async (signal) => {
     const value = await task(signal)
     if (signal.aborted) return
     remember(value)
@@ -396,7 +399,13 @@ export function ComicWorkbench({ t, api }: ComicWorkbenchProps) {
     setPanelId(null)
     setReading(false)
     setActualSize(false)
-  }) }
+  }) }, [remember, run])
+
+  useEffect(() => {
+    if (projectRequest === null || pending.current !== null) return
+    open(signal => api.open(projectRequest.projectId, signal))
+    completeProjectRequest(projectRequest)
+  }, [api, busy, completeProjectRequest, open, projectRequest])
 
   const projectId = project?.id
   const read = useCallback<ReadArtwork>((image, signal) => {

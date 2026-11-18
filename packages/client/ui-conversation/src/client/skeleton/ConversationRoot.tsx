@@ -132,7 +132,7 @@ function WidthHandle(props: {
 export function ConversationRoot({
   sessionId, useSession, useSessions, useSessionPendingInteraction,
   useWorkspaces, useConversation, useInput, useComposerBlock, useConversationViews, useStore,
-  renderSlot, renderSlotChain, selectWorkspace, t,
+  renderSlot, renderSlotChain, selectWorkspace, studioNavigation, t,
 }: ConversationRootProps) {
   const session = useSession(s => s)
   const activeView = resolveActiveView(useConversationViews(views => views), useStore(state => state.view))
@@ -331,6 +331,7 @@ export function ConversationRoot({
   const blocked = !inert && composerBlock !== undefined
   const inputBar = renderSlot('conversation.composer.bar', {
     variant: hero ? 'hero' : 'composer',
+    ...(studioNavigation === undefined ? {} : { studioNavigation }),
     ...(inert
       ? {
         disabled: true,

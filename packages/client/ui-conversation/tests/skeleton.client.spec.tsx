@@ -257,6 +257,8 @@ function mount(
           useNotices={bindSnapshotSelector(wiring.notices)}
           useLexicon={bindSnapshotSelector(wiring.lexicon)}
           useMenuLauncher={bindSnapshotSelector(createSnapshotStore<string | null>(null))}
+          useCreationMode={bindSnapshotSelector(createSnapshotStore(null))}
+          setCreationMode={undefined}
           stop={stop}
           command={() => Promise.resolve(true)}
           t={t}

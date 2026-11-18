@@ -8,6 +8,7 @@
  * real host entity, so the sink is one unconditional prompt path.
  */
 import type { Context } from '@deepseek-ai/cordis'
+import type { StudioKind } from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {
   ISessions, SessionBinding, SessionFace,
 } from '@deepseek-ai/dsh-api-session-controller/client'
@@ -21,6 +22,7 @@ import type {
 import type { InputSubmitMode } from '../contract/composer-submission.ts'
 import type { PopupDismissFace } from './facade.ts'
 import { SessionInputShell } from './facade.ts'
+import { projectCreationPrompt } from './project-creation.ts'
 
 /** Structural command face for per-session popup resolution. */
 interface CommandFace {
@@ -88,7 +90,7 @@ export class InputHub implements SessionInputResolver {
       inputTriggers: () => this.controller(actx),
       popup: () => this.popup(actx),
       queue: queueReadFaceOf(session),
-      defaultSink: (text, imageIds, mode, signal) => this.sink(session, text, imageIds, mode, signal),
+      defaultSink: (text, imageIds, mode, signal, creation) => this.sink(session, text, imageIds, mode, signal, creation),
       steerQueue: () => { void this.steerQueue(session, shell) },
       commandImages: {
         serialize: ids => this.conversation().serializeDraftImages(ids),
@@ -178,9 +180,13 @@ export class InputHub implements SessionInputResolver {
     imageIds: readonly DraftAttachmentId[],
     mode: InputSubmitMode,
     signal: AbortSignal,
+    creation?: StudioKind,
   ): Promise<SubmitOutcome> {
     if (text === '' && imageIds.length === 0) return Promise.resolve({ kind: 'success' })
-    return this.conversation().sendSession(session, text, imageIds, mode, signal)
+    const prompt = creation === undefined ? text : projectCreationPrompt(
+      this.t(creation === 'comic' ? 'creation.comic.instructions' : 'creation.video.instructions'), text,
+    )
+    return this.conversation().sendSession(session, prompt, imageIds, mode, signal)
   }
 
   /**

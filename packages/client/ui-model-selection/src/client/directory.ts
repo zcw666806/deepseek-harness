@@ -84,8 +84,9 @@ export class ModelDirectory {
    * projection frame updates the shared current; failures surface on the store
    * and throw so each entry's own retry surface engages.
    * @param selection - provider, provider-owned model id, and optional adapter-owned effort.
+   * @param sessionOnly - keep the selected route scoped to this Session.
  */
-  async select(selection: ModelSelection): Promise<void> {
+  async select(selection: ModelSelection, sessionOnly: boolean = false): Promise<void> {
     this.assertAvailable()
     const generation = ++this.generation
     this.store.update((s) => { s.status = 'selecting'; s.error = null })
@@ -93,6 +94,7 @@ export class ModelDirectory {
       sessionId: this.sessionId,
       provider: selection.provider,
       model: selection.model,
+      ...(sessionOnly ? { sessionOnly: true } : {}),
       ...selection.reasoningEffort === undefined
         ? {}
         : { reasoningEffort: selection.reasoningEffort },

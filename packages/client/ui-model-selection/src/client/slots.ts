@@ -19,7 +19,8 @@ export interface ModelSelectInjected {
   /**
    * Select a complete provider/model/reasoning selection.
    * @param selection - model selection and optional adapter-owned effort.
+   * @param sessionOnly - apply this choice to the current Session.
    * @returns whether the host accepted the selection.
    */
-  select: (selection: ModelSelection) => Promise<boolean>
+  select: (selection: ModelSelection, sessionOnly?: boolean) => Promise<boolean>
 }

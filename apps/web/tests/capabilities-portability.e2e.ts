@@ -15,7 +15,7 @@ import type {} from '@deepseek-ai/dsh-api-session-controller'
 import type {} from '@deepseek-ai/dsh-video-comfyui'
 import { launchWebScaffold, seedSession, captureStableAria, compareOrRefreshGolden, webSnapshotMode, watchConsole, type WebScaffold } from './scaffold.ts'
 import { browserReference, browserVideo } from './video-fixtures.ts'
-import { REPO_ROOT, ZH_BROWSER_LOCALE, saveFailureShot } from './support.ts'
+import { closeCreationStudio, openCreationStudio, REPO_ROOT, saveFailureShot, ZH_BROWSER_LOCALE } from './support.ts'
 
 const SOURCE = SessionId('portability-source')
 const CAPABILITY = 'fixture.portability' as CapabilityId
@@ -31,7 +31,7 @@ async function openProject(page: Page, title: string): Promise<void> {
   const group = page.getByRole('treeitem').first()
   if (await group.getAttribute('aria-expanded') !== 'true') await group.click()
   await page.getByRole('treeitem').filter({ hasText: title }).last().click()
-  await page.getByRole('tab', { name: '视频制作', exact: true }).click()
+  await openCreationStudio(page, 'video', 'zh')
   await page.getByLabel('项目名称', { exact: true }).waitFor()
 }
 
@@ -202,11 +202,12 @@ describe.skipIf(MODE === 'record')('Web capability management and project-media 
     if (path === null) throw new Error('The project package was not downloaded.')
     expect(download.suggestedFilename()).toBe('project.dshvideo')
     await copyFile(path, join(REPO_ROOT, '.playwright-mcp/video-project-recovery-sample.dshvideo'))
+    await closeCreationStudio(page, 'video', 'zh')
     await page.getByRole('button', { name: '新建会话', exact: true }).filter({ hasText: '新会话' }).click()
     await poll(() => workspace.sessionIds.some(id => id !== SOURCE)).toBe(true)
     const target = workspace.sessionIds.find(id => id !== SOURCE)
     if (target === undefined) throw new Error('The New Session action did not create a target.')
-    await page.getByRole('tab', { name: '视频制作', exact: true }).click()
+    await openCreationStudio(page, 'video', 'zh')
     expect((await scaffold.ctx.videoProduction.view(target)).revision).toBe(0)
     const targetEvents = await scaffold.ctx.sessionPersistence.readFrom(target, 0)
     expect(targetEvents.events.some(event => event.type === 'turn/start')).toBe(false)
@@ -242,6 +243,7 @@ describe.skipIf(MODE === 'record')('Web capability management and project-media 
     const targetHistory = await scaffold.ctx.sessionPersistence.readFrom(target, 0)
     expect(targetHistory.events.some(event => event.type === 'turn/start' || event.type === 'user/message')).toBe(false)
     const sessionCount = workspace.sessionIds.length
+    await closeCreationStudio(page, 'video', 'zh')
     await page.getByRole('button', { name: '新建会话', exact: true }).filter({ hasText: '新会话' }).click()
     await poll(() => workspace.sessionIds.length).toBe(sessionCount + 1)
     const fresh = workspace.sessionIds.find(id => id !== SOURCE && id !== target)
@@ -256,8 +258,9 @@ describe.skipIf(MODE === 'record')('Web capability management and project-media 
     await page.getByRole('button', { name: '搜索会话', exact: true }).click()
     await page.getByPlaceholder('搜索会话…', { exact: true }).fill(restored.title)
     await page.getByRole('treeitem').filter({ hasText: restored.title }).last().click()
-    await page.getByRole('tab', { name: '视频制作', exact: true }).click()
+    await openCreationStudio(page, 'video', 'zh')
     await poll(() => page.getByLabel('项目名称', { exact: true }).inputValue()).toBe(restored.title)
+    await closeCreationStudio(page, 'video', 'zh')
     await page.getByRole('button', { name: '清除搜索', exact: true }).click()
     await page.reload({ waitUntil: 'load' })
     const group = page.getByRole('treeitem').first()
@@ -266,7 +269,7 @@ describe.skipIf(MODE === 'record')('Web capability management and project-media 
     await page.getByRole('tree').getByText(restored.title, { exact: true }).waitFor()
     expect(await page.getByRole('tree').getByText(SOURCE_TITLE, { exact: true }).count()).toBe(1)
     await page.getByRole('tree').getByText(restored.title, { exact: true }).click()
-    await page.getByRole('tab', { name: '视频制作', exact: true }).click()
+    await openCreationStudio(page, 'video', 'zh')
     await poll(() => page.getByLabel('项目名称', { exact: true }).inputValue()).toBe(restored.title)
     await page.getByRole('button', { name: '适应画布', exact: true }).click()
     await page.getByRole('button', { name: '加载视频', exact: true }).click()

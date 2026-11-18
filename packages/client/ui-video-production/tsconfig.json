@@ -30,7 +30,13 @@
       "path": "../store"
     },
     {
-      "path": "../ui-conversation"
+      "path": "../ui-chat"
+    },
+    {
+      "path": "../ui-layout"
+    },
+    {
+      "path": "../ui-primitives"
     },
     {
       "path": "../ui-renderer"

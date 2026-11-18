@@ -1,0 +1,4 @@
+- img "Four-panel comic"
+- link "Download PNG":
+  - /url: blob:{{origin}}/{{uuid}}
+- button "Open editor"

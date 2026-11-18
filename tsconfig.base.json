@@ -200,6 +200,7 @@
       "@deepseek-ai/dsh-client-ui-capabilities": ["./packages/client/ui-capabilities/src"],
       "@deepseek-ai/dsh-video-production/types": ["./packages/video/video-production/src/types.ts"],
       "@deepseek-ai/dsh-comic-production/types": ["./packages/comic/comic-production/src/types.ts"],
+      "@deepseek-ai/dsh-comic-production/storyboard": ["./packages/comic/comic-production/src/storyboard.ts"],
       "@deepseek-ai/dsh-capability-manager/types": ["./packages/capability/capability-manager/src/types.ts"],
       "@deepseek-ai/dsh-capability-manager/portable": ["./packages/capability/capability-manager/src/portable.ts"],
       "@deepseek-ai/dsh-client-ui-input-trigger": ["./packages/client/ui-input-trigger/src"],

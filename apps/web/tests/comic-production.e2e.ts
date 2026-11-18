@@ -7,7 +7,7 @@ import { afterAll, beforeAll, describe, expect, it, onTestFailed } from 'vitest'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type { ComicProjectPackage } from '@deepseek-ai/dsh-comic-production/types'
 import { launchWebScaffold, seedSession, watchConsole, webSnapshotMode, type WebScaffold } from './scaffold.ts'
-import { newEnglishPage, REPO_ROOT, saveFailureShot } from './support.ts'
+import { closeCreationStudio, newEnglishPage, openCreationStudio, REPO_ROOT, saveFailureShot } from './support.ts'
 
 const FIXTURE = fileURLToPath(new URL('../../../snapshots/web/fresh-round-trip/session.jsonl', import.meta.url))
 const SOURCE_WORKSPACE = 'Comic source workspace'
@@ -86,11 +86,12 @@ function saved(page: Page): Promise<void> {
 }
 
 async function openStudio(page: Page, workspace: string, session: string): Promise<void> {
+  await closeCreationStudio(page, 'comic')
   const group = page.getByRole('treeitem').filter({ hasText: workspace }).first()
   await group.waitFor()
   if (await group.getAttribute('aria-expanded') !== 'true') await group.click()
   await page.getByRole('treeitem').filter({ hasText: session }).last().click()
-  await page.getByRole('tab', { name: 'Comic studio', exact: true }).click()
+  await openCreationStudio(page, 'comic')
 }
 
 describe.skipIf(webSnapshotMode() === 'record')('web e2e: comic production workspace', () => {

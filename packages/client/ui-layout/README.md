@@ -25,7 +25,7 @@ This package provides the shell layout of the Web GUI: a three-column AppFrame w
 <a id="use-this-package"></a>
 ## Use this package
 
-Mount this plugin at the root slot; it then renders the app frame around whatever occupies the sidebar, conversation, and details columns. Users resize the sidebar by dragging its invisible hit strip and the details panel by dragging its floating pill; when the window narrows, only details shrinks, then auto-closes. A closed sidebar retains a 56px control rail; details closes to zero width.
+Mount this plugin at the root slot; it then renders the app frame around whatever occupies the sidebar, center, and details columns. Users resize the sidebar by dragging its invisible hit strip and the details panel by dragging its floating pill; when the window narrows, only details shrinks, then auto-closes. A closed sidebar retains a 56px control rail; details closes to zero width.
 
 ### Theme presentation
 
@@ -39,7 +39,7 @@ The presenter consumes resolved theme snapshots and projects them onto the docum
 <details>
 <summary>Implementation internals — click to expand</summary>
 
-One `register()` call contributes `AppFrame` into the runtime's built-in `'root'` slot and, in the same breath, declares the four child slots (`sidebar`, `conversation`, `details`, `shell.overlay`), seats the layout store (panel geometry), and wires the `ctx.layout` panel-action service. The transient layout store starts the sidebar at its default width and details closed, and never reads or writes `localStorage`. AppFrame always mounts the conversation and details columns; a connected Session renders through `SessionProvider`. It projects the selected Session title over the build-configured product title or the localized `common.brand.localBuild` fallback, so locale revisions update document metadata with the root entry. The theme presenter is a second effect: pure DOM writes from resolved snapshots — initial state through the getter once, then event-driven only, with no React path. It applies palette, font-size, and token variables before measuring the rendered background as the single color authority.
+One `register()` call contributes `AppFrame` into the runtime's built-in `'root'` slot and, in the same breath, declares its column, creation, and overlay slots, seats the layout store (panel geometry), and wires the `ctx.layout` panel-action service. The transient layout store starts the sidebar at its default width and details closed, and never reads or writes `localStorage`. The center keeps the conversation mounted. A registered `studio` entry supplies the editor dialog for existing project data in the current Session. It projects the selected Session title over the build-configured product title or the localized `common.brand.localBuild` fallback, so locale revisions update document metadata with the root entry. The theme presenter is a second effect: pure DOM writes from resolved snapshots — initial state through the getter once, then event-driven only, with no React path. It applies palette, font-size, and token variables before measuring the rendered background as the single color authority.
 
 </details>
 

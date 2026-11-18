@@ -9,6 +9,7 @@
  * listeners onto it.
  */
 import type { Context } from '@deepseek-ai/cordis'
+import type { StudioKind } from '@deepseek-ai/dsh-client-ui-layout/client'
 import {
   createSnapshotStore, type ObservableSnapshot, type SnapshotStore,
 } from '@deepseek-ai/dsh-client-store'
@@ -66,6 +67,7 @@ export interface SessionInputDeps {
     imageIds: readonly DraftAttachmentId[],
     mode: InputSubmitMode,
     signal: AbortSignal,
+    creationMode?: StudioKind,
   ): Promise<SubmitOutcome>
   /** Command-plane image plumbing (the hub owns the conversation face and the copy). */
   commandImages: {
@@ -130,6 +132,8 @@ export class SessionInputShell implements SessionInput {
   readonly state: SnapshotStore<InputState>
   /** Latest surfaced notice (null after clear); the bar renders errors as banners and information inline. */
   readonly notices: SnapshotStore<InputNotice | null> = createSnapshotStore<InputNotice | null>(null)
+  /** Current creation mode, scoped to the lifetime of this Session's input. */
+  readonly creationMode = createSnapshotStore<StudioKind | null>(null)
   /** The shell-owned editor (text + chip truth); the composer binds its contenteditable to it. */
   readonly editor: LexicalEditor
   /** The public provide-channel action face (one stable identity per session). */
@@ -366,7 +370,7 @@ export class SessionInputShell implements SessionInput {
         const flight = this.imageFlightSeq
         this.imageFlights.set(flight, { controller, imageIds })
         this.commitSend(imageIds)
-        void this.deps.defaultSink('', imageIds, mode, controller.signal).then((outcome) => {
+        void this.defaultSinkForMode()('', imageIds, mode, controller.signal).then((outcome) => {
           if (this.disposed || !this.imageFlights.delete(flight)) return
           if (outcome.kind === 'success') return
           this.restoreImages(imageIds)
@@ -687,6 +691,7 @@ export class SessionInputShell implements SessionInput {
     draft: string,
     mode: InputSubmitMode,
   ): void {
+    const sink = this.defaultSinkForMode()
     const imageIds = [...this.imageIds]
     this.imageIds = []
     const occurrences = this.projection.occurrences
@@ -697,7 +702,7 @@ export class SessionInputShell implements SessionInput {
       this.failedRestoreRev = undefined
     }
     if (occurrences.length === 0) {
-      this.settleSink(attempt, this.deps.defaultSink(draft.trim(), imageIds, mode, attempt.signal))
+      this.settleSink(attempt, sink(draft.trim(), imageIds, mode, attempt.signal))
       return
     }
     const inputTriggers = this.deps.inputTriggers?.()
@@ -721,7 +726,7 @@ export class SessionInputShell implements SessionInput {
           cursor = part.offset + part.length
         }
         out += draft.slice(cursor)
-        this.settleSink(attempt, this.deps.defaultSink(out.trim(), imageIds, mode, attempt.signal))
+        this.settleSink(attempt, sink(out.trim(), imageIds, mode, attempt.signal))
       },
       (error: unknown) => {
         if (this.dead(attempt)) return
@@ -729,6 +734,13 @@ export class SessionInputShell implements SessionInput {
         this.settleDetachedFailure(attempt, message)
       },
     )
+  }
+
+  private defaultSinkForMode(): SessionInputDeps['defaultSink'] {
+    const kind = this.creationMode.getSnapshot()
+    return (text, ids, mode, signal) => kind === null
+      ? this.deps.defaultSink(text, ids, mode, signal)
+      : this.deps.defaultSink(text, ids, mode, signal, kind)
   }
 
   /** Settle one detached default send independently of other sends. */

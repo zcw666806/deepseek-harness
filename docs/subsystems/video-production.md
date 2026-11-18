@@ -58,6 +58,37 @@ registerGenerator(name: string, generator: VideoGenerator, describe: DescribeVid
  */
 @Remote('generationTargets') generationTargets(): VideoGenerationTarget[]
 
+/**
+ * List configured models served by the standalone video tool.
+ * @returns Native video targets suitable for selection in a conversation.
+ */
+@Remote('conversationGenerationTargets') conversationGenerationTargets(): VideoGenerationTarget[]
+
+/**
+ * Read the saved selector value for the current Session lifecycle.
+ * @param sessionId - Existing Session.
+ * @param signal - Caller cancellation during Session inspection.
+ * @returns Explicit model selection, even if its route was removed, or undefined when unset.
+ */
+@Remote('conversationGenerationTarget') async conversationGenerationTarget(sessionId: SessionId, signal?: AbortSignal): Promise<string | undefined>
+
+/**
+ * Save the standalone generation model separately from the conversational model.
+ * @param sessionId - Existing Session to receive the selection.
+ * @param model - Exact currently configured native video model ID.
+ * @param signal - Caller cancellation before committing the selection.
+ * @returns Completion after the selection is durable.
+ */
+@Remote('selectConversationGenerationTarget') selectConversationGenerationTarget(sessionId: SessionId, model: string, signal?: AbortSignal): Promise<void>
+
+/**
+ * Resolve the user's standalone generation selection for the initiating tool call.
+ * @param sessionId - Tool caller's Session identity.
+ * @param sessionCreatedAt - Tool caller's Session lifecycle timestamp.
+ * @returns Exact saved model or undefined when no selection belongs to this lifecycle.
+ */
+selectedConversationVideoModel(sessionId: SessionId, sessionCreatedAt: number): string | undefined
+
 /** Start missing-shot work owned by the Host, independent of the calling page.
  * @param sessionId - existing project Session.
  * @param input - observed project revision and generation route.
@@ -113,6 +144,15 @@ registerGenerator(name: string, generator: VideoGenerator, describe: DescribeVid
  * @returns the current project, or an unpersisted revision-zero project.
  */
 @Remote('view') async view(sessionId: SessionId): Promise<VideoProject>
+
+/**
+ * Open a saved project or initialize it from the Session workspace storyboard.
+ * @param sessionId - existing Session selecting the workspace and project.
+ * @param path - the workspace's `storyboard.md` path.
+ * @param signal - cancellation until the project commit starts.
+ * @returns the saved project, including a concurrent first import if another caller won.
+ */
+@Remote('importWorkspaceStoryboard') async importWorkspaceStoryboard(sessionId: SessionId, path: string, signal?: AbortSignal): Promise<VideoProject>
 
 /**
  * Replace editable fields while preserving attempts for retained shot identities.

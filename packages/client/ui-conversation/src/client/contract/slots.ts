@@ -10,7 +10,7 @@ import type {
   InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime, PropsStore,
 } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SessionPendingInteraction } from '@deepseek-ai/dsh-client-ui-session/client'
-import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
+import type { StudioKind, StudioNavigation } from '@deepseek-ai/dsh-client-ui-layout/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { WorkspaceId } from '@deepseek-ai/dsh-workspace/types'
 import type { ComposerBlock } from './composer-blocks.ts'
@@ -144,7 +144,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     /** Plan control inside the composer tool row. */
     'conversation.input.plan': { kind: 'single'; scope: 'session'; owner: InputControlOwnerProps }
     /** Model selector inside the composer tool row. */
-    'conversation.input.model': { kind: 'single'; scope: 'session'; owner: InputControlOwnerProps }
+    'conversation.input.model': { kind: 'single'; scope: 'session'; owner: ModelControlOwnerProps }
   }
 
   interface GlobalStandardProps {
@@ -255,6 +255,8 @@ export interface ComposerBarOwnerProps {
   workspacePickerOpen?: boolean
   /** Open the Workspace picker from the inert composer surface. */
   onRequestWorkspace?: () => void
+  /** Available project creation modes. */
+  studioNavigation?: StudioNavigation
   placeholder?: string
   /** Optional content rendered above the composer surface. */
   accessory?: ReactNode
@@ -282,10 +284,13 @@ export interface ComposerBarInjected {
   toggleCommandMenu: ((selection: EditSelection) => void) | undefined
   stop: (() => void) | undefined
   command: ((line: string) => Promise<boolean>) | undefined
+  /** Select a document-based workflow for the next plain sends in the current Session. */
+  setCreationMode: ((kind: StudioKind | null) => void) | undefined
   hooks: {
     notices: ObservableSnapshot<InputNotice | null>
     lexicon: ObservableSnapshot<ReadonlyMap<'/' | '@', readonly string[]>>
     menuLauncher: ObservableSnapshot<string | null>
+    creationMode: ObservableSnapshot<StudioKind | null>
   }
 }
 
@@ -295,11 +300,17 @@ export interface InputControlOwnerProps {
   locked: boolean
 }
 
+/** Owner share of the model selector inside the composer. */
+export interface ModelControlOwnerProps extends InputControlOwnerProps {
+  /** The model plans a creation project while the generation model has its own control. */
+  planning?: boolean
+}
+
 /** Full props of the resident composer bar. */
 export type ComposerBarProps =
   PropsRuntime<'conversation.composer.bar'>
   & PropsRenderSlots<
-    'conversation.input.attachments' | 'conversation.input.plan' | 'conversation.input.model'
+    'conversation.input.attachments' | 'conversation.input.plan' | 'conversation.input.model' | 'conversation.input.creation-model'
   >
   & InjectFace<ComposerBarInjected>
   & PropsLocale<'conversation'>

@@ -10,20 +10,24 @@
  * through the three framework shares — zero cordis or framework imports,
  * zero self-made hooks.
  */
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type {
-  PropsLocale, PropsRenderSlots, PropsRuntime, PropsStore,
+  HostObservable, InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime, PropsStore,
 } from '@deepseek-ai/dsh-client-ui-slots'
 import { computeColumns, SIDEBAR_AUTO_COLLAPSE, SIDEBAR_DEFAULT } from './columns.ts'
 import { DocumentTitle } from './DocumentTitle.tsx'
 import type { createLayoutStore } from './stores.ts'
+import type { StudioKind } from './service.ts'
 import css from './AppFrame.module.css'
+
+type AppFrameInjected = { readonly hooks: { readonly studios: HostObservable<readonly StudioKind[]> } }
 
 /** Full composed props: runtime share + child-slot render share + store share. */
 export type AppFrameProps =
   & PropsRuntime<'root'>
-  & PropsRenderSlots<'sidebar' | 'conversation' | 'details' | 'shell.overlay'>
+  & PropsRenderSlots<'sidebar' | 'conversation' | 'details' | 'studio' | 'shell.overlay'>
+  & InjectFace<AppFrameInjected>
   & PropsStore<ReturnType<typeof createLayoutStore>>
   & PropsLocale<'common'>
 
@@ -91,20 +95,28 @@ function DragHandle(props: { side: 'sidebar' | 'details'; left: number; onStart:
 export function AppFrame({
   useStore,
   useSessions,
+  useStudios,
   actions,
   renderSlot,
   SessionProvider,
   t,
 }: AppFrameProps) {
   const panels = useStore(s => s)
-  const detailsSession = useSessions((s) => {
-    const current = s.current
-    return current !== undefined && s.byId[current]?.blank === false ? current : undefined
-  })
-  const documentTitle = useSessions((s) => {
-    const current = s.current
-    return current === undefined ? undefined : s.byId[current]?.title
-  })
+  const studios = useStudios(entries => entries)
+  const activeStudio = panels.studio !== null && studios.includes(panels.studio) ? panels.studio : null
+  const session = useSessions(snapshot => snapshot.current === undefined ? undefined : snapshot.byId[snapshot.current])
+  const detailsSession = session?.blank === false ? session.id : undefined
+  const documentTitle = session?.title
+  const editorDialog = useRef<HTMLDialogElement>(null)
+  const editorTitleId = useId()
+  const closeEditor = useCallback(() => {
+    editorDialog.current?.close()
+    actions.showStudio(null)
+  }, [actions])
+  useLayoutEffect(() => {
+    const dialog = editorDialog.current
+    if (activeStudio !== null && dialog !== null && !dialog.open) dialog.showModal()
+  }, [activeStudio])
   const frameRef = useRef<HTMLDivElement | null>(null)
   const [viewport, setViewport] = useState(() => window.innerWidth)
 
@@ -197,16 +209,32 @@ export function AppFrame({
         })}
       </div>
       <>
-        {/* Both column occupants stay at fixed tree positions from first
-            paint — no loading gate: a bare status line reads worse than
-            the shell's own pending rendering. The conversation
-            is session-maybe; SessionProvider withholds the strict details
-            entry while no session is current. */}
-        <CenterColumn>{renderSlot('conversation', {})}</CenterColumn>
+        <CenterColumn>
+          {renderSlot('conversation', studios.length === 0 ? {} : {
+            studioNavigation: {
+              entries: studios.map(kind => ({ kind, label: t(kind === 'comic' ? 'studio.comic' : 'studio.video') })),
+              label: t('studio.launcher'),
+              existingLabel: t('studio.existing'),
+              openExisting: (kind) => { if (session !== undefined) actions.showStudio(kind) },
+            },
+          })}
+        </CenterColumn>
         <DetailsColumn>
           <SessionProvider>{renderSlot('details', {})}</SessionProvider>
         </DetailsColumn>
       </>
+      {activeStudio !== null && (
+        <dialog ref={editorDialog} className={css.studio} aria-labelledby={editorTitleId}
+          onCancel={(event) => { event.preventDefault(); closeEditor() }}>
+          <header className={css.studioHeader}>
+            <h2 id={editorTitleId}>{t(activeStudio === 'comic' ? 'studio.comic' : 'studio.video')}</h2>
+            <button type="button" className={css.studioBack} onClick={closeEditor}>{t('close')}</button>
+          </header>
+          <SessionProvider empty={() => <p className={css.studioEmpty}>{t('studio.sessionRequired')}</p>}>
+            <div className={css.studioBody}>{renderSlot('studio', {}, { entryKey: activeStudio })}</div>
+          </SessionProvider>
+        </dialog>
+      )}
       <div className={css.overlayLayer} data-shell-overlay>
         {renderSlot('shell.overlay', {})}
       </div>
