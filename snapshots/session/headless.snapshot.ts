@@ -192,7 +192,8 @@ function contextOf(logs: readonly string[]): NormalizeContext {
   return {
     sessionIds: headers.flatMap(header => typeof header.id === 'string' ? [header.id] : []),
     cwd,
-    cwdAliases: [cwd.split(sep).join('/')],
+    // Runtime context includes the JSON-escaped spelling of the workspace path.
+    cwdAliases: [cwd.split(sep).join('/'), JSON.stringify(cwd).slice(1, -1)],
   }
 }
 

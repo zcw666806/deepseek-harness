@@ -145,7 +145,6 @@ function validatePwshArgs(args: PwshToolArgs, advertised: AdvertisedArgs): void 
     throw new ToolArgsError([`invalid timeoutMs: expected a positive number, got ${JSON.stringify(args.timeoutMs)}`])
   }
   rejectUnadvertisedArgs(args, advertised)
-  validateEscalationArgs(args.sandbox_permissions, args.justification)
 }
 /* jscpd:ignore-end */
 
@@ -265,30 +264,30 @@ export function apply(ctx: Context, config: Config = {}): void {
     throw new Error('tool-pwsh: the mounted bash executor confines but ctx.sandboxPolicy is missing')
   }
   /* jscpd:ignore-end */
-  /** Resolve the complete standing policy for this call when a confining executor is mounted. */
-  const resolveSandboxPolicy = (exec: ToolExecution): SandboxExecutionPolicy | undefined =>
-    sandboxPolicy?.resolve(exec.agent === undefined ? {} : { session: exec.agent.session })
-
-  /* jscpd:ignore-start -- deliberate mirror of dsh-tool-bash's escalation resolver (pwsh-tool-and-executor Agent Note). */
+  /* jscpd:ignore-start -- keep permission validation and approval ordering aligned with tool-fs. */
   /**
-   * Resolve a sandbox-escalation request through `ctx.approval` BEFORE
-   * anything executes, delegating the shared fail-closed sequence (strict
-   * widening, channel resolution, outcome mapping) to
-   * {@link approveEscalation}. This tool contributes only the approval
-   * ingredients; {@link validatePwshArgs} has already rejected the fields when
-   * no sandboxing executor advertises them. The shared policy resolver is
-   * required whenever the executor advertises confinement, so a split
-   * composition fails at tool-plugin load.
+   * An omitted or repeated mode uses the standing policy and accepts a blank reason.
+   * A different mode requires a reason and passes through the escalation checks before launch.
+   * @param args - the tool arguments after schema and availability checks.
+   * @param exec - the call identity, Session, and cancellation signal.
+   * @returns the command's effective policy, or undefined for an unconfined executor.
    */
-  const approvePwshEscalation = (
-    mode: string,
-    justification: string,
+  const resolveSandboxPolicy = async (
+    args: PwshToolArgs,
     exec: ToolExecution,
-    standingPolicy: SandboxExecutionPolicy | undefined,
-  ): Promise<SandboxMode> => {
-    const effectiveMode = (standingPolicy as SandboxExecutionPolicy).mode
-    return approveEscalation(
-      { requestedMode: mode, justification, effectiveMode, subject: 'command' },
+  ): Promise<SandboxExecutionPolicy | undefined> => {
+    const standingPolicy = sandboxPolicy?.resolve(exec.agent === undefined ? {} : { session: exec.agent.session })
+    const requestedMode = args.sandbox_permissions
+    if (requestedMode !== undefined && requestedMode === standingPolicy?.mode) return standingPolicy
+    const justification = requestedMode === undefined && args.justification?.trim() === ''
+      ? undefined
+      : args.justification
+    validateEscalationArgs(requestedMode, justification)
+    if (requestedMode === undefined || justification === undefined) return standingPolicy
+
+    const policy = standingPolicy as SandboxExecutionPolicy
+    const mode = await approveEscalation(
+      { requestedMode, justification, effectiveMode: policy.mode, subject: 'command' },
       {
         approver: ctx.get('approval'),
         agent: exec.agent,
@@ -297,6 +296,7 @@ export function apply(ctx: Context, config: Config = {}): void {
         signal: exec.signal,
       },
     )
+    return { ...policy, mode }
   }
   /* jscpd:ignore-end */
 
@@ -452,11 +452,12 @@ export function apply(ctx: Context, config: Config = {}): void {
           sandbox_permissions: {
             type: 'string' as const,
             enum: [...escalationModes],
-            description: sandboxPermissionsDescription('command'),
+            description: 'Omit this field and justification to use the session’s existing permissions. '
+              + sandboxPermissionsDescription('command'),
           },
           justification: {
             type: 'string' as const,
-            description: 'Required with sandbox_permissions: one sentence for the user explaining why this exact command needs the wider access. '
+            description: 'Required when requesting wider access: one sentence for the user explaining why this exact command needs it. '
               + 'Use the language of the user’s current request.',
           },
         } : {},
@@ -546,13 +547,7 @@ export function apply(ctx: Context, config: Config = {}): void {
       async execute(args: PwshToolArgs, exec) {
         validatePwshArgs(args, { escalation: escalationModes.length > 0, background: backgroundEnabled })
         // Description is display metadata; workdir defaults to the caller's session.
-        const standingPolicy = resolveSandboxPolicy(exec)
-        const approvedMode = args.sandbox_permissions !== undefined && args.justification !== undefined
-          ? await approvePwshEscalation(args.sandbox_permissions, args.justification, exec, standingPolicy)
-          : undefined
-        const policy = approvedMode === undefined
-          ? standingPolicy
-          : { ...(standingPolicy as SandboxExecutionPolicy), mode: approvedMode }
+        const policy = await resolveSandboxPolicy(args, exec)
         const cwd = exec.agent === undefined ? undefined : await ctx.workingDirectory.ensure(exec.agent, exec.signal)
         const workdir = resolveWorkdir(args.workdir, cwd)
         const request: ShellExecRequest = {
