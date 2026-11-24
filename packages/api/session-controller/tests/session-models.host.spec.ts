@@ -7,6 +7,7 @@
 import { AgentModel, modelSelectionProjectionDefinition } from '@deepseek-ai/dsh-agent'
 import { createInboxStub } from '@deepseek-ai/dsh-agent-loop-testkit'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
+import { tmpdir } from 'node:os'
 
 import { describe, expect, it, vi, onTestFinished } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
@@ -154,8 +155,8 @@ async function harness(logged?: {
   return { ctx, agent, sessionId: session.id }
 }
 
-function expectValue<T>(result: { ok: true; value: T } | { ok: false }): T {
-  if (!result.ok) throw new Error('expected successful response')
+function expectValue<T>(result: { ok: true; value: T } | { ok: false; error: unknown }): T {
+  if (!result.ok) throw new Error('expected successful response', { cause: result.error })
   return result.value
 }
 
@@ -545,11 +546,12 @@ describe('Web session model selection', () => {
   it('follows default changes until an explicit selection through the Web create entrypoint', async () => {
     const { ctx, agent: template } = await harness()
     onTestFinished(() => ctx.fiber.dispose())
+    const cwd = tmpdir()
     let stored = { provider: 'deepseek-official', model: 'deepseek-chat' }
     const remote = await createSessionTestRemote(ctx, {
       defaultModelSelection: () => stored,
       saveDefaultModelSelection: (selection) => { stored = selection },
-      cwd: '/tmp',
+      cwd,
     })
     ctx.agents.setFactory({
       async createAgent(ownerCtx, options) {
@@ -564,8 +566,8 @@ describe('Web session model selection', () => {
       },
       resume: () => Promise.reject(new Error('unexpected resume')),
     })
-    const first = expectValue(await remote.create({ cwd: '/tmp' }))
-    const second = expectValue(await remote.create({ cwd: '/tmp' }))
+    const first = expectValue(await remote.create({ cwd }))
+    const second = expectValue(await remote.create({ cwd }))
     const agent = ctx.agents.get(first.sessionId)!
     expect(agent.model.current()).toEqual(stored)
     stored = { provider: 'deepseek-official', model: 'deepseek-reasoner' }
@@ -790,6 +792,26 @@ describe('Web session model selection', () => {
     expect(message.source).not.toHaveProperty('quotes')
 
     await ctx.fiber.dispose()
+  })
+
+  it('leaves the active turn model intact when a prompt requests a different model', async () => {
+    const { ctx, agent, sessionId } = await harness()
+    try {
+      const remote = await createSessionTestRemote(ctx, {
+        defaultModelSelection: () => ({ provider: 'deepseek-official', model: 'deepseek-chat' }),
+        cwd: '/tmp',
+      })
+      const refused = await remote.prompt(promptRequest({
+        sessionId,
+        mode: 'queue',
+        content: [{ type: 'text', text: 'Draft a storyboard.' }],
+        modelSelection: { provider: 'deepseek-official', model: 'deepseek-reasoner' },
+      }))
+      expect(refused).toMatchObject({ ok: false, error: { code: 'session/agent-busy' } })
+      expect(agent.session.snapshotEvents().some(event => event.type === 'model/selection')).toBe(false)
+    } finally {
+      await ctx.fiber.dispose()
+    }
   })
 
   it('serves a session and its catalog when the stored default names a route that is gone', async () => {

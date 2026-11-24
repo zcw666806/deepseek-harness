@@ -1,0 +1,25 @@
+# Bilingual-pair consistency record for 2026-10-19-qywork-capability-adoption.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-10-19-qywork-capability-adoption.md
+/agent-note-reuse-harness-services-for-qywork-derived-capabilities:
+  en: b73915157779c946
+  zh: e99504c92dc8dfb0
+/agent-note-reuse-harness-services-for-qywork-derived-capabilities/problem:
+  en: fd5410e126eca708
+  zh: fefd577d06b8b8f0
+/agent-note-reuse-harness-services-for-qywork-derived-capabilities/decision:
+  en: e082009fb1652be3
+  zh: 095845a6f1883169
+/agent-note-reuse-harness-services-for-qywork-derived-capabilities/comparison:
+  en: 83681bb6227f0754
+  zh: 805df727f0c7db73
+/agent-note-reuse-harness-services-for-qywork-derived-capabilities/alternatives-considered:
+  en: 1c5da68be9699360
+  zh: 84efe1b5e1467e24
+/agent-note-reuse-harness-services-for-qywork-derived-capabilities/consequences:
+  en: d6e72b34cdab329e
+  zh: a289a07d927ebfb3
+/agent-note-reuse-harness-services-for-qywork-derived-capabilities/verification:
+  en: bd51b376a9ba8190
+  zh: 63428a281999755b

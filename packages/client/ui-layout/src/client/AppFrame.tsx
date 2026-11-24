@@ -14,7 +14,7 @@
  * track but hides the outer resize handle. Everything arrives through the framework
  * shares — zero cordis or framework imports, zero self-made hooks.
  */
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type {
   HostObservable, InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime, PropsStore,
@@ -32,7 +32,7 @@ export interface AppFrameInjected {
 /** Full composed props: runtime, child slots, store, locale, and injected posture. */
 export type AppFrameProps =
   & PropsRuntime<'root'>
-  & PropsRenderSlots<'sidebar' | 'main' | 'rightbar' | 'shell.bottom' | 'shell.overlay' | 'shell.leading'>
+  & PropsRenderSlots<'sidebar' | 'main' | 'studio' | 'rightbar' | 'shell.bottom' | 'shell.overlay' | 'shell.leading'>
   & PropsStore<ReturnType<typeof createLayoutStore>>
   & PropsLocale<'common'>
   & InjectFace<AppFrameInjected>
@@ -133,9 +133,21 @@ export function AppFrame({
   useFoldedLandscape,
   actions,
   renderSlot,
+  SessionProvider,
   t,
 }: AppFrameProps) {
   const layoutInfo = useStore(state => state.layoutInfo)
+  const studio = useStore(state => state.studio)
+  const editorDialog = useRef<HTMLDialogElement>(null)
+  const editorTitleId = useId()
+  useLayoutEffect(() => {
+    const dialog = editorDialog.current
+    if (studio !== null && dialog !== null && !dialog.open) dialog.showModal()
+  }, [studio])
+  const closeStudio = () => {
+    editorDialog.current?.close()
+    actions.showStudio(null)
+  }
   const frameRef = useRef<HTMLDivElement | null>(null)
   const viewport = layoutInfo.viewportWidth
   const foldedLandscape = useFoldedLandscape(matches => matches)
@@ -325,6 +337,16 @@ export function AppFrame({
       <div className={css.bottomRow} data-shell-bottom {...{ inert: drawerOpen ? '' : undefined }}>
         {renderSlot('shell.bottom', {})}
       </div>
+      {studio !== null && <dialog ref={editorDialog} className={css.studio} aria-labelledby={editorTitleId}
+        onCancel={(event) => { event.preventDefault(); closeStudio() }}>
+        <header className={css.studioHeader}>
+          <h2 id={editorTitleId}>{t(studio === 'comic' ? 'studio.comic' : 'studio.video')}</h2>
+          <button type="button" className={css.studioBack} onClick={closeStudio}>{t('close')}</button>
+        </header>
+        <SessionProvider empty={() => <p className={css.studioEmpty}>{t('studio.sessionRequired')}</p>}>
+          <div className={css.studioBody}>{renderSlot('studio', {}, { entryKey: studio })}</div>
+        </SessionProvider>
+      </dialog>}
       <div className={css.overlayLayer} data-shell-overlay>
         {overlays}
       </div>

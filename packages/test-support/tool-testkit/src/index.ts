@@ -5,24 +5,19 @@ import { ToolExecutionPipeline } from '@deepseek-ai/dsh-tools/pipeline'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type {
-  DefineToolOptions, InferArgs, ParameterSchemaSpec, ToolDefinition,
+  DefineToolOptions, InferArgs, InferValue, ParameterSchemaSpec, ToolDefinition,
   ToolExecutionInput, ToolExecutionResult, ToolRunContext,
 } from '@deepseek-ai/dsh-tools'
 
-// Expand interface fields so the fixture's content value is checked as JSON without changing runtime values.
-type JsonFields<T> = T extends string | number | boolean | null | undefined ? T
-  : T extends (...args: never[]) => unknown ? T
-    : { [K in keyof T]: JsonFields<T[K]> }
-type ContentValue = JsonFields<ContentBlock>
-
 const CONTENT_VALUE_SCHEMA = { type: 'array', items: { type: 'json' } } as const
+type ContentValue = InferValue<typeof CONTENT_VALUE_SCHEMA>
 
 /** Options for a fixture whose canonical value is its rendered content array. */
 export type ContentToolFixtureOptions<S extends ParameterSchemaSpec> = Omit<
   DefineToolOptions<S, typeof CONTENT_VALUE_SCHEMA>,
   'output' | 'execute'
 > & {
-  /** Produce the fixture's content blocks as its canonical test value. */
+  /** Produce content blocks that the tool pipeline can validate and record as lossless JSON. */
   execute(args: InferArgs<S>, exec: ToolRunContext): Promise<ContentBlock[]>
 }
 
@@ -42,11 +37,11 @@ export function defineContentToolFixture<const S extends ParameterSchemaSpec>(
     ...options,
     output: {
       schema: CONTENT_VALUE_SCHEMA,
-      render: (_args, value) => value as ContentValue[],
+      render: (_args, value) => value as unknown as ContentBlock[],
     },
     async execute(args, exec) {
-      const value: ContentValue[] = await execute(args, exec)
-      return value
+      // The tool pipeline validates the returned value before it reaches the renderer.
+      return await execute(args, exec) as unknown as ContentValue
     },
   })
 }

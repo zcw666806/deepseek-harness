@@ -1,0 +1,19 @@
+# Bilingual-pair consistency record for 2026-10-26-plugin-review-workflow.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/process/2026-10-26-plugin-review-workflow.md
+/agent-note-user-approval-of-reviewed-plugin-artifacts:
+  en: 92de4d7ed7a250b5
+  zh: d80c56f269a7ee0c
+/agent-note-user-approval-of-reviewed-plugin-artifacts/problem:
+  en: 943fa7fcc9083de3
+  zh: 94c41d5dc00c7b13
+/agent-note-user-approval-of-reviewed-plugin-artifacts/decision:
+  en: 6ecd5987ac4fa2da
+  zh: bcef0a894f7076c3
+/agent-note-user-approval-of-reviewed-plugin-artifacts/alternatives-considered:
+  en: b915716f5cbce887
+  zh: af89d805bf7e1ed7
+/agent-note-user-approval-of-reviewed-plugin-artifacts/consequences:
+  en: 3959e69c16653f4d
+  zh: 36ff0f381ba1228a

@@ -38,6 +38,8 @@ import type {
   SessionWorkspacePathApplication,
   SessionAttachmentRequest,
   SessionAttachmentValue,
+  SessionVideoAttachmentRequest,
+  SessionVideoAttachmentValue,
   SessionCancelRequest,
   SessionCancelValue,
   SessionControlFrame,
@@ -456,6 +458,11 @@ export class SessionController extends TypertRemoteService {
     }
     // The caller is recorded only when it is not the owner, so owner messages keep their exact source.
     const principal = principalOf(this.ctx.invocation)
+    if (principal !== undefined && request.modelSelection !== undefined) {
+      throw new RemoteError('remote-access/denied', 'Only the owner can select a model in a Session prompt.', {
+        action: 'session/prompt', reason: 'no-allow',
+      })
+    }
     const source: MessageSource = {
       kind: request.content.length === 0 ? 'retry' : 'user',
       rpcId: request.requestId,
@@ -473,6 +480,21 @@ export class SessionController extends TypertRemoteService {
   @Remote('attachment')
   attachment(request: SessionAttachmentRequest): Promise<SessionAttachmentValue> {
     return this.commands.attachment(request)
+  }
+
+  /**
+   * Read a bounded video slice proven reachable from a successful Session generation.
+   * @param request - Session and attachment identities plus raw-byte range.
+   * @returns verified metadata and a base64 slice containing at most 256 KiB of raw video bytes.
+   */
+  @Remote('videoAttachment')
+  videoAttachment(request: SessionVideoAttachmentRequest): Promise<SessionVideoAttachmentValue> {
+    if (principalOf(this.ctx.invocation) !== undefined) {
+      throw new RemoteError('remote-access/denied', 'Only the owner can read generated Session videos.', {
+        action: 'session/videoAttachment', reason: 'no-allow',
+      })
+    }
+    return this.commands.videoAttachment(request)
   }
 
   /**

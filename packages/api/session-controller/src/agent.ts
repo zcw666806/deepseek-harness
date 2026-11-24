@@ -9,6 +9,7 @@ import type {} from '@deepseek-ai/dsh-agent-default-model'
 import { installModelSelection } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-agent-preset-registry'
 import { brandString } from '@deepseek-ai/dsh-brand'
+import type {} from '@deepseek-ai/dsh-mcp-client/rea-experiment'
 import type { Session, SessionId } from '@deepseek-ai/dsh-session'
 import { SessionQueryError, type SessionObservation } from '@deepseek-ai/dsh-session-query'
 import { RemoteError, remoteErrorOf } from '@deepseek-ai/dsh-typert-protocol'
@@ -81,6 +82,7 @@ export interface ApiSessionCreated {
 interface ApiSessionComposition {
   readonly agentPreset?: string
   readonly setup: AgentSetup
+  readonly setupExisting: AgentSetup
 }
 
 /** Failures produced while resolving one ordinary Session identity to its live Agent. */
@@ -261,16 +263,16 @@ export class ApiSessionAgentController {
    */
   async composeAgent(presetId: string | undefined): Promise<ApiSessionComposition> {
     const presets = this.ctx.get('agentPresets')
-    if (presets === undefined) {
-      return { setup: (agentCtx) => { installModelSelection(agentCtx) } }
+    const resolvedId = presets === undefined ? undefined : (await presets.resolve(presetId)).id
+    const setupFor = (mode: 'create' | 'resume'): AgentSetup => async (agentCtx, agent) => {
+      installModelSelection(agentCtx)
+      if (presets !== undefined) await presets.mount(agentCtx, resolvedId)
+      await this.ctx.get('reaExperiment')?.compose(agentCtx, agent, mode)
     }
-    const resolvedId = (await presets.resolve(presetId)).id
     return {
-      agentPreset: resolvedId,
-      setup: async (agentCtx) => {
-        installModelSelection(agentCtx)
-        await presets.mount(agentCtx, resolvedId)
-      },
+      ...(resolvedId === undefined ? {} : { agentPreset: resolvedId }),
+      setup: setupFor('create'),
+      setupExisting: setupFor('resume'),
     }
   }
 
@@ -314,7 +316,7 @@ export class ApiSessionAgentController {
     return (await this.ctx.agents.resume({
       resumeSessionId: sessionId,
       agentOptions: this.agentOptions(),
-      setup: composition.setup,
+      setup: composition.setupExisting,
     })).agent
   }
 
@@ -405,7 +407,7 @@ export class ApiSessionAgentController {
   private reuseSetup(composition: ApiSessionComposition): AgentSetup {
     return async (agentCtx, agent) => {
       if (!this.isBlank(agent.session)) throw new ApiSessionStartedSinceObserved()
-      const commit = await composition.setup(agentCtx, agent)
+      const commit = await composition.setupExisting(agentCtx, agent)
       const target = composition.agentPreset
       if (target !== undefined && this.presetForSession(agent.session) !== target) {
         agent.session.append('agent-preset/selected', { agentPreset: target })

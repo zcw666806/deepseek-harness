@@ -22,6 +22,7 @@ import type {
   LlmResolvedModelInfo,
   LlmProviderInfo,
   ModelModality,
+  ModelOutputModality,
   StreamChunk,
   SystemPromptUpdate,
   ToolSchema,
@@ -686,7 +687,7 @@ export class LlmRuntime extends TypertRemoteService {
   }
 
   /** Detach typed adapter-owned modality metadata. */
-  private detachedModalities(modalities: readonly ModelModality[] | undefined): ModelModality[] | undefined {
+  private detachedModalities<T extends ModelOutputModality>(modalities: readonly T[] | undefined): T[] | undefined {
     return modalities === undefined ? undefined : [...modalities]
   }
 
@@ -716,6 +717,7 @@ export class LlmRuntime extends TypertRemoteService {
       }
       seen.add(model.id)
       const inputModalities = this.detachedModalities(model.inputModalities)
+      const outputModalities = this.detachedModalities(model.outputModalities)
       const badge = model.badge
       return {
         provider: model.provider,
@@ -723,6 +725,7 @@ export class LlmRuntime extends TypertRemoteService {
         name: model.name,
         ...model.description === undefined ? {} : { description: model.description },
         ...inputModalities === undefined ? {} : { inputModalities },
+        ...outputModalities === undefined ? {} : { outputModalities },
         ...badge === undefined ? {} : {
           badge: { text: typeof badge.text === 'string' ? badge.text : { ...badge.text }, tone: badge.tone },
         },
@@ -787,6 +790,7 @@ export class LlmRuntime extends TypertRemoteService {
     // Capability metadata rides through: an explicit modality omission is
     // negative capability downstream preflights act on (image admission).
     const inputModalities = this.detachedModalities(resolved.inputModalities)
+    const outputModalities = this.detachedModalities(resolved.outputModalities)
     // Widened: adapters derive this mode from catalog config, so the value is checked as a string.
     const systemPromptUpdate: string | undefined = resolved.systemPromptUpdate
     if (systemPromptUpdate !== undefined && systemPromptUpdate !== 'in-history') {
@@ -817,6 +821,7 @@ export class LlmRuntime extends TypertRemoteService {
       name: resolved.name,
       ...resolved.description === undefined ? {} : { description: resolved.description },
       ...inputModalities === undefined ? {} : { inputModalities },
+      ...outputModalities === undefined ? {} : { outputModalities },
       ...context === undefined ? {} : { context: { contextWindow: context.contextWindow } },
       ...defaultMaxTokens === undefined ? {} : { defaultMaxTokens },
       ...resolved.systemPromptUpdate === undefined ? {} : { systemPromptUpdate: resolved.systemPromptUpdate },

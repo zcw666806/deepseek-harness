@@ -6,6 +6,7 @@ import type { SettingsFormLabels } from '@deepseek-ai/dsh-client-ui-primitives'
 export type SubagentSettingsLocaleKey =
   | 'overridden' | 'reset' | 'readOnly' | 'unavailable'
   | 'save' | 'saving' | 'saveFailed'
+  | 'reaTitle' | 'reaToggle' | 'reaDescription'
   | 'subagentTitle' | 'subagentDescription' | 'subagentLimitsTitle'
   | 'subagentMaxDepth'
   | 'subagentDepthHelpLabel' | 'subagentDepthHelp'
@@ -23,6 +24,9 @@ export type SubagentSettingsLocaleKey =
 
 /** English copy. */
 export const en: Record<SubagentSettingsLocaleKey, string> = {
+  reaTitle: 'REA experiment',
+  reaToggle: 'Enable REA in new chats',
+  reaDescription: 'New chats can use the tools exposed by the local REA server. Existing chats keep their configuration.',
   overridden: 'Overridden',
   reset: 'Reset to default',
   readOnly: 'This deployment stores settings read-only.',
@@ -62,6 +66,9 @@ export const en: Record<SubagentSettingsLocaleKey, string> = {
 
 /** Simplified Chinese copy. */
 export const zh: Record<SubagentSettingsLocaleKey, string> = {
+  reaTitle: 'REA 实验功能',
+  reaToggle: '在新会话中启用 REA',
+  reaDescription: '新会话可使用本机 REA 服务提供的工具。现有会话保留各自的配置。',
   overridden: '已覆盖',
   reset: '恢复默认',
   readOnly: '本部署的设置为只读。',
@@ -110,6 +117,9 @@ export function formLabels(t: (key: SubagentSettingsLocaleKey) => string): Setti
 
 /** Japanese copy, checked against the English keys. */
 export const ja = {
+  reaTitle: 'REA 実験機能',
+  reaToggle: '新しいチャットで REA を有効にする',
+  reaDescription: '新しいチャットではローカル REA サーバーのツールを使用できます。既存のチャットには設定が保持されます。',
   'overridden': '上書き済み',
   'reset': 'デフォルトに戻す',
   'readOnly': 'このデプロイメントでは設定は読み取り専用で保存されます。',
@@ -149,6 +159,9 @@ export const ja = {
 
 /** Spanish dictionary, checked against the English keys. */
 export const es = {
+  reaTitle: 'Experimento REA',
+  reaToggle: 'Activar REA en los chats nuevos',
+  reaDescription: 'Los chats nuevos pueden usar las herramientas del servidor REA local. Los chats existentes conservan su configuración.',
   overridden: 'Anulado',
   reset: 'Restablecer los valores predeterminados',
   readOnly: 'Esta implementación almacena configuraciones de solo lectura.',
@@ -188,6 +201,9 @@ export const es = {
 
 /** French dictionary, checked against the English keys. */
 export const fr = {
+  reaTitle: 'Expérience REA',
+  reaToggle: 'Activer REA dans les nouvelles conversations',
+  reaDescription: 'Les nouvelles conversations peuvent utiliser les outils du serveur REA local. Les conversations existantes conservent leur configuration.',
   overridden: 'Remplacé',
   reset: 'Réinitialiser aux valeurs par défaut',
   readOnly: 'Ce déploiement stocke les paramètres en lecture seule.',
@@ -227,6 +243,9 @@ export const fr = {
 
 /** German dictionary, checked against the English keys. */
 export const de = {
+  reaTitle: 'REA-Experiment',
+  reaToggle: 'REA in neuen Chats aktivieren',
+  reaDescription: 'Neue Chats können die Werkzeuge des lokalen REA-Servers nutzen. Bestehende Chats behalten ihre Konfiguration.',
   overridden: 'Überschrieben',
   reset: 'Auf Standard zurücksetzen',
   readOnly: 'Diese Bereitstellung speichert Einstellungen schreibgeschützt.',
@@ -266,6 +285,9 @@ export const de = {
 
 /** Russian dictionary, checked against the English keys. */
 export const ru = {
+  reaTitle: 'Эксперимент REA',
+  reaToggle: 'Включить REA в новых чатах',
+  reaDescription: 'Новые чаты могут использовать инструменты локального сервера REA. Существующие чаты сохраняют свои настройки.',
   overridden: 'Переопределено',
   reset: 'Сбросить настройки по умолчанию',
   readOnly: 'В этом развертывании параметры сохраняются только для чтения.',
@@ -305,6 +327,9 @@ export const ru = {
 
 /** Portuguese dictionary, checked against the English keys. */
 export const pt = {
+  reaTitle: 'Experimento REA',
+  reaToggle: 'Ativar o REA em novas conversas',
+  reaDescription: 'As novas conversas podem usar as ferramentas do servidor REA local. As conversas existentes mantêm a própria configuração.',
   overridden: 'Substituído',
   reset: 'Redefinir para o padrão',
   readOnly: 'Esta implantação armazena configurações somente leitura.',

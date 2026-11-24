@@ -71,6 +71,30 @@ export function redactSessionSnapshotIds(logs: readonly string[]): string[] {
     if (header?.type === 'session') claim(header.id, 'session', true)
   }
 
+  // Project identities derive from the Session id, so their non-UUID digest is volatile too.
+  // Only the successful tool's canonical metadata can establish this relationship.
+  for (const log of parsed) {
+    const sessionId = log.records[0]?.id
+    const projectCalls = new Set<string>()
+    for (const record of log.records) {
+      const data = record.data
+      if (!isRecord(data)) continue
+      if (record.type === 'tool/call' && data.name === 'video_project' && typeof data.callId === 'string') {
+        projectCalls.add(data.callId)
+      }
+      if (record.type !== 'tool/result' || !isRecord(data.message) || !isRecord(data.message.source)
+        || data.message.source.kind !== 'tool' || typeof data.message.source.callId !== 'string'
+        || !projectCalls.has(data.message.source.callId) || !Array.isArray(data.message.content)) continue
+      const callId = data.message.source.callId
+      if (!data.message.content.some(block => isRecord(block) && block.type === 'tool-result'
+        && block.toolCallId === callId && block.isError === false)) continue
+      const project = data.meta
+      if (!isRecord(project) || project.sessionId !== sessionId || typeof project.revision !== 'number'
+        || !Array.isArray(project.assets) || !Array.isArray(project.shots) || !Array.isArray(project.exports)) continue
+      claim(project.id, 'id', true)
+    }
+  }
+
   const collect = (value: unknown, recordType?: unknown): void => {
     if (typeof value === 'string') {
       for (const match of value.matchAll(/\bas message ([0-9a-f-]{36})\b/gi)) claim(match[1], 'message')

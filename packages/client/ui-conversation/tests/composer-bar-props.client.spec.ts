@@ -2,7 +2,7 @@ import { expect, expectTypeOf, it, vi } from 'vitest'
 import type { ComposerBarInjected, ComposerBarProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { SlotCore, type ChildrenDecl, type PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
 
-it('accepts props supplied by existing composer bar registrations', () => {
+it('accepts the props of the default composer bar registration', () => {
   const slots = new SlotCore()
   slots.register({
     name: 'root',
@@ -13,6 +13,7 @@ it('accepts props supplied by existing composer bar registrations', () => {
     'conversation.composer.dock': { kind: 'list', scope: 'session' },
     'conversation.input.activity': { kind: 'single', scope: 'session' },
     'conversation.input.attachments': { kind: 'single', scope: 'session-maybe' },
+    'conversation.input.creation-model': { kind: 'keyed', scope: 'session' },
     'conversation.input.left': { kind: 'list', scope: 'session' },
     'conversation.input.model': { kind: 'single', scope: 'session' },
     'conversation.input.overlay': { kind: 'list', scope: 'session' },

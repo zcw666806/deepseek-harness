@@ -212,6 +212,9 @@ const testPlugins = () => [
   pathsPlugin(),
   standardDecoratorPlugin(),
   sourceRemotePlugin(import.meta.dirname, '@deepseek-ai/dsh-client-remote-connection'),
+  sourceRemotePlugin(import.meta.dirname, '@deepseek-ai/dsh-api-session-controller'),
+  sourceRemotePlugin(import.meta.dirname, '@deepseek-ai/dsh-capability-manager'),
+  sourceRemotePlugin(import.meta.dirname, '@deepseek-ai/dsh-video-production'),
 ]
 
 export default defineConfig({

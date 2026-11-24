@@ -32,7 +32,9 @@ function controllerAgents(
   } = {},
 ): ApiSessionAgentController {
   const agents = new ApiSessionAgentController(ctx)
-  vi.spyOn(agents, 'composeAgent').mockImplementation(fixed.composeAgent ?? (() => Promise.resolve({ setup: () => {} })))
+  vi.spyOn(agents, 'composeAgent').mockImplementation(fixed.composeAgent ?? (() => Promise.resolve({
+    setup: () => {}, setupExisting: () => {},
+  })))
   if (fixed.createSession !== undefined) vi.spyOn(agents, 'createSession').mockImplementation(fixed.createSession)
   return agents
 }
@@ -284,8 +286,9 @@ describe('Session fork failures', () => {
     const create = vi.spyOn(ctx.agents, 'create').mockImplementation(
       (options: CreateAgentOptions) => Promise.resolve(resolvedHandle(ctx, options.sessionId)),
     )
+    const setupExisting = vi.fn()
     const controller = new SessionCommandController(ctx, controllerAgents(ctx, {
-      composeAgent: () => Promise.resolve({ agentPreset: 'minimal', setup: () => {} }),
+      composeAgent: () => Promise.resolve({ agentPreset: 'minimal', setup: () => {}, setupExisting }),
     }), '/default')
 
     const forked = await controller.fork({ sessionId: source.id })
@@ -293,6 +296,7 @@ describe('Session fork failures', () => {
     const options = create.mock.calls[0]?.[0]
     if (options === undefined) throw new Error('Agent creation was not attempted')
     expect(options.meta?.agentPreset).toBe('minimal')
+    expect(options.setup).toBe(setupExisting)
     await ctx.fiber.dispose()
   })
 })

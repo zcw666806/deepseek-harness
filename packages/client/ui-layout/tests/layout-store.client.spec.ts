@@ -11,6 +11,7 @@ describe('createLayoutStore', () => {
   it('starts with the default sidebar and no right panel preference', () => {
     const { store } = createLayoutStore().create()
     expect(store.getSnapshot()).toEqual({
+      studio: null,
       panelInfo: { activePanelId: null },
       layoutInfo: {
         sidebar: 280,

@@ -21,7 +21,6 @@ import {
   readWholeBytes,
   readWholeText,
   resolveLocalTarget,
-  restoreLineEndings,
   streamWholeText,
   writeFileAtomic,
 } from '../src/fsio.ts'
@@ -963,16 +962,64 @@ describe('applyLiteralEdit', () => {
   it('matches across normalized line endings', () => {
     expect(applyLiteralEdit('one\ntwo', 'one\ntwo', 'x', false, 'f').replacements).toBe(1)
   })
+
+  it.each([
+    ['a\r\nb\nc\r\n', 'a\r\nB\nc\r\n'],
+    ['a\nb\r\nc\n', 'a\nB\r\nc\n'],
+  ])('preserves unmatched mixed line endings in %j', (input, expected) => {
+    expect(applyLiteralEdit(input, 'b', 'B', false, 'f').content).toBe(expected)
+  })
+
+  it('matches a multiline literal across mixed endings and encodes only its replacement', () => {
+    expect(applyLiteralEdit('head\r\none\r\ntwo\nend\r\n', 'one\ntwo', 'ONE\nTWO', false, 'f'))
+      .toEqual({ content: 'head\r\nONE\r\nTWO\nend\r\n', replacements: 1 })
+  })
+
+  it('counts normalized duplicate matches before permitting replacement', () => {
+    const input = 'one\r\ntwo\none\ntwo\r\n'
+    expect(() => applyLiteralEdit(input, 'one\ntwo', 'x', false, 'f'))
+      .toThrow(expect.objectContaining({ code: 'FS_AMBIGUOUS_EDIT' }))
+    expect(applyLiteralEdit(input, 'one\r\ntwo', 'x', true, 'f'))
+      .toEqual({ content: 'x\nx\r\n', replacements: 2 })
+  })
+
+  it('keeps regex metacharacters and replacement substitutions literal', () => {
+    expect(applyLiteralEdit('前[.*+?^${}()|\\]后\r\n', '[.*+?^${}()|\\]', '$&\r\n$1', false, 'f').content)
+      .toBe('前$&\r\n$1后\r\n')
+  })
+
+  it.each([
+    ['one\r\ntwo\n', 'one\r\nA\nB\n'],
+    ['one\r\ntwo\r\n', 'one\r\nA\r\nB\r\n'],
+    ['two', 'A\nB'],
+  ])('uses the dominant ending, with LF on ties or missing newlines', (input, expected) => {
+    expect(applyLiteralEdit(input, 'two', 'A\r\nB', false, 'f').content).toBe(expected)
+  })
+
+  it('uses the entire file to choose replacement endings', () => {
+    const prefix = `${'x'.repeat(4096)}\n`
+    expect(applyLiteralEdit(`${prefix}one\r\ntwo\r\n`, 'two', 'A\nB', false, 'f').content)
+      .toBe(`${prefix}one\r\nA\r\nB\r\n`)
+  })
+
+  it('preserves lone carriage returns', () => {
+    expect(applyLiteralEdit('a\rb\nc\r', 'b', 'B', false, 'f').content).toBe('a\rB\nc\r')
+  })
+
+  it('matches thousands of lines without a regular-expression size limit', () => {
+    const input = `head\n${'x\r\n'.repeat(5000)}tail\r\n`
+    expect(applyLiteralEdit(input, 'x\n'.repeat(5000), 'replacement\n', false, 'f'))
+      .toEqual({ content: 'head\nreplacement\r\ntail\r\n', replacements: 1 })
+  })
 })
 
-describe('readForEdit + restoreLineEndings', () => {
-  it('round-trips CRLF: matches on LF, writes back CRLF', async () => {
+describe('readForEdit', () => {
+  it('preserves CRLF for a local literal edit', async () => {
     const file = join(dir, 'crlf.txt')
     await writeFile(file, 'one\r\ntwo\r\n')
     const original = await readForEdit(file, file)
-    expect(original.lineEndings).toBe('CRLF')
-    const edited = applyLiteralEdit(original.content, 'two', 'TWO', false, file)
-    expect(restoreLineEndings(edited.content, original.lineEndings)).toBe('one\r\nTWO\r\n')
+    expect(original).toBe('one\r\ntwo\r\n')
+    expect(applyLiteralEdit(original, 'two', 'TWO', false, file).content).toBe('one\r\nTWO\r\n')
   })
 
   it('rejects a binary file and invalid UTF-8', async () => {
@@ -995,7 +1042,7 @@ describe('readForEdit + restoreLineEndings', () => {
     const file = join(dir, 'a.txt')
     await writeFile(file, 'one\ntwo')
     const original = await readForEdit(file, file, new AbortController().signal)
-    expect(original.content).toBe('one\ntwo')
+    expect(original).toBe('one\ntwo')
   })
 
   it('translates a mid-read AbortError into FS_ABORTED', async () => {

@@ -58,6 +58,9 @@ One page per subsystem of the DeepSeek Harness: what it is, the data structures 
 | [web.md](web.md) | the web access seam: `WebSearchRequest`/`Result`, `WebFetchRequest`/`Result`, `WebFetchBody`, provider availability, `WebError` |
 | [spill.md](spill.md) | the spill storage seam: `SaveTextSpill`, `SpillOwner`/`SpillSource`, `SpillRef`, the branded `SpillLocator` |
 | [workflow.md](workflow.md) | the workflow seam: `WorkflowStartRequest`, `WorkflowMeta`, `WorkflowRun`/`Result`, the `workflow/*` event payloads, `WorkflowError` fatality |
+| [video-production.md](video-production.md) | Session-owned storyboards, reusable reference assets, generated versions, and ordered film exports |
+| [comic-production.md](comic-production.md) | Workspace-owned comic manuscripts, original PNG revisions, and portable projects |
+| [capabilities.md](capabilities.md) | Installed providers, owned runtime management, and declarative configuration transfer |
 | [jobs.md](jobs.md) | the background-job runtime: branded `JobId`s, the producer contract, consumer views, and `ctx.jobs` service behavior |
 | [permission-presets.md](permission-presets.md) | the permission-preset layer: `PresetSpec`/`PresetOption`, the derived `custom` state, the log-only `permission/preset` event |
 | [plan.md](plan.md) | plan mode: the log-only `plan/mode` state, pending-selection flush, `PlanModeConfig`, the `exit_plan_mode` review arc |

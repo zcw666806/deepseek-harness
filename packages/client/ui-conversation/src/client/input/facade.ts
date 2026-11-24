@@ -9,6 +9,7 @@
  * listeners onto it.
  */
 import type { Context } from '@deepseek-ai/cordis'
+import type { StudioKind } from '@deepseek-ai/dsh-client-ui-layout/client'
 import type { InboxState } from '@deepseek-ai/dsh-agent/types'
 import type { SessionEventLikeEntry, SessionEventSource, SessionSnapshot } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SessionSeq } from '@deepseek-ai/dsh-session/types'
@@ -75,6 +76,7 @@ export interface SessionInputDeps {
     mode: InputSubmitMode,
     signal: AbortSignal,
     accept: () => void,
+    creationMode?: StudioKind,
   ): Promise<SubmitOutcome>
   /** Read the Session facts whose removal and subagent mode gate quote and reference insertion; absent permits both. */
   session?: (() => Pick<SessionSnapshot, 'removed' | 'subagent'>) | undefined
@@ -171,6 +173,8 @@ const EMPTY_LEXICON: ReadonlyMap<'/' | '@', readonly string[]> = new Map()
  * Lexical editor.
  */
 export class SessionInputShell implements SessionInput {
+  /** Creation workflow captured when a message is submitted. */
+  readonly creationMode = createSnapshotStore<StudioKind | null>(null)
   /** Published editor projection + submit-plane state + queue overlay (the InputZone currency source). */
   readonly state: SnapshotStore<InputState>
   /** Latest surfaced notice (null after clear); the bar renders errors as banners and information inline. */
@@ -827,6 +831,7 @@ export class SessionInputShell implements SessionInput {
     mode: InputSubmitMode,
   ): void {
     this.notifySubmission(attempt.submission)
+    const creationMode = this.creationMode.getSnapshot()
     const { occurrences, quotes, attachmentIds } = attempt
     const inputTriggers = this.deps.inputTriggers?.()
     const prompt = serializeDraftPrompt(snapshotDraft(draft, occurrences, undefined, quotes), async (source, ref) => {
@@ -839,7 +844,11 @@ export class SessionInputShell implements SessionInput {
         this.settleSink(attempt, Promise.resolve({ kind: 'success' }))
         return
       }
-      this.settleSink(attempt, this.deps.defaultSink(text, attachmentIds, mode, attempt.signal, () => { this.acceptSink(attempt) }))
+      const accept = (): void => { this.acceptSink(attempt) }
+      const outcome = creationMode === null
+        ? this.deps.defaultSink(text, attachmentIds, mode, attempt.signal, accept)
+        : this.deps.defaultSink(text, attachmentIds, mode, attempt.signal, accept, creationMode)
+      this.settleSink(attempt, outcome)
     }
     if (!(prompt instanceof Promise)) { send(prompt); return }
     void prompt.then(send, (error: unknown) => { this.failSink(attempt, error) })

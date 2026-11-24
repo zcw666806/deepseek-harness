@@ -1,0 +1,52 @@
+# Bilingual-pair consistency record for 2026-10-28-restaurant-design-workbench.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/proposed/feature/2026-10-28-restaurant-design-workbench.md
+/agent-note-develop-a-restaurant-workbench-around-the-existing-viewer:
+  en: 7a74f20b5ca5c0ea
+  zh: 10c3ed59fca1fd4d
+/agent-note-develop-a-restaurant-workbench-around-the-existing-viewer/problem:
+  en: 6347c76548caed48
+  zh: 1920af13ced1b530
+/agent-note-develop-a-restaurant-workbench-around-the-existing-viewer/proposal:
+  en: e785893bc3bc844a
+  zh: 400537c71c25b223
+/agent-note-develop-a-restaurant-workbench-around-the-existing-viewer/proposal/responsibility-assignment:
+  en: 2ebc57cf60d526de
+  zh: 94b990c057dadf79
+/agent-note-develop-a-restaurant-workbench-around-the-existing-viewer/proposal/milestone-0-source-and-data-baseline:
+  en: 9465b01400e9e541
+  zh: 889812103b2670c5
+/agent-note-develop-a-restaurant-workbench-around-the-existing-viewer/proposal/milestone-1-one-usable-design-workflow:
+  en: 524d22aeb11f77ea
+  zh: 9e126387ab97bf03
+/agent-note-develop-a-restaurant-workbench-around-the-existing-viewer/proposal/milestone-2-restaurant-use-and-movement-rules:
+  en: ec608f671b8b7a0d
+  zh: c1780f5d16262475
+/agent-note-develop-a-restaurant-workbench-around-the-existing-viewer/proposal/milestone-3-alternatives-and-scheme-delivery:
+  en: 4cd5f36e7eaf4543
+  zh: bbac974c72adbb15
+/agent-note-develop-a-restaurant-workbench-around-the-existing-viewer/proposal/later-construction-workflow:
+  en: 568715fbd28f061d
+  zh: 3a414c8c8284e409
+/agent-note-develop-a-restaurant-workbench-around-the-existing-viewer/proposal/implementation-order-and-evidence:
+  en: 168f1e54f74a1305
+  zh: c332336a223988de
+/agent-note-develop-a-restaurant-workbench-around-the-existing-viewer/alternatives-considered:
+  en: 6119e2aff3b6be5a
+  zh: 4237c596c10e1ee9
+/agent-note-develop-a-restaurant-workbench-around-the-existing-viewer/alternatives-considered/replace-the-current-viewer-with-a-fresh-engine:
+  en: c158b6ceacdb647b
+  zh: 3bd054b9e642cd56
+/agent-note-develop-a-restaurant-workbench-around-the-existing-viewer/alternatives-considered/keep-extending-html-rewriting:
+  en: a74a1f5ccd06eb96
+  zh: effcd36e1963f9cc
+/agent-note-develop-a-restaurant-workbench-around-the-existing-viewer/alternatives-considered/add-bim-and-construction-output-immediately:
+  en: 2d167d43a02a2d06
+  zh: 14a22e3d17f87787
+/agent-note-develop-a-restaurant-workbench-around-the-existing-viewer/acceptance-criteria:
+  en: 6daac3946052f7b7
+  zh: 081163270910b723
+/agent-note-develop-a-restaurant-workbench-around-the-existing-viewer/risks:
+  en: 2b5b7b9a7b97a0b6
+  zh: 08502e2542d9de2d

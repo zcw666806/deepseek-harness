@@ -29,6 +29,12 @@ Desktop analytics follows the [product collection policy](../../client/product-a
 
 Fork keeps the inclusive `atSeq` request field and the default completed-turn cut. The command passes the observed history as the fork source: the stored parent prefix through `persistedEventCount`, then the child's marker and cold-read repair events. A live parent's log replaces that prefix in the factory, and a sharing backend drains the parent writer before referencing it; a parent whose stored history is shorter than the cut creates no child. See the [fork upgrade guide](../../../docs/upgrade-guide/v0.2.2-rc.3/session-fork-source/guide.md) for the creation parameters.
 
+Pass `sessionOnly: true` to `session.selectModel` to scope the model choice to the addressed Session.
+
+The owner can pass `modelSelection` to `session.prompt` when starting a queued turn in an idle ordinary Session with no queued turns. The Host validates the route and records the Session-local selection before the prompt enters the queue.
+
+The owner can read generated videos through `session.videoAttachment` without activating an Agent. It authorizes a successful `generate_video` result in the addressed Session log and returns a base64 slice with raw-byte offsets, progress, and verified metadata. Each slice contains at most 256 KiB of raw bytes; clients assemble a local Blob for playback or download. Missing references, failed generations, and invalid ranges are rejected before bytes are returned.
+
 Prompt retries use the request identity in the first committed inbox insertion, including after the message is claimed or removed. Admission checks again after asynchronous attachment preparation, so concurrent retries accept one input. Acceptance acknowledges insertion, not execution or completion.
 
 The controller reads a Session's recorded preset through the optional `agentPresets.presetForSession(session)` service method. A null result means no preset was recorded; an absent service means preset identity is unavailable to the controller.

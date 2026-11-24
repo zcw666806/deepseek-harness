@@ -15,6 +15,18 @@ import type { createLayoutStore } from './stores.ts'
 /** Identity shared by a sidebar panel entry and its main-slot occupant. */
 export type MainPanelId = Branded<'MainPanelId'>
 
+/** Session creation workspace registered in the studio slot. */
+export type StudioKind = 'comic' | 'video'
+
+/** Localized creation commands presented by the composer. */
+export interface StudioNavigation {
+  readonly entries: readonly { readonly kind: StudioKind; readonly label: string }[]
+  readonly label: string
+  readonly existingLabel: string
+  /** @param studio - editor to open for existing project data. */
+  readonly openExisting: (studio: StudioKind) => void
+}
+
 /** Root-scoped navigation state exposed to panel-aware components. */
 export interface PanelInfo {
   /** Selected global panel; null displays the current Conversation. */
@@ -28,6 +40,12 @@ export type PanelActions = BoundActions<ReturnType<typeof createLayoutStore>>
 export interface ILayout {
   /** Selected central panel from the same root store used by `usePanelInfo`. */
   readonly panelInfo: HostObservable<PanelInfo>
+  /** Creation workspaces mounted in the current profile. */
+  readonly studios?: HostObservable<readonly StudioKind[]> | undefined
+  /** Switch the visible creation workspace.
+   * @param studio - creation workspace to open, or null to close it.
+   */
+  showStudio?(studio: StudioKind | null): void
   /**
    * Select a global central panel without changing the current Session.
    * @param panelId - registered main key, or null to show the Conversation.
@@ -61,12 +79,19 @@ export class LayoutController implements ILayout {
    * @param panels - actions of the instance shared with the root entry.
    * @param hasMainPanel - checks the live main-slot registry for a panel id.
    * @param panelInfo - root store's shared central-panel selection source.
+   * @param studios - registered creation workspaces.
    */
   constructor(
     private readonly panels: PanelActions,
     private readonly hasMainPanel: (id: MainPanelId) => boolean,
     readonly panelInfo: HostObservable<PanelInfo>,
+    readonly studios?: HostObservable<readonly StudioKind[]>,
   ) {}
+
+  /** @param studio - creation workspace to open, or null to close it. */
+  showStudio(studio: StudioKind | null): void {
+    this.panels.showStudio(studio)
+  }
 
   /** Select a global panel or return to the Conversation. */
   selectPanel(panelId: MainPanelId | null): void {

@@ -44,4 +44,9 @@ export const ja = {
   'markdown.truncatedCharacters': '… {total}文字で切り捨て',
   'number.thousand': '{value}K',
   'number.million': '{value}M',
+  'studio.launcher': '制作',
+  'studio.comic': '漫画を作成',
+  'studio.video': '動画を作成',
+  'studio.existing': '既存のプロジェクト',
+  'studio.sessionRequired': 'サイドバーからセッションを開いて制作を始めてください。',
 } satisfies Record<keyof typeof en, string>

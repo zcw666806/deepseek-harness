@@ -71,7 +71,7 @@ The consumer owns the model-facing schema, the `tool:<toolName>` system-prompt g
 
 ### Background lifecycle
 
-A background call registers the run through `jobs.start` inside the job starter, so a synchronous engine rejection registers nothing and admission preflight runs before the engine spawns. The job's `done` chains from `run.result`: dispose (a disposal failure is warned, never rejected into the registry), stop the mirrors, then map the stop reason onto the job outcome. The ring mirror (`src/record.ts`) subscribes `workflow/phase`, `workflow/log`, and member events once per plugin and routes them into the tracked runs' `JobHandle` faces (`append` for lines, `updateProgress` for the phase); a straggling event after settlement finds no tracked run, and an append against a settled job drops inside the registry.
+A background call registers the run through `jobs.start` inside the job starter, so a synchronous engine rejection registers nothing and admission preflight runs before the engine spawns. The job settles after disposal and the mirrors stop. If a completed run fails to dispose, the job and the recorded run end both report failure. The ring mirror (`src/record.ts`) subscribes `workflow/phase`, `workflow/log`, and member events once per plugin and routes them into the tracked runs' `JobHandle` faces (`append` for lines, `updateProgress` for the phase); a straggling event after settlement finds no tracked run, and an append against a settled job drops inside the registry.
 
 ### Durable session records
 

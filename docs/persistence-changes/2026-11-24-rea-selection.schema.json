@@ -1,0 +1,16 @@
+{
+  "formatVersion": 2,
+  "roots": [
+    {"key":"event:rea-experiment/selected","kind":"event","event":"rea-experiment/selected","surface":false,"digest":"b7db016f7c5cc71d209273d9042d1a79ada5fcf2fa20cfec95d5980546605d06"}
+  ],
+  "types": [],
+  "nodes": {
+    "0657d3ca5ac4e7bf": {"kind":"primitive","type":"number"},
+    "06848f7001cd8a45": {"kind":"literal","value":"rea-experiment/selected"},
+    "4cd48f3e5108bd6e": {"kind":"primitive","type":"string"},
+    "93c33d9687613293": {"kind":"array","element":"4cd48f3e5108bd6e"},
+    "ae417fc7acb823f5": {"kind":"object","properties":[{"name":"args","type":"93c33d9687613293","optional":false},{"name":"command","type":"4cd48f3e5108bd6e","optional":false},{"name":"toolCallTimeoutMs","type":"0657d3ca5ac4e7bf","optional":false}],"indices":[]},
+    "b7db016f7c5cc71d": {"kind":"object","properties":[{"name":"data","type":"ae417fc7acb823f5","optional":false},{"name":"ignorable","type":"dacf3d5f3e4ff619","optional":true},{"name":"seq","type":"0657d3ca5ac4e7bf","optional":false},{"name":"time","type":"0657d3ca5ac4e7bf","optional":false},{"name":"type","type":"06848f7001cd8a45","optional":false}],"indices":[]},
+    "dacf3d5f3e4ff619": {"kind":"literal","value":true}
+  }
+}

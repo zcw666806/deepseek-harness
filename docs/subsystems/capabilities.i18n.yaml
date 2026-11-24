@@ -1,0 +1,13 @@
+# Bilingual-pair consistency record for capabilities.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/subsystems/capabilities.md
+/capabilities:
+  en: 2de4612153d91ddb
+  zh: 1cd247f171185be5
+/capabilities/runtime-ownership:
+  en: 940ace190a864ebc
+  zh: 7e4b3822a57e2e88
+/capabilities/portable-configuration:
+  en: 76f96b96eb42a8fa
+  zh: 9d280af824bea77a

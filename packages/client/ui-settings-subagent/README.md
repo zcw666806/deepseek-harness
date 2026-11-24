@@ -31,6 +31,8 @@ Open **Plugins** in the sidebar and select **Subagent** in the Official group to
 
 One **Save** writes both sections through their own namespaces, each fenced by the revision its draft read. The writes are independent: a section the Host refuses keeps its draft with the failure reported while the other lands, and a model draft a newer Host revision superseded is reported as a conflict to discard rather than overwriting the newer routes. Leaving the page drops every draft.
 
+When the Host serves the `rea-experiment` form, **Plugins → REA experiment** saves whether new chats load tools from the local REA server. Existing chats keep their recorded configuration. Host operators set the launcher in Cordis configuration.
+
 -----
 
 <a id="understand-the-implementation"></a>

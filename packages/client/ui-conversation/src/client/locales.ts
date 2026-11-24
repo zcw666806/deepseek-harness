@@ -9,6 +9,9 @@ const PLAN_NEXT_ACTION_EN = 'describe your task to generate plan'
 
 /** Simplified Chinese dictionary (the key-set source of truth). */
 export const zh = {
+  'creation.chat': '普通对话',
+  'creation.comic.instructions': '在当前工作区按项目制作漫画。沿用用户指定的项目目录或本会话已使用的项目目录；新项目用能说明主题的目录名。创建或更新 storyboard.md 记录分镜，并在回复中单独一行链接该文件。四格漫画请在回复中单列《标题》，接一行画风与角色说明，再用第一格到第四格作标题，每格分别写画面：、动作：、对白：。先完成分镜，等我确认再出图。分镜回复下方的出图操作会使用所选图像模型。',
+  'creation.video.instructions': '在当前工作区按项目制作视频。沿用用户指定的项目目录或本会话已使用的项目目录；新项目用能说明主题的目录名。创建或更新 storyboard.md。用一级标题写项目名，用编号三级标题（如「### 01 开场」）分隔各镜头，并在独立列表项中填写时长、画幅、分辨率和生成提示词。记录参考素材路径。在回复中用「视频分镜」链接该文件的实际项目路径，先请用户确认分镜。用户明确要求生成时，用 generate_video 生成镜头，并把生成结果和镜头的对应关系记入项目文档。',
   'quote.remove': '移除引用',
   'shortcut.newline': '换行',
   'shortcut.complementary': '使用互补的 Queue／Steer 方式',
@@ -416,6 +419,9 @@ export type ConversationKey = keyof typeof zh
 
 /** English dictionary, checked complete against the zh key set. */
 export const en = {
+  'creation.chat': 'Regular chat',
+  'creation.comic.instructions': 'Work in the current workspace. Use the named project folder or reuse this conversation’s project folder. Choose a descriptive folder for a new project. Create or update storyboard.md and put the file link on a separate line in your reply. For a four-panel comic, put 《Title》 and brief art direction on separate lines, then use Panel 1 through Panel 4 headings with Scene:, Action:, and Dialogue: on separate lines for each panel. Do not draw or generate images yet. The image action beneath the storyboard uses the selected image model.',
+  'creation.video.instructions': 'Work in the current workspace. Use the named project folder or reuse this conversation’s project folder. Choose a descriptive folder for a new project. Create or update storyboard.md. Use one level-one project title and a numbered level-three heading for each shot, such as “### Shot 1 — Opening”. List Duration, Aspect ratio, Resolution, and Prompt on separate bullet lines. Record reference paths. Link the actual project file as “Video storyboard” in your reply and ask the user to review it first. When the user explicitly asks to generate a shot, use generate_video and record the resulting clip alongside that shot in the project document.',
   'quote.remove': 'Remove quote',
   'shortcut.newline': 'New line',
   'shortcut.complementary': 'Use the complementary Queue / Steer action',
@@ -822,6 +828,9 @@ export const en = {
 
 /** Japanese copy, checked against the English keys. */
 export const ja = {
+  'creation.chat': '通常のチャット',
+  'creation.comic.instructions': en['creation.comic.instructions'],
+  'creation.video.instructions': en['creation.video.instructions'],
   'quote.remove': '引用を削除',
   'shortcut.newline': '改行',
   'shortcut.complementary': '補助のキュー / 実行中の指示変更を使用',
@@ -1226,6 +1235,9 @@ export const ja = {
 
 /** Spanish dictionary, checked against the English keys. */
 export const es = {
+  'creation.chat': 'Chat normal',
+  'creation.comic.instructions': en['creation.comic.instructions'],
+  'creation.video.instructions': en['creation.video.instructions'],
   'quote.remove': 'Eliminar cotización',
   'shortcut.newline': 'Nueva linea',
   'shortcut.complementary': 'Usar la acción alternativa de poner en cola o redirigir',
@@ -1632,6 +1644,9 @@ export const es = {
 
 /** French dictionary, checked against the English keys. */
 export const fr = {
+  'creation.chat': 'Discussion ordinaire',
+  'creation.comic.instructions': en['creation.comic.instructions'],
+  'creation.video.instructions': en['creation.video.instructions'],
   'quote.remove': 'Supprimer le devis',
   'shortcut.newline': 'Nouvelle ligne',
   'shortcut.complementary': 'Utiliser l’action alternative de mise en attente ou de guidage',
@@ -2038,6 +2053,9 @@ export const fr = {
 
 /** German dictionary, checked against the English keys. */
 export const de = {
+  'creation.chat': 'Normaler Chat',
+  'creation.comic.instructions': en['creation.comic.instructions'],
+  'creation.video.instructions': en['creation.video.instructions'],
   'quote.remove': 'Zitat entfernen',
   'shortcut.newline': 'Neue Zeile',
   'shortcut.complementary': 'Die alternative Aktion zum Vormerken oder Lenken verwenden',
@@ -2444,6 +2462,9 @@ export const de = {
 
 /** Russian dictionary, checked against the English keys. */
 export const ru = {
+  'creation.chat': 'Обычный чат',
+  'creation.comic.instructions': en['creation.comic.instructions'],
+  'creation.video.instructions': en['creation.video.instructions'],
   'quote.remove': 'Удалить цитату',
   'shortcut.newline': 'Новая линия',
   'shortcut.complementary': 'Использовать альтернативное действие: поставить в очередь или направить',
@@ -2850,6 +2871,9 @@ export const ru = {
 
 /** Portuguese dictionary, checked against the English keys. */
 export const pt = {
+  'creation.chat': 'Conversa normal',
+  'creation.comic.instructions': en['creation.comic.instructions'],
+  'creation.video.instructions': en['creation.video.instructions'],
   'quote.remove': 'Remover cotação',
   'shortcut.newline': 'Nova linha',
   'shortcut.complementary': 'Usar a ação alternativa de enfileirar ou orientar',

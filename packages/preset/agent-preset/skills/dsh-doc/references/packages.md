@@ -61,6 +61,12 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-sdk-app` | yes | The dsh SDK profile bundle: stdio JSON-RPC serving and process lifecycle over dsh-base |
 | `@deepseek-ai/dsh-web-app` | yes | The dsh browser-surface bundle: the web patch layer over dsh-base plus the runtime glue plugin (frontend dist serving, bash runtime variables, URL line) |
 
+## capability
+
+| Package | Config | Description |
+|---|---|---|
+| `@deepseek-ai/dsh-capability-manager` | yes | Installed capability directory, fixed lifecycle operations, and portable provider settings |
+
 ## client
 
 | Package | Config | Description |
@@ -84,7 +90,9 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-client-ui-approval` | no | Approval composer takeover over the scoped Remote Event waterfall |
 | `@deepseek-ai/dsh-client-ui-attachment` | no | Dynamic attachment presentation plugin for conversation input, message-image, and trajectory image slots |
 | `@deepseek-ai/dsh-client-ui-brand-official` | no | Official DeepSeek Harness brand artwork and click-triggered home background |
+| `@deepseek-ai/dsh-client-ui-capabilities` | no | Global capability management in the DSH settings page |
 | `@deepseek-ai/dsh-client-ui-chat` | no | Chat Conversation target, node definitions, renderers, and details surface |
+| `@deepseek-ai/dsh-client-ui-comic-production` | no | Comic page editing, lettering, artwork revision, and export in the Web creation workspace |
 | `@deepseek-ai/dsh-client-ui-commands` | no | Client command surface: global directory cache, '/' source, three command UI kinds, popupSelect registry |
 | `@deepseek-ai/dsh-client-ui-connector-account` | no | Connector account surfaces: the Host registry CLI app plugins and MCP connectors register their accounts with, and the Plugins page section, title tag, activation prompt, and notices it serves over one Remote |
 | `@deepseek-ai/dsh-client-ui-context-menu` | yes | Typed, plugin-extensible context menus with captured targets and shared Web presentation |
@@ -137,8 +145,15 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-client-ui-tool` | no | Client Tool call-tree renderer and keyed per-tool presentation slot |
 | `@deepseek-ai/dsh-client-ui-trajectory` | yes | Trajectory event ledger and timing overview with live tool-result inspection |
 | `@deepseek-ai/dsh-client-ui-user-questions` | no | Web ask_user_question composer takeover and plan-review presentation UI |
+| `@deepseek-ai/dsh-client-ui-video-production` | yes | Session-owned video storyboard canvas, reference assets, previews, and film sequence |
 | `@deepseek-ai/dsh-client-ui-workflow-run` | no | Durable workflow-run Conversation Node and nested member disclosure for dsh web |
 | `@deepseek-ai/dsh-client-ui-workspace` | no | Workspace picker plugin: one WorkspacePicker registered into the sidebar and empty-state workspace slots |
+
+## comic
+
+| Package | Config | Description |
+|---|---|---|
+| `@deepseek-ai/dsh-comic-production` | yes | Workspace-owned comic pages, editable lettering, artwork revisions, and portable masters |
 
 ## compaction
 
@@ -550,6 +565,14 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | Package | Config | Description |
 |---|---|---|
 | `@deepseek-ai/dsh-typert-loader` | yes | Loader integration for generated Typert package contributions |
+
+## video
+
+| Package | Config | Description |
+|---|---|---|
+| `@deepseek-ai/dsh-video-comfyui` | yes | Optional operator-configured ComfyUI HTTP video generation provider |
+| `@deepseek-ai/dsh-video-comfyui-runtime` | yes | DSH-managed local ComfyUI runtime with verified offline preparation and owned process teardown |
+| `@deepseek-ai/dsh-video-production` | yes | Session-owned storyboards, reference assets, generated shot versions, and film export |
 
 ## web
 

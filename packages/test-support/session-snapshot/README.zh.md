@@ -29,6 +29,8 @@ kind: "package-library"
 
 ### 编写快照套件
 
+身份脱敏保留父子日志之间的相等关系。成功的 `video_project` 结果通过规范结果元数据建立由 Session 派生的项目身份；失败结果、无关工具和其他 Session 的元数据不能建立该身份。普通工具文本不能建立标识符。
+
 消费方 `*.snapshot.ts` 就是场景表加一次工厂调用。`AgentUnderTest` 提供绝对 `binScript`、可选 `libBinScript`、`configPath` 与 `tsconfigPath` 路径，因为子进程 cwd 位于仓库之外：
 
 ```ts

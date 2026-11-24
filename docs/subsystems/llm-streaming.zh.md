@@ -35,6 +35,8 @@ interface ContentBlockMap {
 
 图片访问方式属于请求序列化，不属于持久附件或确定性请求图片版本。`resolveImageAttachmentAccess()` 把附件提供方可选的宿主对象路径，与消费方为当前工具执行文件系统提供的映射组合起来。结果只适用于本次请求，不参与 `variantId`。
 
+`VideoBlock` 携带视频提供方的持久附件引用。生成工具把引用记录到工具结果的呈现元数据，并将文本提供给下一次模型请求。
+
 源码：[`packages/llm/llm/src/content.ts`](../../packages/llm/llm/src/content.ts)
 
 ```ts type-equiv
@@ -568,6 +570,8 @@ interface LlmModelInfo {
   description?: string
   /** Accepted request modalities; absent means unknown, while an explicit omission is negative capability. */
   inputModalities?: readonly ModelModality[]
+  /** Produced response modalities. An absent declaration uses text output. */
+  outputModalities?: readonly ModelOutputModality[]
   /**
    * Selector label advertised by catalog discovery; exact-route resolution
    * omits it, and no model request or Session event carries it.

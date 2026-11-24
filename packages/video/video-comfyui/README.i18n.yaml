@@ -1,0 +1,52 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/video/video-comfyui/README.md
+/:
+  en: 5f1f7fc3bc15431b
+  zh: ecd9d7a5bc56da32
+/deepseek-ai-dsh-video-comfyui:
+  en: 3ffea4ca5c83837b
+  zh: 7189a13400f527ce
+/deepseek-ai-dsh-video-comfyui/summary:
+  en: 821c4c7330d7d4ca
+  zh: 500a81fc78303422
+/deepseek-ai-dsh-video-comfyui/table-of-contents:
+  en: 23386452a66b2fbd
+  zh: dbf34bb5d795675e
+/deepseek-ai-dsh-video-comfyui/use-this-package:
+  en: 68167e7842dc8cb1
+  zh: 8e861a423204529d
+/deepseek-ai-dsh-video-comfyui/use-this-package/workflow-configuration:
+  en: 3f8d2150b6496234
+  zh: b3ef5f6e16d6793f
+/deepseek-ai-dsh-video-comfyui/use-this-package/transport-limits:
+  en: 26bf4f10912b93f9
+  zh: f8026d51953b6f36
+/deepseek-ai-dsh-video-comfyui/understand-the-implementation:
+  en: 4430b1c507354bcd
+  zh: d912d34dd160294a
+/deepseek-ai-dsh-video-comfyui/further-exploration:
+  en: dea5919680c37064
+  zh: 7a5e2cd9f9c88847
+/deepseek-ai-dsh-video-comfyui/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-video-comfyui/model-experience/configured-generation-targets:
+  en: 10bcfecc2b5fcb3a
+  zh: 4fc8ba14e8894933
+/deepseek-ai-dsh-video-comfyui/model-experience/configured-generation-targets/what-the-model-sees:
+  en: b64b318f2c0fecb8
+  zh: bf621bd82567e796
+/deepseek-ai-dsh-video-comfyui/model-experience/configured-generation-targets/token-effect:
+  en: 92e958954dfbfbd8
+  zh: 24ad3d38f6dd60a8
+/deepseek-ai-dsh-video-comfyui/model-experience/configured-generation-targets/kv-cache-effect:
+  en: b2dca5e6a6a8a62d
+  zh: c7f685e828b3ffb2
+/deepseek-ai-dsh-video-comfyui/known-limitations-and-deferred-work:
+  en: cab9f64585c7d459
+  zh: 7c856e93a4d83aca
+/deepseek-ai-dsh-video-comfyui/known-limitations-and-deferred-work/dev-note:
+  en: 0a1253c6f7b5e8b9
+  zh: 9f56528562c7c914

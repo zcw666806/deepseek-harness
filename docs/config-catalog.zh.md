@@ -276,7 +276,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-api-session-controller`
 
 - `inject`: `agentDefaultModel` · `agents` · `attachments` · `fileUploads` · `fs` · `llm` · `remoteAccess` · `sessions` · `sessionProjections` · `sessionQuery` · `typert` · `typertGateway` · `workspaceRegistry`
-- `source`: [`packages/api/session-controller/src/index.ts:83`](../packages/api/session-controller/src/index.ts)
+- `source`: [`packages/api/session-controller/src/index.ts:85`](../packages/api/session-controller/src/index.ts)
 
 ```ts config-catalog
 /** Session Controller deployment policy. */
@@ -425,7 +425,7 @@ export interface SearchLimits {
 
 ## `@deepseek-ai/dsh-attachment-local`
 
-- `source`: [`packages/attachment/attachment-local/src/index.ts:70`](../packages/attachment/attachment-local/src/index.ts)
+- `source`: [`packages/attachment/attachment-local/src/index.ts:73`](../packages/attachment/attachment-local/src/index.ts)
 
 ```ts config-catalog
 /** Local attachment backend configuration. */
@@ -509,6 +509,28 @@ export interface Config {
 export type Config = LocalConfig
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-bash-sandbox -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-capability-manager -->
+<a id="deepseek-aidsh-capability-manager"></a>
+
+## `@deepseek-ai/dsh-capability-manager`
+
+- `source`: [`packages/capability/capability-manager/src/types.ts:125`](../packages/capability/capability-manager/src/types.ts)
+
+```ts config-catalog
+/** Deployment bounds for registered providers and their management operations. */
+export interface Config {
+  /** Maximum simultaneously registered providers; integer 1–256, default 64. */
+  readonly maxProviders?: number
+  /** Inspection deadline including queue wait; integer 1–2,147,483,647 milliseconds, default 10,000. */
+  readonly checkTimeoutMs?: number
+  /** Prepare/start/stop deadline including queue wait and final inspection; integer 1–2,147,483,647 milliseconds, default 300,000. */
+  readonly actionTimeoutMs?: number
+  /** Maximum UTF-8 JSON bytes in a complete returned view or list; integer 1,024–16,777,216, default 1,048,576. */
+  readonly maxResultBytes?: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-capability-manager -->
 
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-cli-account -->
 <a id="deepseek-aidsh-cli-account"></a>
@@ -887,6 +909,73 @@ export interface Config {
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-client-ui-trajectory -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-client-ui-video-production -->
+<a id="deepseek-aidsh-client-ui-video-production"></a>
+
+## `@deepseek-ai/dsh-client-ui-video-production`
+
+- `source`: [`packages/client/ui-video-production/src/config.ts:5`](../packages/client/ui-video-production/src/config.ts)
+
+```ts config-catalog
+/** Browser observation policy; it does not control Host execution or engine polling. */
+export interface VideoWorkspaceConfig {
+  /** Interval between completed batch observations; integer 100–60,000 ms, default 1,500. */
+  readonly batchPollIntervalMs?: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-client-ui-video-production -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-comic-production -->
+<a id="deepseek-aidsh-comic-production"></a>
+
+## `@deepseek-ai/dsh-comic-production`
+
+- `inject`: `storageDomain` · `workspaceRegistry` · `sessionPersistence`
+- `source`: [`packages/comic/comic-production/src/types.ts:145`](../packages/comic/comic-production/src/types.ts)
+
+```ts config-catalog
+/** Deployment limits and optional storyboard image generation. */
+export interface Config {
+  /** Harness home containing the private original PNG store. Defaults to the active Harness home. */
+  readonly dshHome?: string
+  /** Maximum encoded byte length of a single original PNG. */
+  readonly maxImageBytes?: number
+  /** Maximum decoded pixel count of a single original PNG. */
+  readonly maxImagePixels?: number
+  /** Maximum UTF-8 byte length of the editable manuscript metadata. */
+  readonly maxProjectBytes?: number
+  /** Maximum UTF-8 byte length of the portable project, including base64 artwork. */
+  readonly maxPackageBytes?: number
+  /** Optional single image route, exposed under the reserved ID `default`. */
+  readonly imageGeneration?: ComicImageGenerationConfig | null
+  /** Additional selectable image routes, each with a provider endpoint and credential reference. */
+  readonly imageGenerationTargets?: ComicImageGenerationTargetConfig[]
+}
+
+/** OpenAI-compatible image service used to draw a storyboard in one request. */
+export interface ComicImageGenerationConfig {
+  /** API base URL ending at the provider's version path, such as `/v1`. */
+  readonly baseURL: string
+  /** Credential reference resolved on the Host when a request starts. */
+  readonly credentialRef: string
+  /** Provider's image model ID. */
+  readonly model: string
+  /** Time limit in milliseconds for the request and any image download. */
+  readonly timeoutMs?: number
+  /** HTTPS origins allowed to serve artwork when a provider returns a URL. */
+  readonly imageOrigins?: string[]
+}
+
+/** Named image route a deployment makes available to comic Sessions. */
+export interface ComicImageGenerationTargetConfig extends ComicImageGenerationConfig {
+  /** Stable route ID unique within the deployment. */
+  readonly id: string
+  /** Display label for the model picker. */
+  readonly title: string
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-comic-production -->
 
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-compaction-basic -->
 <a id="deepseek-aidsh-compaction-basic"></a>
@@ -2299,8 +2388,8 @@ export interface Config extends ProtocolConfig, ModelListingConfig {
 ## `@deepseek-ai/dsh-llm-pi-ai`
 
 - `inject`: `llm`
-- `refs`: `Api` (`@earendil-works/pi-ai`) · `CacheRetention` (`@earendil-works/pi-ai`) · `Model` (`@earendil-works/pi-ai`) · `ModelThinkingLevel` (`@earendil-works/pi-ai`) · `OpenAICompletionsCompat` (`@earendil-works/pi-ai`) · [`RetryPolicyConfig`](../packages/llm/llm/src/index.ts) · `ThinkingBudgets` (`@earendil-works/pi-ai`) · `Transport` (`@earendil-works/pi-ai`) · `Volatile` (`@deepseek-ai/cordis`)
-- `source`: [`packages/llm/llm-pi-ai/src/config.ts:257`](../packages/llm/llm-pi-ai/src/config.ts)
+- `refs`: `Api` (`@earendil-works/pi-ai`) · `CacheRetention` (`@earendil-works/pi-ai`) · `Model` (`@earendil-works/pi-ai`) · [`ModelOutputModality`](../packages/llm/llm/src/index.ts) · `ModelThinkingLevel` (`@earendil-works/pi-ai`) · `OpenAICompletionsCompat` (`@earendil-works/pi-ai`) · [`RetryPolicyConfig`](../packages/llm/llm/src/index.ts) · `ThinkingBudgets` (`@earendil-works/pi-ai`) · `Transport` (`@earendil-works/pi-ai`) · `Volatile` (`@deepseek-ai/cordis`)
+- `source`: [`packages/llm/llm-pi-ai/src/config.ts:271`](../packages/llm/llm-pi-ai/src/config.ts)
 
 ```ts config-catalog
 /** Plugin configuration: the provider routes this instance owns. */
@@ -2389,6 +2478,10 @@ export interface PiAiProviderProfile {
   websocketConnectTimeoutMs?: number
   /** Maximum provider idle time while one stream read is outstanding. */
   streamIdleTimeoutMs?: number
+  /** Interval between pending video status requests in milliseconds (default 3,000). */
+  videoPollIntervalMs?: number
+  /** Total video generation, download, and storage budget in milliseconds (default 300,000). */
+  videoTimeoutMs?: number
   /**
    * Maximum base64-encoded image payload per request. When a request's
    * accumulated images exceed it, the oldest images are replaced by text
@@ -2451,6 +2544,13 @@ export interface PiAiModelProfile {
    * mid-turn.
    */
   input?: PiAiModality[]
+  /**
+   * Response modalities this model produces. Absent defaults to `['text']`.
+   * Declaring `['text', 'video']` makes this a video-generation model and
+   * exposes the `generate_video` tool. Video targets are excluded from chat
+   * selection and use the native video endpoint through that tool.
+   */
+  output?: ModelOutputModality[]
   /**
    * Selectable reasoning efforts. Absent inherits the installed catalog
    * entry's capability (a hand-declared model has none and does not reason);
@@ -5305,6 +5405,127 @@ export type ApprovalPolicy = 'ask' | 'never'
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-user-approval -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-video-comfyui -->
+<a id="deepseek-aidsh-video-comfyui"></a>
+
+## `@deepseek-ai/dsh-video-comfyui`
+
+- `inject`: `videoProduction` · `attachments`
+- `source`: [`packages/video/video-comfyui/src/config.ts:40`](../packages/video/video-comfyui/src/config.ts)
+
+```ts config-catalog
+/** Loader-owned live fields alongside fixed host transport settings. */
+export type LiveConfig = ReturnType<typeof Config>
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-video-comfyui -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-video-comfyui-runtime -->
+<a id="deepseek-aidsh-video-comfyui-runtime"></a>
+
+## `@deepseek-ai/dsh-video-comfyui-runtime`
+
+- `inject`: `capabilities` · `subprocess` · `fs`
+- `source`: [`packages/video/video-comfyui-runtime/src/types.ts:2`](../packages/video/video-comfyui-runtime/src/types.ts)
+
+```ts config-catalog
+/** Machine-local bindings and bounds for a replaceable managed ComfyUI installation. */
+export interface Config {
+  /** Runtime directory; relative paths resolve against the invoking directory, omission uses DSH_HOME/runtimes/comfyui. */
+  readonly directory?: string
+  /** Existing base Python executable or PATH name; default python, resolved by the configured subprocess provider. */
+  readonly pythonPath?: string
+  /** Local cache with the reviewed manifest, source archive, wheels and version lock; absent disables preparation. */
+  readonly artifactDirectory?: string
+  /** Basename of the artifact manifest in artifactDirectory; default manifest.json. */
+  readonly manifestName?: string
+  /** Exact SHA-256 of the reviewed manifest; required with artifactDirectory and never supplied by a project import. */
+  readonly manifestSha256?: string
+  /** Expected installed ComfyUI version, default 0.43.0; the runtime probe must agree before reporting ready. */
+  readonly version?: string
+  /** IPv4 loopback listener port; integer 1–65535, default 8188. */
+  readonly port?: number
+  /** Maximum startup readiness wait in milliseconds; integer 1–2147483647, default 120000. */
+  readonly startupTimeoutMs?: number
+  /** Milliseconds between readiness checks; integer 1–2147483647, default 500. */
+  readonly pollIntervalMs?: number
+  /** Managed process-tree termination grace in milliseconds; integer 1–2147483647, default 2000. */
+  readonly processGraceMs?: number
+  /** Maximum collected process bytes per output stream; integer 1–1048576, default 16384. */
+  readonly maxProcessOutputBytes?: number
+  /** Maximum JSON bytes from the loopback health endpoint; integer 1–1048576, default 65536. */
+  readonly maxHealthBytes?: number
+  /** Maximum health request duration in milliseconds; integer 1–2147483647, default 3000. */
+  readonly healthTimeoutMs?: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-video-comfyui-runtime -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-video-production -->
+<a id="deepseek-aidsh-video-production"></a>
+
+## `@deepseek-ai/dsh-video-production`
+
+- `inject`: `storageDomain` · `sessions` · `sessionPersistence` · `attachments` · `tools`
+- `source`: [`packages/video/video-production/src/types.ts:235`](../packages/video/video-production/src/types.ts)
+
+```ts config-catalog
+/** Deployment-specific bounds and the optional host-local export executable. */
+export interface Config {
+  /** Maximum storyboard shots per project; integer 1–256, default 64. */
+  readonly maxShots?: number
+  /** Maximum reusable reference assets per project; integer 1–256, default 64. */
+  readonly maxAssets?: number
+  /** Maximum retained generation attempts per shot, including failures; integer 1–256, default 20. */
+  readonly maxVersionsPerShot?: number
+  /** Maximum retained film-export attempts per project, including failures; integer 1–256, default 20. */
+  readonly maxExports?: number
+  /** Maximum timed captions on one adopted clip; integer 1–256, default 64. */
+  readonly maxCaptionsPerShot?: number
+  /** Maximum UTF-8 bytes in a complete serialized project; integer 1,024–16,777,216, default 1,048,576. */
+  readonly maxProjectBytes?: number
+  /** Host-local FFmpeg executable: absolute path or bare PATH name; default `ffmpeg`. */
+  readonly ffmpegPath?: string
+  /** Host-local ffprobe executable: absolute path or bare PATH name; default `ffprobe`. */
+  readonly ffprobePath?: string
+  /** Optional host-local subtitle font file; omitted uses the renderer's configured default font. */
+  readonly subtitleFontPath?: string
+  /**
+   * Export cancellation deadline covering preparation, rendering, and attachment storage.
+   * Integer milliseconds from 1 through 2,147,483,647; default 300,000.
+   */
+  readonly exportTimeoutMs?: number
+  /**
+   * Generation cancellation deadline covering the provider and attachment verification.
+   * Integer milliseconds from 1 through 2,147,483,647; default 300,000.
+   */
+  readonly generationTimeoutMs?: number
+  /** Normalized exported video width in pixels; even integer 2–4,096, default 1,280. */
+  readonly exportWidth?: number
+  /** Normalized exported video height in pixels; even integer 2–4,096, default 720. */
+  readonly exportHeight?: number
+  /** Normalized exported video frames per second; integer 1–120, default 24. */
+  readonly exportFrameRate?: number
+  /**
+   * Byte limit for total source clips, each normalized clip, and the complete rendered MP4.
+   * Integer from 1 through 2,147,483,647; default 536,870,912.
+   */
+  readonly maxExportBytes?: number
+  /** Managed process-tree termination and pipe-draining grace in milliseconds; integer 1–2,147,483,647, default 2,000. */
+  readonly processGraceMs?: number
+  /** Maximum collected bytes per renderer stdout or stderr stream; integer 1–1,048,576, default 16,384. */
+  readonly maxProcessOutputBytes?: number
+  /** Maximum raw bytes in a complete portable project package; integer 1,024–2,147,483,647, default 805,306,368. */
+  readonly maxProjectPackageBytes?: number
+  /** Maximum UTF-8 bytes in a package manifest; integer 1,024–16,777,216, default 4,194,304. */
+  readonly maxProjectPackageManifestBytes?: number
+  /** Maximum simultaneous package transfers; integer 1–64, default 4. */
+  readonly maxProjectTransfers?: number
+  /** Package transfer lifetime in milliseconds; integer 1–2,147,483,647, default 1,800,000. */
+  readonly projectTransferTimeoutMs?: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-video-production -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-web -->
 <a id="deepseek-aidsh-web"></a>
 
@@ -5612,7 +5833,9 @@ export interface Config {
 | `@deepseek-ai/dsh-client-ui-approval` | — | [`packages/client/ui-approval/src/index.ts`](../packages/client/ui-approval/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-attachment` | — | [`packages/client/ui-attachment/src/index.ts`](../packages/client/ui-attachment/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-brand-official` | — | [`packages/client/ui-brand-official/src/index.ts`](../packages/client/ui-brand-official/src/index.ts) |
+| `@deepseek-ai/dsh-client-ui-capabilities` | — | [`packages/client/ui-capabilities/src/index.ts`](../packages/client/ui-capabilities/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-chat` | — | [`packages/client/ui-chat/src/index.ts`](../packages/client/ui-chat/src/index.ts) |
+| `@deepseek-ai/dsh-client-ui-comic-production` | — | [`packages/client/ui-comic-production/src/index.ts`](../packages/client/ui-comic-production/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-commands` | — | [`packages/client/ui-commands/src/index.ts`](../packages/client/ui-commands/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-connector-account` | — | [`packages/client/ui-connector-account/src/index.ts`](../packages/client/ui-connector-account/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-conversation` | — | [`packages/client/ui-conversation/src/index.ts`](../packages/client/ui-conversation/src/index.ts) |

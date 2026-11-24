@@ -1,0 +1,38 @@
+- id: tool-workflow
+  disabled: true
+- id: tool-ralph
+  disabled: true
+
+- id: llm-deepseek
+  disabled: true
+
+- id: plugin-package-inventory-deepseek
+  disabled: true
+
+- id: llm-pi-ai
+  config:
+    providers:
+      snapshot-video:
+        api: openai-completions
+        baseURL: https://video.snapshot.invalid/v1
+        apiKeyEnv: SNAPSHOT_VIDEO_KEY
+        defaultContextWindow: 8192
+        defaultMaxTokens: 1024
+        videoPollIntervalMs: 1
+        videoTimeoutMs: 5000
+        models:
+          - id: snapshot-video-target
+            output: [text, video]
+
+- insert:
+    - id: llm-replay
+      name: '@deepseek-ai/dsh-llm-replay'
+      config:
+        providers:
+          - id: deepseek-official
+            name: DeepSeek
+            models:
+              - id: deepseek-v4-flash
+              - id: deepseek-v4-pro
+    - id: video-api-fixture
+      name: './video-api-fixture.mjs'

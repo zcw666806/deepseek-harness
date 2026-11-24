@@ -57,6 +57,9 @@ Every package lives in exactly one group; new packages join existing groups, and
 | [`jobs/`](jobs/README.md) | Generic background-job runtime and model-facing job control tools |
 | [`experimental/`](experimental/README.md) | Capabilities under evaluation; [status and support policy](experimental/README.md#status) |
 | [`workflow/`](workflow/README.md) | Workflow seam, PTC process engine, and the model-facing `workflow` tool |
+| [`video/`](video/README.md) | Persistent video projects, reference assets, shot versions, and film exports |
+| [`comic/`](comic/README.md) | Workspace-owned comic manuscripts, original artwork, and portable project files |
+| [`capability/`](capability/README.md) | Installed capability management and portable provider configuration |
 | [`web/`](web/README.md) | Web capability family: seam, search/fetch providers, model-facing web tools |
 | [`document/`](document/README.md) | Shared Host Office rendering, conversion, and recalculation, the Office tools, and Kit engine resolution |
 | [`attachment/`](attachment/README.md) | Durable attachment identity, validation, local content-addressed storage |

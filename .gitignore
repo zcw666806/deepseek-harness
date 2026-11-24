@@ -43,6 +43,7 @@ apps/cli/docs/
 .dsh-report/
 .ui-review/
 .playwright-mcp/
+.tools/
 .orig
 .worktrees/
 worktrees/

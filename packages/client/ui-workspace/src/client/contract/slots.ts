@@ -280,6 +280,7 @@ export type WorkspaceBrowserInjected = {
   /** Dismiss the settled Workspace dialog. */
   settleWorkspaceAction: () => void
   hooks: DirectoryPickingInjected['hooks'] & {
+    sessionPresentations: HostObservable<readonly import('./presentations.ts').WorkspaceSessionPresentation[]>
     workspaceActionRequest: HostObservable<WorkspaceActionRequest | null>
     contextMenuTarget: HostObservable<ContextMenuTarget | null>
     /**

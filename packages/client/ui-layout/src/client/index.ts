@@ -8,12 +8,13 @@
  * presenter, which projects ctx.theme snapshots onto document.body.
  */
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-theme/client'
 import type { HostObservable, SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots'
-import type { PanelInfo } from './service.ts'
+import type { PanelInfo, StudioKind } from './service.ts'
 import { AppFrame } from './AppFrame.tsx'
 import type { AppFrameInjected } from './AppFrame.tsx'
 import { createLayoutStore } from './stores.ts'
@@ -28,7 +29,7 @@ import { ThemePresenter } from './theme-presenter.ts'
 // OwnerShare contracts below are the render-side halves registrants compose
 // against; the frame components and the store factory are package-internal.
 export { LayoutController } from './service.ts'
-export type { ILayout, MainPanelId, PanelInfo } from './service.ts'
+export type { ILayout, MainPanelId, PanelInfo, StudioKind, StudioNavigation } from './service.ts'
 
 /** Selector hook over root-scoped panel selection. */
 export type UsePanelInfo = SnapshotSelectorHook<PanelInfo>
@@ -73,6 +74,10 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * key hosts the Conversation; other keys receive no Session binding.
      */
     'main': { kind: 'keyed'; scope: 'root' }
+    /** Session workbench opened by a creation mode. */
+    'studio': { kind: 'keyed'; scope: 'session'; keyProps: Record<StudioKind, object> }
+    /** Generation target selector for the active creation mode. */
+    'conversation.input.creation-model': { kind: 'keyed'; scope: 'session'; keyProps: Record<StudioKind, object> }
     /**
      * The right column: a track the centre makes room for, or nothing. OCCUPIED
      * by the right Sidebar, which uses the resolved column width in normal
@@ -185,8 +190,17 @@ export function apply(ctx: ClientContext): void {
       getSnapshot: () => instance.getSnapshot().panelInfo,
       subscribe: listener => instance.subscribe(listener),
     }
+    const studios = createSnapshotStore<readonly StudioKind[]>([])
+    const studioKinds: readonly StudioKind[] = ['comic', 'video']
+    const updateStudios = (): void => {
+      const entries = ctx.slots.entries('studio')
+      const next = studioKinds.filter(kind => entries.some(entry => entry.options.key === kind))
+      if (next.join(',') !== studios.getSnapshot().join(',')) studios.set(next)
+      const active = instance.getSnapshot().studio
+      if (active !== null && !next.includes(active)) instance.actions.showStudio(null)
+    }
     const layout = new LayoutController(instance.actions, id =>
-      ctx.slots.entries('main').some(entry => entry.options.key === id), panelInfo)
+      ctx.slots.entries('main').some(entry => entry.options.key === id), panelInfo, studios)
     const disposePanelInfo = ctx.slots.provideRoot({ hooks: { panelInfo: layout.panelInfo } })
     const disposeService = ctx.reflect.provide('layout', layout)
     const disposeRegistration = ctx.slots.register({
@@ -195,6 +209,7 @@ export function apply(ctx: ClientContext): void {
       children: {
         'sidebar': { kind: 'single', scope: 'root' },
         'main': { kind: 'keyed', scope: 'root' },
+        'studio': { kind: 'keyed', scope: 'session' },
         'rightbar': { kind: 'single', scope: 'root' },
         'shell.bottom': { kind: 'single', scope: 'root' },
         'shell.overlay': { kind: 'list', scope: 'root' },
@@ -218,11 +233,14 @@ export function apply(ctx: ClientContext): void {
         : { status: 'handled', run: () => { layout.toggleSidebar() } },
     })
     const disposePanels = ctx.slots.subscribe('main', retainMainPanels)
+    const disposeStudios = ctx.slots.subscribe('studio', updateStudios)
     retainMainPanels()
+    updateStudios()
     return () => {
       disposeShortcut()
       layout.dispose()
       disposePanels()
+      disposeStudios()
       disposeRegistration()
       disposePanelInfo()
       // provide()'s disposer settles asynchronously; teardown is synchronous fire-and-forget.

@@ -9,6 +9,7 @@ import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import { apply as settingsApply, inject as settingsInject } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { apply, inject, NS } from '../src/client/index.ts'
 import type { SubagentCardFace } from '../src/client/index.ts'
+import type { ReaExperimentFace } from '../src/client/ReaExperimentCard.tsx'
 import { SubagentModelSelectionCardController } from '../src/client/subagent-model-selection-card-controller.ts'
 import { apply as hostApply } from '../src/index.ts'
 
@@ -28,12 +29,13 @@ async function bench(served?: string[]) {
   const describeSettings = vi.fn(() => Promise.resolve(served === undefined
     ? { ok: false, error: new RemoteError('gateway/internal', 'no provider', {}) }
     : { ok: true, value: { writable: true, hasDocument: true, namespaces: served.map(ns => view(ns)) } }))
+  const mutate = vi.fn(() => Promise.resolve({ ok: true as const, value: { ...view('rea-experiment', 1), value: { enabled: true } } }))
   const remote = new TestRemote(ctx, {
     session: { modelCatalog: models },
-    settings: { describe: describeSettings },
+    settings: { describe: describeSettings, mutate },
   })
   await ctx.plugin({ inject: [...settingsInject], apply: settingsApply }).await()
-  return { ctx, slots: ctx.get('slots') as SlotRegistry, describeSettings, models, remote }
+  return { ctx, slots: ctx.get('slots') as SlotRegistry, describeSettings, models, mutate, remote }
 }
 
 /** The Plugins page's item slot, as its owner declares it. */
@@ -82,6 +84,25 @@ describe('ui-settings-subagent apply', () => {
     await vi.waitFor(() => { expect(other.describeSettings).toHaveBeenCalled() })
     expect(other.slots.entries('plugins.item')).toHaveLength(0)
     expect(describeSettings).toHaveBeenCalled()
+  })
+
+  it('stages and saves only the REA opt-in when its Host form is served', async () => {
+    const { ctx, slots, mutate } = await bench(['rea-experiment'])
+    declareRoot(slots)
+    await ctx.plugin({ inject: [...inject], apply }).await()
+    await vi.waitFor(() => { expect(slots.entries('plugins.item')).toHaveLength(1) })
+    const entry = slots.entries('plugins.item')[0]!
+    expect(entry.options.id).toBe('rea-experiment')
+    expect(resolveSlotLabel(entry.options.label)).toBe('REA 实验功能')
+    expect(entry.inject).toBeTypeOf('function')
+    const face = (entry.inject as unknown as () => ReaExperimentFace)()
+    expect(face.hooks.reaExperiment.getSnapshot().enabled).toBe(false)
+    face.edit('enabled', 'true')
+    expect(mutate).not.toHaveBeenCalled()
+    face.save()
+    await vi.waitFor(() => {
+      expect(mutate).toHaveBeenCalledWith('rea-experiment', [{ op: 'set', path: ['enabled'], value: true }], 0)
+    })
   })
 
   it('refreshes the model catalogue after model inputs change or the connection resets', async () => {

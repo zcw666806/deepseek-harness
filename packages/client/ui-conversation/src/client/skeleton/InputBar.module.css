@@ -309,6 +309,73 @@
   gap: 12px;
 }
 
+.creationMenu {
+  display: flex;
+  flex: none;
+}
+
+.creationModels {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  padding-inline: 16px;
+  container-type: inline-size;
+}
+
+.creationModels > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.creationTrigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 4px 0 8px;
+  border: none;
+  border-radius: 24px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .creationTrigger:hover:not(:disabled) {
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
+}
+
+.creationTrigger[aria-expanded='true'] {
+  background: var(--dsw-alias-interactive-bg-active);
+}
+
+.creationTrigger[data-active]:not(:disabled, [aria-expanded='true']) {
+  background: var(--dsw-alias-state-business-tertiary);
+  color: var(--dsw-alias-label-primary-bluish);
+}
+
+@media (hover: hover) {
+  .creationTrigger[data-active]:hover:not(:disabled, [aria-expanded='true']) {
+    background: var(--dsw-alias-interactive-bg-active);
+  }
+}
+
+.creationTrigger:focus-visible {
+  outline: 2px solid var(--dsw-alias-border-l3);
+}
+
+.creationTrigger:disabled {
+  color: var(--dsw-alias-label-dimmed);
+  cursor: default;
+}
+
 .trailing {
   flex: none;
   /* Wrap keeps the left mode chips and the right controls apart when the card

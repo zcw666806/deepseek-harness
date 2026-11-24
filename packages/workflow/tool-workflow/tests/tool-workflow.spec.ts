@@ -597,7 +597,7 @@ describe('dsh-tool-workflow', () => {
       expect(jobs.get(secondId, parent.id).detail).toBe('unknown error')
     })
 
-    it('a nested transport call records job lifecycle but no workflow events, and a dispose failure still settles', async () => {
+    it('a nested transport call records only job lifecycle, and a dispose failure fails the job', async () => {
       const { ctx, engine, parent, session } = await setupBackground()
       engine.disposeError = new Error('worker already gone')
       const warn = vi.spyOn(ctx.logger, 'warn').mockImplementation(() => {})
@@ -610,11 +610,25 @@ describe('dsh-tool-workflow', () => {
       const jobId = (result.value as { jobId: string }).jobId as JobId
       engine.settleRun(brandString<WorkflowRunId>('run-1'), { value: 'ok', stopReason: 'completed', agentsStarted: 1 })
       const jobs = ctx.jobs
-      await vi.waitFor(() => { expect(jobs.get(jobId, parent.id).status).toBe('completed') })
-      expect(jobs.get(jobId, parent.id).detail).toBe('1 agent')
+      await vi.waitFor(() => { expect(jobs.get(jobId, parent.id).status).toBe('failed') })
+      expect(jobs.get(jobId, parent.id).detail).toBe('Workflow cleanup failed.')
       expect(warn.mock.calls.map(args => String(args[0])).join('\n')).toContain('dispose failed')
       expect(session.snapshotEvents().map(event => event.type)).toEqual(['job/registered', 'job/settled'])
       expect(session.snapshotEvents().at(-1)?.data).toMatchObject({ producerReported: true })
+    })
+
+    it('records a failed workflow when a completed run fails to dispose', async () => {
+      const { ctx, engine, parent, session } = await setupBackground()
+      engine.disposeError = new Error('worker already gone')
+      vi.spyOn(ctx.logger, 'warn').mockImplementation(() => {})
+      const result = await execute(ctx, { script: SCRIPT, meta: META, run_in_background: true }, { agent: parent })
+      if (result.isError) throw new Error('expected background acceptance')
+      const jobId = (result.value as { jobId: string }).jobId as JobId
+      const runId = brandString<WorkflowRunId>('run-1')
+      engine.settleRun(runId, { value: 'ok', stopReason: 'completed', agentsStarted: 1 })
+      await vi.waitFor(() => { expect(ctx.jobs.get(jobId, parent.id).status).toBe('failed') })
+      expect(session.snapshotEvents().find(event => event.type === 'tool-workflow/run-end')?.data)
+        .toMatchObject({ runId, stopReason: 'error' })
     })
 
     it('a synchronous engine rejection registers no job', async () => {

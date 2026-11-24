@@ -57,6 +57,12 @@
       "path": "../../core/agent"
     },
     {
+      "path": "../../core/session"
+    },
+    {
+      "path": "../../session/session-projection"
+    },
+    {
       "path": "../../util/output-retention"
     }
   ]

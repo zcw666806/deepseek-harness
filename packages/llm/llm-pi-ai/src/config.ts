@@ -27,6 +27,7 @@ import {
   CHAT_TEMPLATE_VARS,
   MAX_TOKENS_FIELDS,
   MODALITIES,
+  OUTPUT_MODALITIES,
   PiAiCatalogError,
   resolveRouteModels,
   SUPPORTED_THINKING_FORMATS,
@@ -45,6 +46,11 @@ import { buildProvider, supportedProtocols } from './provider.ts'
 
 /** Default maximum idle interval while an adapter stream read is outstanding. */
 export const DEFAULT_STREAM_IDLE_TIMEOUT_MS = 300_000
+
+/** Default interval between video status requests. */
+export const DEFAULT_VIDEO_POLL_INTERVAL_MS = 3_000
+/** Default total video generation, download, and storage budget. */
+export const DEFAULT_VIDEO_TIMEOUT_MS = 300_000
 
 /**
  * Default cap on aggregate base64 image payload, excluding text, tools, and
@@ -176,6 +182,10 @@ export interface PiAiProviderProfile {
   websocketConnectTimeoutMs?: number
   /** Maximum provider idle time while one stream read is outstanding. */
   streamIdleTimeoutMs?: number
+  /** Interval between pending video status requests in milliseconds (default 3,000). */
+  videoPollIntervalMs?: number
+  /** Total video generation, download, and storage budget in milliseconds (default 300,000). */
+  videoTimeoutMs?: number
   /**
    * Maximum base64-encoded image payload per request. When a request's
    * accumulated images exceed it, the oldest images are replaced by text
@@ -222,6 +232,10 @@ export interface ResolvedPiAiProviderProfile
   apiKeyEnv?: CredentialRef
   /** Positive finite provider-idle interval after defaulting. */
   streamIdleTimeoutMs: number
+  /** Positive integer interval between pending video polls. */
+  videoPollIntervalMs: number
+  /** Positive integer total video generation budget. */
+  videoTimeoutMs: number
   /** Positive request-level base64 image payload bound after defaulting. */
   maxRequestImageBytes: number
   /** Positive request-level retained image count bound after defaulting. */
@@ -343,6 +357,8 @@ const modelFields = {
   // materializes `[]` for an absent array, and resolution reads that as "no
   // answer here" so the catalog entry below still applies.
   input: z.array(z.union(MODALITIES)),
+  // Output modalities (text, image, video). Same empty-array semantics as input.
+  output: z.array(z.union(OUTPUT_MODALITIES)),
   // The union, not a bare dict: schemastery materializes an absent dict as
   // `{}`, and absent must stay distinguishable — it means "inherit the
   // installed catalog's capability", while `false` disables reasoning.
@@ -377,6 +393,8 @@ const profile = z.object({
   timeoutMs: z.natural(),
   websocketConnectTimeoutMs: z.natural(),
   streamIdleTimeoutMs: z.number().min(Number.MIN_VALUE).max(MAX_TIMER_DELAY_MS).default(DEFAULT_STREAM_IDLE_TIMEOUT_MS),
+  videoPollIntervalMs: z.number().step(1).min(1).max(MAX_TIMER_DELAY_MS).default(DEFAULT_VIDEO_POLL_INTERVAL_MS),
+  videoTimeoutMs: z.number().step(1).min(1).max(MAX_TIMER_DELAY_MS).default(DEFAULT_VIDEO_TIMEOUT_MS),
   maxRequestImageBytes: z.number().step(1).min(1).default(DEFAULT_MAX_REQUEST_IMAGE_BYTES),
   maxRequestImages: z.number().step(1).min(1).default(DEFAULT_MAX_REQUEST_IMAGES),
   imageOffloadCountQuantum: z.number().step(1).min(1),
@@ -472,6 +490,13 @@ export function resolveProfiles(
     }
     assertValidHeaders(provider, source.headers)
     const streamIdleTimeoutMs = source.streamIdleTimeoutMs ?? DEFAULT_STREAM_IDLE_TIMEOUT_MS
+    const videoPollIntervalMs = source.videoPollIntervalMs ?? DEFAULT_VIDEO_POLL_INTERVAL_MS
+    const videoTimeoutMs = source.videoTimeoutMs ?? DEFAULT_VIDEO_TIMEOUT_MS
+    for (const [field, value] of Object.entries({ videoPollIntervalMs, videoTimeoutMs })) {
+      if (!Number.isSafeInteger(value) || value <= 0 || value > MAX_TIMER_DELAY_MS) {
+        throw new Error(`llm-pi-ai: provider "${provider}" ${field} must be a positive integer no greater than ${MAX_TIMER_DELAY_MS}`)
+      }
+    }
     if (!Number.isFinite(streamIdleTimeoutMs)
       || streamIdleTimeoutMs <= 0
       || streamIdleTimeoutMs > MAX_TIMER_DELAY_MS) {
@@ -557,6 +582,8 @@ export function resolveProfiles(
       displayName,
       ...apiKeyEnv === undefined ? {} : { apiKeyEnv: credentialRef(apiKeyEnv) },
       streamIdleTimeoutMs,
+      videoPollIntervalMs,
+      videoTimeoutMs,
       maxRequestImageBytes,
       maxRequestImages,
       imageOffloadCountQuantum,

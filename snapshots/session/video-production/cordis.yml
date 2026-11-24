@@ -1,0 +1,7 @@
+- id: tool-workflow
+  disabled: true
+- id: tool-ralph
+  disabled: true
+- insert:
+    - id: video-production
+      name: '@deepseek-ai/dsh-video-production'

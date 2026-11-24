@@ -293,20 +293,23 @@ function startBackgroundRun(
       deps.mirror.start(run.id, job)
       if (recordsRun) deps.recorder.start(parent.session, run)
       const done = run.result.then(async (result): Promise<JobOutcome> => {
+        let outcome = result
         try {
           // Keep member listeners alive through disposal: an engine may
           // synthesize cancelled member endings while reaching quiescence.
           await run.dispose()
         } catch (error: unknown) {
-          // done must not reject; a failed disposal still has a settled result to report.
-          ctx.logger.warn(`background workflow run ${run.id} dispose failed: ${String(error)}`)
+          ctx.logger.warn(`background workflow run ${run.id} dispose failed: ${renderRecordingError(error)}`)
+          if (result.stopReason === 'completed') {
+            outcome = { ...result, stopReason: 'error', error: 'Workflow cleanup failed.' }
+          }
         }
         deps.mirror.stop(run.id)
         if (recordsRun) {
-          deps.recorder.finish(run.id, result.stopReason)
+          deps.recorder.finish(run.id, outcome.stopReason)
           deps.recorder.abandon(run.id)
         }
-        return jobOutcomeOf(result, args.meta.name, deps.maxResultChars)
+        return jobOutcomeOf(outcome, args.meta.name, deps.maxResultChars)
       })
       return {
         cancel: (reason?: string) => { run.cancel(reason ?? 'background workflow job killed') },

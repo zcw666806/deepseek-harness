@@ -1,0 +1,7 @@
+version: 1
+scenario: restaurant-replacement
+profile: headless
+composition: restaurant-layout
+recording: authored
+header:
+  class: restaurant-layout

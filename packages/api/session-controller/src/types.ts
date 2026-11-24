@@ -3,7 +3,7 @@
 import type {} from '@deepseek-ai/dsh-agent/types'
 import type { NativeFileApplication } from '@deepseek-ai/dsh-native-command/types'
 import type {
-  ImageAttachmentLimits, ImageAttachmentRef, ImageMediaType,
+  AttachmentIdType, ImageAttachmentLimits, ImageAttachmentRef, ImageMediaType, VideoAttachmentRef,
 } from '@deepseek-ai/dsh-attachment'
 import type { Branded } from '@deepseek-ai/dsh-brand'
 import type { LlmAttemptId, MessageId } from '@deepseek-ai/dsh-llm/types'
@@ -279,6 +279,8 @@ export interface SessionCreateValue {
 /** Session model-selection request. */
 export interface SessionSelectModelRequest extends ModelSelection {
   readonly sessionId: SessionId
+  /** Keep the choice scoped to the addressed Session. */
+  readonly sessionOnly?: boolean
 }
 
 /** Accepted model selection after Host resolution. */
@@ -321,6 +323,8 @@ export interface SessionPromptRequest {
   /** Non-whitespace text or attachments; an empty array continues an eligible failed idle Session. */
   readonly content: readonly PromptContentPart[]
   readonly clientTimeZone?: string
+  /** Apply this selection to an idle Session as part of sending a queued prompt. */
+  readonly modelSelection?: ModelSelection
 }
 
 /** Receipt after one prompt enters the target Agent inbox. */
@@ -340,6 +344,23 @@ export interface SessionAttachmentValue {
   /** Supplied reference after ID, format, byte length, and dimensions verification; display fields are preserved. */
   readonly attachment: ImageAttachmentRef
   readonly data: string
+}
+
+/** Bounded read of a generated video referenced by one Session. */
+export interface SessionVideoAttachmentRequest {
+  readonly sessionId: SessionId
+  readonly attachmentId: AttachmentIdType
+  readonly offset: number
+  readonly length: number
+}
+
+/** Verified video metadata and a base64-encoded raw-byte slice. */
+export interface SessionVideoAttachmentValue {
+  readonly attachment: VideoAttachmentRef
+  readonly data: string
+  readonly offset: number
+  readonly nextOffset: number
+  readonly total: number
 }
 
 /** Pending queue mutation request. */

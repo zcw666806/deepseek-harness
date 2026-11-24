@@ -1,0 +1,12 @@
+# The real worker stays parked until owner teardown; the parent can finish
+# only when the workflow tool transfers its run to the ordinary job registry.
+- id: tool-bash
+  disabled: true
+
+- id: tool-pwsh
+  disabled: true
+
+- id: workflow-worker-thread
+  name: '@deepseek-ai/dsh-workflow-worker-thread'
+  config:
+    disposeGraceMs: 30

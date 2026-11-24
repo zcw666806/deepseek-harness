@@ -1,0 +1,66 @@
+[
+  {
+    "kind": "chunks",
+    "chunks": [
+      {
+        "type": "block-start",
+        "index": 0,
+        "blockType": "tool-call"
+      },
+      {
+        "type": "block-end",
+        "index": 0,
+        "block": {
+          "type": "tool-call",
+          "id": "video-call",
+          "name": "video_project",
+          "arguments": "{\"action\":\"update\",\"input\":{\"revision\":0,\"title\":\"A leaf in sunlight\",\"assets\":[],\"shots\":[{\"id\":\"wide\",\"title\":\"Wide view\",\"prompt\":\"A green leaf in sunlight, wide static view.\",\"duration\":3,\"aspectRatio\":\"16:9\",\"resolution\":\"480p\",\"assetIds\":[],\"position\":{\"x\":40,\"y\":40}},{\"id\":\"close\",\"title\":\"Close view\",\"prompt\":\"Close view of the same green leaf moving gently.\",\"duration\":3,\"aspectRatio\":\"16:9\",\"resolution\":\"480p\",\"assetIds\":[],\"position\":{\"x\":360,\"y\":40}}]}}"
+        }
+      },
+      {
+        "type": "usage",
+        "usage": {
+          "inputTokens": 3,
+          "outputTokens": 3
+        }
+      },
+      {
+        "type": "finish",
+        "reason": {
+          "kind": "tool-calls"
+        }
+      }
+    ]
+  },
+  {
+    "kind": "chunks",
+    "chunks": [
+      {
+        "type": "block-start",
+        "index": 0,
+        "blockType": "text"
+      },
+      {
+        "type": "block-end",
+        "index": 0,
+        "block": {
+          "type": "text",
+          "text": "Storyboard saved."
+        }
+      },
+      {
+        "type": "usage",
+        "usage": {
+          "inputTokens": 3,
+          "outputTokens": 3
+        }
+      },
+      {
+        "type": "finish",
+        "reason": {
+          "kind": "stop"
+        }
+      }
+    ]
+  }
+]

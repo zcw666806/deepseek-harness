@@ -1,0 +1,58 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/comic/comic-production/README.md
+/:
+  en: 14106ff5798b8e22
+  zh: 840ff629af9121ac
+/deepseek-ai-dsh-comic-production:
+  en: 2ac8bbb35f905d70
+  zh: 675649f94444e337
+/deepseek-ai-dsh-comic-production/summary:
+  en: 66cd09d30607d5d6
+  zh: 489e697236671f32
+/deepseek-ai-dsh-comic-production/table-of-contents:
+  en: 76368b6b1da79c80
+  zh: 762ac2d89989b648
+/deepseek-ai-dsh-comic-production/use-this-package:
+  en: 563720c470e9346c
+  zh: 4b24fc3e3411c887
+/deepseek-ai-dsh-comic-production/understand-the-implementation:
+  en: 296c72411235c360
+  zh: 535d28b18c29b769
+/deepseek-ai-dsh-comic-production/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-comic-production/model-experience/system-prompt:
+  en: cf78b9dd5596495f
+  zh: bd44560f8c2435e8
+/deepseek-ai-dsh-comic-production/model-experience/system-prompt/what-the-model-sees:
+  en: 61ba45444b20a090
+  zh: e839a79cccb93fc1
+/deepseek-ai-dsh-comic-production/model-experience/system-prompt/what-the-model-sees/storyboard-guidance:
+  en: e06655b9496c92e9
+  zh: 0bb14a226d0aa2d8
+/deepseek-ai-dsh-comic-production/model-experience/system-prompt/token-effect:
+  en: dd5c717239db876b
+  zh: 2b4b621a29cd0dc3
+/deepseek-ai-dsh-comic-production/model-experience/system-prompt/kv-cache-effect:
+  en: 33e7be05ffda6737
+  zh: 95d5743dde296779
+/deepseek-ai-dsh-comic-production/model-experience/image-generation-request:
+  en: a4fa89ed0f2fa2a1
+  zh: 3fc6a3ad58d4452c
+/deepseek-ai-dsh-comic-production/model-experience/image-generation-request/what-the-model-sees:
+  en: 708cda703d7cd300
+  zh: 75c443f7751af42c
+/deepseek-ai-dsh-comic-production/model-experience/image-generation-request/token-effect:
+  en: 9ffaf5e54435310c
+  zh: 372b6daabd63a619
+/deepseek-ai-dsh-comic-production/model-experience/image-generation-request/kv-cache-effect:
+  en: 85c9ba7446a5101a
+  zh: 4027cc5e445ce899
+/deepseek-ai-dsh-comic-production/known-limitations-and-deferred-work:
+  en: 9a463f457d85c0b0
+  zh: 0a0d43e270768a38
+/deepseek-ai-dsh-comic-production/known-limitations-and-deferred-work/dev-note:
+  en: 0a1253c6f7b5e8b9
+  zh: 9f56528562c7c914

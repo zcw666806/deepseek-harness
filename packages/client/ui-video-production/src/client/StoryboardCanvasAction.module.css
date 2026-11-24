@@ -1,0 +1,12 @@
+.action {
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+  margin-block: 8px;
+}
+
+.action [role='alert'] {
+  margin: 0;
+  color: var(--dsw-alias-state-error-primary);
+  font-size: 13px;
+}

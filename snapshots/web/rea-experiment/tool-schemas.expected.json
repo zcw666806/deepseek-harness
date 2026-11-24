@@ -1,0 +1,23 @@
+{
+  "initial": [
+    {
+      "name": "mcp__rea__trial_fetch",
+      "description": "Return the owned REA trial evidence.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "mcp__rea__trial_status",
+      "description": "Report the owned REA trial status.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    }
+  ],
+  "changes": []
+}

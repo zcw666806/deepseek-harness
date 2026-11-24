@@ -1,0 +1,52 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/capability/capability-manager/README.md
+/:
+  en: 6e429831f5ecdeef
+  zh: 508e51280293c8e8
+/deepseek-ai-dsh-capability-manager:
+  en: fa48a0445d10f989
+  zh: 7af2d04d1a74bd2d
+/deepseek-ai-dsh-capability-manager/summary:
+  en: d4fbe9c259ec6178
+  zh: af732a37f14caf68
+/deepseek-ai-dsh-capability-manager/table-of-contents:
+  en: 23386452a66b2fbd
+  zh: dc8dd4f5941b9f74
+/deepseek-ai-dsh-capability-manager/use-this-package:
+  en: c0dbcb70b7ea3f2a
+  zh: 6d58aa723700391e
+/deepseek-ai-dsh-capability-manager/use-this-package/portable-settings:
+  en: 5407f8a7816b0392
+  zh: 5eba9c33ee99784a
+/deepseek-ai-dsh-capability-manager/use-this-package/configuration:
+  en: 585ee76d9b5b4a59
+  zh: ac90b6a903e4a16e
+/deepseek-ai-dsh-capability-manager/understand-the-implementation:
+  en: d4ac65f0632c3e4b
+  zh: d8d913bfe269a099
+/deepseek-ai-dsh-capability-manager/further-exploration:
+  en: b4f0cfd351cc4cd3
+  zh: a4e5b49dce8c0bb8
+/deepseek-ai-dsh-capability-manager/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-capability-manager/model-experience/management-results:
+  en: 3bea240bd8cc9b21
+  zh: 2f8fb86338a07a90
+/deepseek-ai-dsh-capability-manager/model-experience/management-results/what-the-model-sees:
+  en: e596d3ce120a5a78
+  zh: c48d099cffb7031b
+/deepseek-ai-dsh-capability-manager/model-experience/management-results/token-effect:
+  en: cbcbb280f2966144
+  zh: 90c12ba3bde85928
+/deepseek-ai-dsh-capability-manager/model-experience/management-results/kv-cache-effect:
+  en: e25500dcf06adf35
+  zh: f5b3072c7c03a769
+/deepseek-ai-dsh-capability-manager/known-limitations-and-deferred-work:
+  en: 8d83ab729a98a05a
+  zh: 75c6fcf3c882bbd3
+/deepseek-ai-dsh-capability-manager/known-limitations-and-deferred-work/dev-note:
+  en: 0a1253c6f7b5e8b9
+  zh: 9f56528562c7c914

@@ -186,8 +186,8 @@ export function apply(ctx: ClientContext): void {
             if (available) directory.load().catch(() => { /* surfaced on the store */ })
           },
           resolveText: text => ctx.locale.resolveText(text),
-          select: (selection: ModelSelection) => available
-            ? directory.select(selection)
+          select: (selection: ModelSelection, sessionOnly?: boolean) => available
+            ? directory.select(selection, sessionOnly)
             : Promise.resolve(undefined),
         }
       },

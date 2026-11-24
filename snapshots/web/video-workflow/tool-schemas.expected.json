@@ -1,0 +1,49 @@
+{
+  "initial": [
+    {
+      "name": "video_project",
+      "description": "Create and edit a storyboard with reusable character, scene, and prop images. Generate or retry individual shots, select completed versions, reorder shots, and export the selected clips as one MP4. View the project before updating and include its current revision. Every result includes the complete current project.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "view",
+              "update",
+              "generate",
+              "reorder",
+              "export"
+            ]
+          },
+          "input": {
+            "description": "For update: {revision,title,assets:[{id,name,kind,description,image?}],shots:[{id,title,prompt,duration,aspectRatio,resolution,assetIds,position:{x,y},selectedVersionId?,edit?:{trimStartSeconds?,trimEndSeconds?,volume?,captions:[{startSeconds,endSeconds,text}]}}]}. Caption times start at zero after trimming; volume 0 mutes and 1 preserves source audio. Use stable unique ids. Images must already belong to this Session or project."
+          },
+          "shotId": {
+            "type": "string",
+            "description": "Shot identity for generate."
+          },
+          "shotIds": {
+            "type": "array",
+            "description": "Complete ordered list of shot identities for reorder.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "generator": {
+            "type": "string",
+            "description": "Optional configured generation provider for generate."
+          },
+          "model": {
+            "type": "string",
+            "description": "Optional video model for generate."
+          }
+        },
+        "required": [
+          "action"
+        ]
+      }
+    }
+  ],
+  "changes": []
+}

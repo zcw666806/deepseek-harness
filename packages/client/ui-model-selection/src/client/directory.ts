@@ -87,9 +87,10 @@ export class ModelDirectory {
    * projection frame updates the shared current; failures surface on the store
    * and return with the operation so each entry can present its own failure.
    * @param selection - provider, provider-owned model id, and optional adapter-owned effort.
+   * @param sessionOnly - keep the selection scoped to this Session.
    * @returns the selection outcome, including the original Remote failure.
    */
-  async select(selection: ModelSelection): Promise<RemoteResult<void>> {
+  async select(selection: ModelSelection, sessionOnly?: boolean): Promise<RemoteResult<void>> {
     this.assertAvailable()
     const previous = this.store.getSnapshot().current
     const previousEffort = previous?.reasoningEffort ?? (previous === null ? undefined : this.catalog.reasoningFor(previous)?.defaultEffort)
@@ -100,6 +101,7 @@ export class ModelDirectory {
       sessionId: this.sessionId,
       provider: selection.provider,
       model: selection.model,
+      ...(sessionOnly === undefined ? {} : { sessionOnly }),
       ...selection.reasoningEffort === undefined
         ? {}
         : { reasoningEffort: selection.reasoningEffort },

@@ -3,7 +3,7 @@
  * The registration supplies a fresh store and binds its actions to ctx.layout.
  */
 import { defineStore, type EngineStoreHandle } from '@deepseek-ai/dsh-client-store'
-import type { MainPanelId } from './service.ts'
+import type { MainPanelId, StudioKind } from './service.ts'
 import {
   clampWidth, RIGHTBAR_DEFAULT_RATIO, RIGHTBAR_MAX_RATIO, RIGHTBAR_MIN,
   SIDEBAR_AUTO_COLLAPSE, SIDEBAR_DEFAULT, SIDEBAR_DRAWER_BREAKPOINT, SIDEBAR_MAX, SIDEBAR_MIN,
@@ -19,6 +19,7 @@ type LayoutState = {
     activePanelId: MainPanelId | null
   }
   layoutInfo: LayoutInfo
+  studio: StudioKind | null
 }
 
 type LayoutInfo = {
@@ -56,6 +57,7 @@ type LayoutInfo = {
  * return type); drift fails assignability at the defineStore call.
  */
 type LayoutActions = {
+  showStudio: (draft: LayoutState, studio: StudioKind | null) => void
   selectPanel: (draft: LayoutState, panelId: MainPanelId | null) => void
   retainMainPanels: (draft: LayoutState, panelIds: readonly string[]) => void
   setSidebar: (draft: LayoutState, px: number) => void
@@ -79,6 +81,7 @@ export function createLayoutStore(): EngineStoreHandle<LayoutState, LayoutAction
   const handle = defineStore({
     init: (): LayoutState => ({
       panelInfo: { activePanelId: null },
+      studio: null,
       layoutInfo: {
         sidebar: SIDEBAR_DEFAULT,
         viewportWidth: window.innerWidth,
@@ -91,6 +94,7 @@ export function createLayoutStore(): EngineStoreHandle<LayoutState, LayoutAction
       },
     }),
     actions: {
+      showStudio: (d, studio: StudioKind | null) => { d.studio = studio },
       selectPanel: (d, panelId: MainPanelId | null) => {
         d.panelInfo.activePanelId = panelId
         if (d.layoutInfo.viewportWidth < SIDEBAR_DRAWER_BREAKPOINT) d.layoutInfo.narrowExpanded = false

@@ -231,6 +231,8 @@ function bench(over?: BenchOptions) {
     useNotices: bindSnapshotSelector(shell.notices),
     useLexicon: bindSnapshotSelector(shell.lexicon),
     useMenuLauncher: bindSnapshotSelector(menuLauncher),
+    useCreationMode: bindSnapshotSelector(shell.creationMode),
+    useStudios: selector => selector([]),
     stop,
     // Mirrors the real lookup chain (conversation namespace, then common).
     t: over?.t ?? makeTranslate(zh, commonZh),
@@ -281,6 +283,27 @@ function bench(over?: BenchOptions) {
     get inputDisabled() { return textarea.getAttribute('aria-disabled') === 'true' },
   }
 }
+
+it('sends the brief in the selected creation mode', async () => {
+  const b = bench({ draft: 'A short brief' })
+  b.view.rerender(<InputBar {...b.props}
+    useStudios={selector => selector(['comic', 'video'])}
+    setCreationMode={(mode) => { b.shell.creationMode.set(mode) }}
+    creationNavigation={() => ({
+      entries: [{ kind: 'comic', label: '漫画创作' }, { kind: 'video', label: '视频创作' }],
+      label: '创作',
+      existingLabel: '打开已有项目',
+      openExisting: vi.fn(),
+    })}
+  />)
+  fireEvent.click(b.view.getByRole('button', { name: '创作' }))
+  fireEvent.click(b.view.getByRole('menuitem', { name: '漫画创作' }))
+  expect(b.slotCalls).toContainEqual({ key: 'conversation.input.model', owner: { locked: false, planning: true } })
+  fireEvent.click(b.view.getByRole('button', { name: '发送消息' }))
+  await vi.waitFor(() => {
+    expect(b.sink).toHaveBeenCalledWith('A short brief', [], 'queue', expect.any(AbortSignal), expect.any(Function), 'comic')
+  })
+})
 
 it('offers the play action only for an empty, idle composer with an eligible failure', async () => {
   const b = bench({ retryableFailure: 2 as SessionSeq })

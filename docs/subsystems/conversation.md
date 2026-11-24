@@ -53,6 +53,8 @@ The Group store validates the whole submitted result before installation: root G
 
 Renderers switch on the two reference kinds and choose components in the owning View, not through a renderer field in group data. Root Node references and referenced group members form the complete render list; unreferenced target Nodes remain stored but do not render. The group body reads members separately from summary data. Presentation modes must retain component types, keys, and member parents; changing data membership may legitimately remount a moved member. The framework does not interpret part completeness, segmentation, or presentation policies.
 
+An existing blank Session can select registered non-Chat Views before its first message. Blank Chat keeps the resident Hero, while a selected non-Chat View owns its empty-data content. The header exposes View navigation without the blank Session's title or utility row. Returning to Chat, or removing the selected View while Chat remains registered, restores the Hero without changing Session lifecycle data.
+
 ## Replayable event families
 
 Choose one stable business id before writing the Definition. Every event that contributes to the same Node must carry that id or derive it independently from its own payload; the client must never assign an update to “the latest unfinished” Context.

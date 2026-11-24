@@ -8,6 +8,7 @@
     "src"
   ],
   "references": [
+    { "path": "../../capability/capability-manager" },
     {
       "path": "../../util/launch-environment"
     },
@@ -49,6 +50,15 @@
     },
     {
       "path": "../../settings/settings"
+    },
+    {
+      "path": "../../core/tools"
+    },
+    {
+      "path": "../../capability/capability-manager"
+    },
+    {
+      "path": "../../video/video-production"
     }
   ]
 }

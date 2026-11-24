@@ -468,6 +468,16 @@ describe('package payload constraints', () => {
       .toEqual([expect.stringContaining('package.json files must be')])
   })
 
+  it('ships only the managed ComfyUI provider helper as its explicit runtime payload', () => {
+    expect(expectedDshPackageFiles({ name: '@deepseek-ai/dsh-video-comfyui-runtime' })).toContain('runtime-helper.py')
+    expect(expectedDshPackageFiles({ name: '@deepseek-ai/dsh-unrelated-runtime' })).not.toContain('runtime-helper.py')
+    const manifest = JSON.parse(readFileSync(new URL('../packages/video/video-comfyui-runtime/package.json', import.meta.url), 'utf8')) as WorkspaceManifest['manifest']
+    const dir = 'packages/video/video-comfyui-runtime'
+    expect(checkWorkspaceManifest({ dir, manifest })).toEqual([])
+    expect(checkWorkspaceManifest({ dir, manifest: { ...manifest, files: (manifest.files ?? []).filter(file => file !== 'runtime-helper.py') } }))
+      .toEqual([expect.stringContaining('@deepseek-ai/dsh-video-comfyui-runtime: package.json files must be')])
+  })
+
   it('includes a declared profile patch without a package-name allowlist', () => {
     expect(expectedDshPackageFiles({
       name: '@deepseek-ai/dsh-private-profile',

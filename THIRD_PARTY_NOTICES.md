@@ -78,6 +78,7 @@ External packages installed for runtime use or embedded in distributed Host or b
 | [`@xterm/addon-serialize`](https://github.com/xtermjs/xterm.js/tree/master/addons/addon-serialize) | MIT |
 | [`@xterm/headless`](https://github.com/xtermjs/xterm.js) | MIT |
 | [`@xterm/xterm`](https://github.com/xtermjs/xterm.js) | MIT |
+| [`@xyflow/react`](https://github.com/xyflow/xyflow) | MIT |
 | [`@yarnpkg/parsers`](https://github.com/yarnpkg/berry) | BSD-2-Clause |
 | [`acorn`](https://github.com/acornjs/acorn) | MIT |
 | [`acorn-walk`](https://github.com/acornjs/acorn) | MIT |

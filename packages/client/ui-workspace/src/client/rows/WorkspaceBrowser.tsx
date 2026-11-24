@@ -793,7 +793,7 @@ interface RemoteSearchState {
 
 /** Flat search body: local metadata matches plus the current Host result page. */
 function SearchResults({
-  useSessions,
+  list,
   useSessionStatus,
   open,
   onUnarchive,
@@ -806,7 +806,8 @@ function SearchResults({
   usePanelInfo,
   useSessionAccess,
   t,
-}: Pick<WorkspaceBrowserProps, 'useSessions' | 'useSessionStatus' | 'open' | 't' | 'usePanelInfo' | 'useSessionAccess'> & {
+}: Pick<WorkspaceBrowserProps, 'useSessionStatus' | 'open' | 't' | 'usePanelInfo' | 'useSessionAccess'> & {
+  list: SessionListState
   workspaces: readonly WorkspaceView[]
   archivedSessionIds: readonly SessionNode['id'][]
   /** Search matches follow the archived filter selected for the list. */
@@ -818,7 +819,6 @@ function SearchResults({
   resultLimit: number
 }) {
   const panelActive = usePanelInfo(info => info.activePanelId !== null)
-  const list = useSessions(s => s)
   const statuses = useSessionStatus(s => s)
   const currentRemote = remote.query === query
     ? remote
@@ -909,6 +909,7 @@ export function WorkspaceBrowser({
   expandSidebar,
   useSectionScroller,
   useSessions,
+  useSessionPresentations,
   useSessionStatus,
   useSessionAccess,
   useWorkspaceAccess,
@@ -943,7 +944,17 @@ export function WorkspaceBrowser({
   const addShortcut = shortcuts.find(row => row.id === 'workspace.add')
   const shortcutState = useWorkspaceShortcuts(state => state)
   // Ordering remains live while the rail or search replaces the list body.
-  const list = useSessions(state => state)
+  const sessionList = useSessions(state => state)
+  const presentations = useSessionPresentations(state => state)
+  const list = useMemo(() => {
+    if (presentations.length === 0) return sessionList
+    const byId = { ...sessionList.byId }
+    for (const { sessionId, displayTitle } of presentations) {
+      const summary = byId[sessionId]
+      if (summary?.blank === true) byId[sessionId] = { ...summary, blank: false, title: displayTitle }
+    }
+    return { ...sessionList, byId }
+  }, [sessionList, presentations])
   const storedWorkspaces = useWorkspaces(state => state.items)
   // The resolved name, not `t`, is the memo dependency: the bound seat keeps
   // its identity across a language switch.
@@ -1370,7 +1381,7 @@ export function WorkspaceBrowser({
             <SearchResults
               usePanelInfo={usePanelInfo}
               useSessionAccess={useSessionAccess}
-              useSessions={useSessions}
+              list={list}
               useSessionStatus={useSessionStatus}
               open={openSearchResult}
               onUnarchive={onSessionUnarchive}

@@ -1,0 +1,31 @@
+# Bilingual-pair consistency record for 2026-10-27-restaurant-design-pilot.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-10-27-restaurant-design-pilot.md
+/agent-note-keep-the-restaurant-design-pilot-opt-in-and-project-owned:
+  en: 811bfcb95ea395ed
+  zh: dbd5c2f3fb816529
+/agent-note-keep-the-restaurant-design-pilot-opt-in-and-project-owned/problem:
+  en: ba0e99d13db725d3
+  zh: f6ddf43cf39754a8
+/agent-note-keep-the-restaurant-design-pilot-opt-in-and-project-owned/decision:
+  en: 2a74ca0d515bbfe2
+  zh: 7ef25c1ce1bc31a0
+/agent-note-keep-the-restaurant-design-pilot-opt-in-and-project-owned/alternatives-considered:
+  en: 6119e2aff3b6be5a
+  zh: 4237c596c10e1ee9
+/agent-note-keep-the-restaurant-design-pilot-opt-in-and-project-owned/alternatives-considered/build-a-separate-assistant-application:
+  en: 601f268853a45af8
+  zh: a7b24aa2d90af575
+/agent-note-keep-the-restaurant-design-pilot-opt-in-and-project-owned/alternatives-considered/synchronize-only-localstorage-and-screenshots:
+  en: 3137e3f5ec4c84da
+  zh: 6760b1253ab3dd12
+/agent-note-keep-the-restaurant-design-pilot-opt-in-and-project-owned/alternatives-considered/treat-every-imported-overlap-as-a-new-error:
+  en: 4b411018cf6c19ed
+  zh: b0023f1f7cc40299
+/agent-note-keep-the-restaurant-design-pilot-opt-in-and-project-owned/consequences:
+  en: 01fdaf1f4361add3
+  zh: 8cfcb08a8a727dfa
+/agent-note-keep-the-restaurant-design-pilot-opt-in-and-project-owned/verification:
+  en: 72e5fa790768fad9
+  zh: e97f10bc2edc8da0

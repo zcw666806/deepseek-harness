@@ -1,0 +1,10 @@
+version: 1
+scenario: video-production
+profile: headless
+composition: video-production
+recording: authored
+header:
+  class: video-production
+  pin: true
+replay:
+  override: true

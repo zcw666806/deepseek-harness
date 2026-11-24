@@ -21,14 +21,20 @@
   en: f3b761c7c7ecb82f
   zh: e10d999aa348ef86
 /deepseek-ai-dsh-llm-pi-ai/use-this-package/configure-provider-routes:
-  en: 5f2e3298066947a2
-  zh: 0166148523454073
+  en: 15d72e07b59bd3c1
+  zh: 15a190d3af497b74
 /deepseek-ai-dsh-llm-pi-ai/use-this-package/sign-in-to-a-provider:
   en: c36f66438638ae08
   zh: 066a2fc4cb97c86f
 /deepseek-ai-dsh-llm-pi-ai/use-this-package/resolve-the-model-catalog:
   en: 376f83206858b601
   zh: 38bb6993609c96a6
+/deepseek-ai-dsh-llm-pi-ai/use-this-package/unified-capability-management:
+  en: 7e1a1e7b907be73a
+  zh: 6b9602d805463f5d
+/deepseek-ai-dsh-llm-pi-ai/use-this-package/generate-video:
+  en: fb2660f4c9081c9c
+  zh: f568e9eef86216d2
 /deepseek-ai-dsh-llm-pi-ai/use-this-package/run-with-reasoning-and-wire-compatibility:
   en: b58b917e7f250aee
   zh: aff599081bac08c3
@@ -80,6 +86,18 @@
 /deepseek-ai-dsh-llm-pi-ai/model-experience/provider-request-through-pi-ai/kv-cache-effect:
   en: c0fd11162e393727
   zh: c4ebcdf7049ae677
+/deepseek-ai-dsh-llm-pi-ai/model-experience/video-generation-tool:
+  en: 51d2d2aa0d13e833
+  zh: d807f2e4ea2e61d7
+/deepseek-ai-dsh-llm-pi-ai/model-experience/video-generation-tool/what-the-model-sees:
+  en: 22c8022bd8fd9b46
+  zh: 9f2e0716a8bd7662
+/deepseek-ai-dsh-llm-pi-ai/model-experience/video-generation-tool/token-effect:
+  en: e31fb051d03dbf32
+  zh: baf0ad1ab3f5e5df
+/deepseek-ai-dsh-llm-pi-ai/model-experience/video-generation-tool/kv-cache-effect:
+  en: 885d9471459e8ecd
+  zh: 1f4e2459421255fe
 /deepseek-ai-dsh-llm-pi-ai/model-experience/provider-response:
   en: 802d7ff60a1d03ff
   zh: c41c56e28f3e8680
@@ -93,8 +111,8 @@
   en: b6bd570c0159ba08
   zh: 7d2d91eea6a8d830
 /deepseek-ai-dsh-llm-pi-ai/known-limitations-and-deferred-work:
-  en: ca569aca42ffe0bc
-  zh: 2d5e30f0b422166b
+  en: 7bcba0cb77bba1b6
+  zh: 63c4e704bd9de3bf
 /deepseek-ai-dsh-llm-pi-ai/known-limitations-and-deferred-work/dev-note:
   en: 3678dd0f6642c2a5
   zh: 75cbdd064cc64282

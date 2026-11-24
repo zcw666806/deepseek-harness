@@ -27,7 +27,8 @@
     "./src/*": "./src/*",
     "./package.json": "./package.json",
     "./startup/locale/*.json": "./locale/startup/*.json",
-    "./locale/*.json": "./locale/*.json"
+    "./locale/*.json": "./locale/*.json",
+    "./comic-production.patch.yml": "./comic-production.patch.yml"
   },
   "files": [
     "locale/*.json",
@@ -40,6 +41,7 @@
     "presets/minimal.patch.yml",
     "presets/cordis.patch.yml",
     "lib/public-url-*.js",
+    "comic-production.patch.yml",
     "lib/types/**/*.d.ts",
     "lib/types/**/*.d.ts.map",
     "lib/**/*.js.map",
@@ -213,7 +215,16 @@
     "@deepseek-ai/dsh-creation-recommendations": "workspace:*",
     "@deepseek-ai/dsh-client-ui-creation-recommendations": "workspace:*",
     "@deepseek-ai/dsh-plugin-recommendations": "workspace:*",
-    "@deepseek-ai/dsh-client-ui-plugin-recommendations": "workspace:*"
+    "@deepseek-ai/dsh-client-ui-plugin-recommendations": "workspace:*",
+    "@deepseek-ai/dsh-capability-manager": "workspace:*",
+    "@deepseek-ai/dsh-comic-production": "workspace:*",
+    "@deepseek-ai/dsh-video-production": "workspace:*",
+    "@deepseek-ai/dsh-video-comfyui": "workspace:*",
+    "@deepseek-ai/dsh-video-comfyui-runtime": "workspace:*",
+    "@deepseek-ai/dsh-client-ui-capabilities": "workspace:*",
+    "@deepseek-ai/dsh-client-ui-comic-production": "workspace:*",
+    "@deepseek-ai/dsh-client-ui-video-production": "workspace:*",
+    "@deepseek-ai/dsh-mcp-client": "workspace:*"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:~",

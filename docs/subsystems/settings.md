@@ -8,6 +8,8 @@ The [settings service](../../packages/settings/settings/README.md) projects vola
 
 A form namespace is the local id of a uniquely addressed entry in the active profile. Multiple plugin instances have separate forms when their entry ids differ. Ordinary fields are excluded. Descriptors carry resolved values, inherited values, explicit profile overrides, and an optimistic revision.
 
+The [REA experiment](../../packages/mcp/mcp-client/README.md#rea-experiment-in-web) settings owner samples `ReaExperimentSettings` for newly created Web sessions. Enabled sessions retain their launcher selection in the session log; restoring or forking one uses that selection rather than the current user setting.
+
 ## Edits
 
 `update` merges submitted fields. `replace` resets live fields to inherited configuration before applying submitted fields. `mutate` addresses individual paths, preserving secrets absent from a client response. Every write validates the complete Config and refuses stale revisions before persistence.
@@ -21,6 +23,35 @@ A form namespace is the local id of a uniquely addressed entry in the active pro
 ## Cordis API
 
 Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnpm run verify-cordis-catalog` in doc-sync; regenerate with `pnpm run gen-cordis-catalog`) — the language sides differ only in locale-specific paired document paths. Signature blocks use a `ts cordis-catalog` fence and keep the original source JSDoc; dispatch modes are defined in the [primer](../cordis-primer.md#dispatch-modes), and the framework-inherited `ctx` API lives in [cordis-api/inherited.md](../cordis-api/inherited.md).
+
+<a id="ctxreaexperiment--reaexperimentservice"></a>
+
+### `ctx.reaExperiment` — `ReaExperimentService`
+
+Settings owner that composes an independent REA connection into each opted-in session.
+
+```ts cordis-catalog
+/**
+ * Read detached settings for the next new session.
+ * @returns The opt-in preference and exact launcher configuration.
+ */
+current(): ReaExperimentSettings
+
+/**
+ * Await REA discovery before an unpublished session can enter the registry.
+ * Creation samples current settings; resume reads only the session's durable selection.
+ * @param agentCtx - Unpublished Agent context owned by the registry factory's setup.
+ * @param agent - Unpublished Agent whose session owns the selection.
+ * @param mode - Whether the caller creates a new session or resumes persisted history.
+ * @returns After the full catalog is registered, or immediately when the session is outside the trial.
+ * @throws When startup or discovery fails, after the session-owned connection is disposed.
+ */
+async compose(agentCtx: Context, agent: Agent, mode: 'create' | 'resume'): Promise<void>
+```
+
+Types: [Agent](core.md)
+
+Source: [`packages/mcp/mcp-client/src/rea-experiment.ts`](../../packages/mcp/mcp-client/src/rea-experiment.ts)
 
 <a id="ctxsettings--settingsforms"></a>
 

@@ -9,7 +9,7 @@
 
 英文源文件由系统**生成**，并通过 `pnpm run verify-tool-catalog`（`doc-sync`（文档同步门禁）的一部分）验证新鲜度；本中文文件作为经评审对侧通过双语配对维护。与 Cordis 目录（纯源码 AST 处理）不同，英文生成器会在真实上下文中**启动**每个工具插件并读取 `ctx.tools.schemas()`，因为工具 schema 无法通过静态分析完全确定，例如运行时展开的枚举、拼接的描述、由配置决定的名称以及使用原始 JSON Schema 的 MCP 工具。完整性守卫会 glob 匹配 `packages/*/tool-*`；如果生成器的启动 manifest（元数据清单）遗漏任何包，检查就会失败，因此新工具不会在无人察觉的情况下缺少文档。
 
-范围：`packages/*/tool-*` 下已发布的产品工具，每个工具均使用其**默认**配置启动；但如果某个 Config 字段是**必填项**且没有默认值，生成器就必须作出选择，对应包的说明会记录本页展示的是哪个分支。注册的工具**名称**可以是加载时配置，例如 `tool-subagent` 的 `toolName`，因此部署可能以不同名称或额外名称提供某个包；如果存在随产品发布的别名，对应包的说明会予以记录。`examples/` 中的演示工具（例如 `echo`）不在范围内，这与 Cordis 目录仅涵盖包的范围一致。
+范围包括 `packages/*/tool-*` 下已发布的产品工具，以及启动 manifest 中列出的由服务提供的工具。每个工具均使用其**默认**配置启动；但如果某个 Config 字段是**必填项**且没有默认值，生成器就必须作出选择，对应包的说明会记录本页展示的是哪个分支。注册的工具**名称**可以是加载时配置，例如 `tool-subagent` 的 `toolName`，因此部署可能以不同名称或额外名称提供某个包；如果存在随产品发布的别名，对应包的说明会予以记录。`examples/` 中的演示工具（例如 `echo`）不在范围内，这与 Cordis 目录仅涵盖包的范围一致。
 
 <a id="tool-package-map"></a>
 
@@ -53,9 +53,10 @@
 | `@deepseek-ai/dsh-tool-agent-team` | `team_task_create`, `team_task_get`, `team_task_list`, `team_task_update` | `ctx.tools`, `ctx.systemPrompt`, `ctx.agentTeams`, `ctx.subagents`, `an exact live Team member Agent` | `tool/call`, `team/task`, `tool/result` | - | 四个任务板工具共享 subagent 树的根 Session。在根 Session 开启 Team 模式，会在标准 subagent 委派和控制工具之外增加任务板指导。标准 subagent 控制工具提供必需身份，不受 Team 模式影响；其结果汇报要求仅在 Team 模式关闭时出现。 |
 | `@deepseek-ai/dsh-tool-todo` | `todo_write` | `ctx.tools`、`owning Agent session` | `tool/call`、`todo/write`、`tool/result` | - | todo_write 是会话所有的状态；UI 将最新的 todo/write 事件渲染为检查清单。`allowParallelInProgress` 是没有默认值的必填项，因此本目录明确选择 `true`，对应描述允许同时存在多个 `in_progress` 项。选择 `false` 的部署会获得同一工具，但描述会要求只能有 1 个活动任务。 |
 | `@deepseek-ai/dsh-experimental-tool-worktree` | `enter_worktree`, `exit_worktree` | `ctx.tools`, `ctx.worktrees`, `a calling Agent` | `tool/call`, `Git branch and checkout`, `workspace-root/change`, `tool/result` | - | 在 Web 和 Desktop 上通过变更请求与工作树组合包启用；其他 profile 可以选择独立组合包。`enter_worktree` 把 Session 移入名称在它所在检出的池中选中的工作树，没有同名工作树时在现有写权限下从固定的本地提交创建新分支与检出目录。`exit_worktree` 把 Session 送回它来自的检出目录；分支与检出目录保留。 |
-| `@deepseek-ai/dsh-tool-workflow` | `workflow` | `ctx.tools`、`ctx.workflowEngine`、`ctx.systemPrompt`、`a calling Agent (exec.agent parents the script children)` | `tool/call`、`tool/result` | - | - |
+| `@deepseek-ai/dsh-tool-workflow` | `workflow` | `ctx.tools`、`ctx.workflowEngine`、`ctx.systemPrompt`、`ctx.jobs`（调用时指定 `run_in_background`）、`a calling Agent (exec.agent parents the script children)` | `tool/call`、`tool/result` | - | - |
 | `@deepseek-ai/dsh-tool-workspace-dependencies` | `load_workspace_dependencies` | `ctx.tools` | `tool/call`, `tool/result` | - | - |
 | `@deepseek-ai/dsh-tool-web` | `web_fetch`、`web_search` | `ctx.tools`、`ctx.web`、`ctx.systemPrompt` | `tool/call`、`tool/result` | - | web_search 和 web_fetch 将提供方选择置于 ctx.web 之后，使模型可见 schema 在更换后端时保持稳定。 |
+| `@deepseek-ai/dsh-video-production` | `video_project` | `ctx.tools`、`ctx.videoProduction`、`ctx.storageDomain`、`ctx.sessions`、`ctx.sessionPersistence`、`ctx.attachments`、执行时有归属 Agent、生成时配置视频生成器、导出时使用 Host 本地 `ctx.fs`、`ctx.subprocess` 及 FFmpeg 和 ffprobe | `tool/call`、`video_production` 存储域项目、生成或导出时持久化视频附件、`tool/result` | - | 每个会话拥有一个带修订号的视频项目。所有操作都返回完整项目，包含有序镜头、保留的生成版本、选中的附件和导出结果。生成需要已注册的视频提供方，成片导出需要 Host 本地安装 FFmpeg 与 ffprobe。两种操作均等待结束并保留失败或中断的尝试。 |
 
 <a id="deepseek-aidsh-tool-session-control"></a>
 
@@ -2888,3 +2889,58 @@ todo_write 是会话所有的状态；UI 将最新的 todo/write 事件渲染为
 来源：[`packages/web/tool-web/src/index.ts`](../packages/web/tool-web/src/index.ts)
 
 web_search 和 web_fetch 将提供方选择置于 ctx.web 之后，使模型可见 schema 在更换后端时保持稳定。
+
+<a id="deepseek-aidsh-video-production"></a>
+
+## `@deepseek-ai/dsh-video-production`
+
+### `video_project`
+
+使用可复用的角色、场景和道具图片创建并编辑分镜。生成或重试单个镜头，选择已完成的版本，调整镜头顺序，并将选中的片段导出为一个 MP4。更新前先查看项目，并提供当前修订号。每次操作都返回完整的当前项目。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "action": {
+      "type": "string",
+      "enum": [
+        "view",
+        "update",
+        "generate",
+        "reorder",
+        "export"
+      ]
+    },
+    "input": {
+      "description": "For update: {revision,title,assets:[{id,name,kind,description,image?}],shots:[{id,title,prompt,duration,aspectRatio,resolution,assetIds,position:{x,y},selectedVersionId?,edit?:{trimStartSeconds?,trimEndSeconds?,volume?,captions:[{startSeconds,endSeconds,text}]}}]}. Caption times start at zero after trimming; volume 0 mutes and 1 preserves source audio. Use stable unique ids. Images must already belong to this Session or project."
+    },
+    "shotId": {
+      "type": "string",
+      "description": "Shot identity for generate."
+    },
+    "shotIds": {
+      "type": "array",
+      "description": "Complete ordered list of shot identities for reorder.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "generator": {
+      "type": "string",
+      "description": "Optional configured generation provider for generate."
+    },
+    "model": {
+      "type": "string",
+      "description": "Optional video model for generate."
+    }
+  },
+  "required": [
+    "action"
+  ]
+}
+```
+
+来源：[`packages/video/video-production/src/index.ts`](../packages/video/video-production/src/index.ts)
+
+每个会话拥有一个带修订号的视频项目。所有操作都返回完整项目，包含有序镜头、保留的生成版本、选中的附件和导出结果。生成需要已注册的视频提供方，成片导出需要 Host 本地安装 FFmpeg 和 ffprobe。两种操作均等待结束并保留失败或中断的尝试。

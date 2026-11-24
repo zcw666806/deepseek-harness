@@ -23,6 +23,8 @@ import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type { DraftInitializationOptions } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { RowToast } from './contract/slots.ts'
+import type { WorkspaceSessionPresentation } from './contract/presentations.ts'
+import { SessionPresentationDirectory } from './session-presentations.ts'
 import { pinOrderAccounts, pinOrderSource } from './pin-order.ts'
 import { RecentSessionViews } from './recent-views.ts'
 import type { WorkspaceViewStoreActions } from './stores.ts'
@@ -38,8 +40,33 @@ export interface StartSessionOptions extends DraftInitializationOptions {
   readonly agentPreset?: string
 }
 
+/**
+ * A feature checks whether an otherwise blank Session contains work to keep.
+ * @param sessionId - candidate from the requested Workspace.
+ * @returns whether that feature permits reuse.
+ */
+export type SessionReuseGuard = (sessionId: SessionId) => boolean | Promise<boolean>
+
+interface ReuseGuardEntry {
+  readonly guard: SessionReuseGuard
+  readonly pending: Set<Promise<boolean>>
+  accepting: boolean
+}
+
 /** Workspace archive and directory operations consumed by Client UI domains. */
 export interface UiWorkspace {
+  /**
+   * Supply titles for Sessions containing feature-owned work.
+   * @param source - feature-owned Session title projection.
+   * @returns disposer withdrawing the source.
+   */
+  registerSessionPresentation(source: ObservableSnapshot<readonly WorkspaceSessionPresentation[]>): () => void
+  /**
+   * Register a check before reusing transcript-blank Sessions.
+   * @param guard - check owned by the contributing feature.
+   * @returns disposer that withdraws the guard and waits for pending checks.
+   */
+  registerSessionReuseGuard(guard: SessionReuseGuard): () => Promise<void>
   /**
    * Select a Session and show its Conversation as one UI navigation action.
    * @param target - known Session identity or durable direct-parent subagent address to display.
@@ -166,6 +193,10 @@ export class DirectoryBrowseError extends Error {
 
 /** Implements Workspace archive and directory UI operations. */
 class UiWorkspaceService extends Service implements UiWorkspace {
+  private readonly presentationDirectory = new SessionPresentationDirectory()
+  /** Feature-owned titles for the Workspace browser. */
+  readonly sessionPresentations = this.presentationDirectory.snapshot
+  private readonly reuseGuards = new Set<ReuseGuardEntry>()
   /** The latest in-flight connection per Workspace; a request joins it only when both name the same preset. */
   private readonly connecting = new Map<WorkspaceId, {
     readonly agentPreset: string | undefined
@@ -210,8 +241,26 @@ class UiWorkspaceService extends Service implements UiWorkspace {
         this.mainReference = undefined
         reference?.release()
         stopRecentViews()
+        this.presentationDirectory.clear()
       }
     }, 'ui-workspace: Workspace navigation policy')
+  }
+
+  registerSessionPresentation(source: ObservableSnapshot<readonly WorkspaceSessionPresentation[]>): () => void {
+    const dispose = this.ctx.effect(() => this.presentationDirectory.register(source), 'ui-workspace: feature Session presentation')
+    return () => { void dispose() }
+  }
+
+  registerSessionReuseGuard(guard: SessionReuseGuard): () => Promise<void> {
+    const entry: ReuseGuardEntry = { guard, pending: new Set(), accepting: true }
+    return this.ctx.effect(() => {
+      this.reuseGuards.add(entry)
+      return async () => {
+        entry.accepting = false
+        this.reuseGuards.delete(entry)
+        await Promise.allSettled(entry.pending)
+      }
+    }, 'ui-workspace: Session reuse guard')
   }
 
   connectWorkspace(workspaceId: WorkspaceId, options: Pick<StartSessionOptions, 'agentPreset'> = {}): Promise<SessionId> {
@@ -240,22 +289,47 @@ class UiWorkspaceService extends Service implements UiWorkspace {
     return attempt
   }
 
-  /** Name the first reusable member blank; a requested preset also skips blanks listing another preset. */
-  private createInWorkspace(workspace: WorkspaceView, options: Pick<StartSessionOptions, 'agentPreset'>): Promise<SessionId> {
-    const archived = this.workspaces.list.getSnapshot().archivedSessionIds
-    const sessions = this.sessions.list.getSnapshot()
-    const blank = sessions.ids.find((id) => {
-      const summary = sessions.byId[id]
-      const listed = summary?.projectionValues?.agentPreset
-      return summary !== undefined && summary.blank && summary.cwd === workspace.path
-        && workspace.sessionIds.includes(id) && !archived.includes(id)
-        && (options.agentPreset === undefined || typeof listed !== 'string' || listed === options.agentPreset)
-    })
+  /** Name the first reusable member blank matching the requested preset. */
+  private async createInWorkspace(workspace: WorkspaceView, options: Pick<StartSessionOptions, 'agentPreset'>): Promise<SessionId> {
+    let blank: SessionId | undefined
+    for (const id of this.sessions.list.getSnapshot().ids) {
+      if (!this.reusableMember(workspace, id, options.agentPreset)) continue
+      if (this.sessionPresentations.getSnapshot().some(item => item.sessionId === id)) continue
+      if (this.reuseGuards.size > 0 && !await this.canReuse(id)) continue
+      if (!this.reusableMember(workspace, id, options.agentPreset)) continue
+      blank = id
+      break
+    }
     return this.createNamed({
       workspaceId: workspace.workspaceId,
       ...(blank === undefined ? {} : { sessionId: blank }),
       ...(options.agentPreset === undefined ? {} : { agentPreset: options.agentPreset }),
     })
+  }
+
+  private reusableMember(workspace: WorkspaceView, id: SessionId, preset: string | undefined): boolean {
+    const { items, archivedSessionIds } = this.workspaces.list.getSnapshot()
+    const current = items.find(item => item.workspaceId === workspace.workspaceId)
+    const summary = this.sessions.list.getSnapshot().byId[id]
+    const listed = summary?.projectionValues?.agentPreset
+    return current !== undefined && summary !== undefined && summary.blank && summary.cwd === current.path
+      && current.sessionIds.includes(id) && !archivedSessionIds.includes(id)
+      && (preset === undefined || typeof listed !== 'string' || listed === preset)
+  }
+
+  private async canReuse(sessionId: SessionId): Promise<boolean> {
+    for (const entry of this.reuseGuards) {
+      const check = Promise.resolve().then(() => entry.accepting && entry.guard(sessionId))
+      entry.pending.add(check)
+      try {
+        if (!await check || !entry.accepting) return false
+      } catch {
+        return false // A rejected feature check cannot establish that the Session is reusable.
+      } finally {
+        entry.pending.delete(check)
+      }
+    }
+    return true
   }
 
   /**
@@ -480,7 +554,8 @@ class UiWorkspaceService extends Service implements UiWorkspace {
     const summary = saved.sessionId === undefined ? undefined : sessions.byId[saved.sessionId]
     const workspace = summary === undefined ? undefined
       : workspaces.items.find(item => item.sessionIds.includes(summary.id))
-    if (summary !== undefined && (!summary.blank || workspace === undefined)) {
+    if (summary !== undefined && (!summary.blank || workspace === undefined
+      || this.sessionPresentations.getSnapshot().some(item => item.sessionId === summary.id))) {
       this.replaceMain(summary.id, this.lifetime.signal, 'preserve')
       return
     }
@@ -489,6 +564,11 @@ class UiWorkspaceService extends Service implements UiWorkspace {
     let sessionId: SessionId | undefined
     if (summary !== undefined && workspace !== undefined && summary.cwd === workspace.path
       && !workspaces.archivedSessionIds.includes(summary.id)) {
+      if (this.reuseGuards.size > 0 && !await this.canReuse(summary.id)) {
+        if (!navigation.aborted) this.replaceMain(summary.id, navigation, 'preserve')
+        return
+      }
+      if (navigation.aborted) return
       sessionId = await this.restoreBlank(workspace.workspaceId, summary.id)
     }
     let target = workspace?.workspaceId ?? recentWorkspace(workspaces.items, sessions.byId)

@@ -1,0 +1,22 @@
+# Bilingual-pair consistency record for 2026-11-03-production-workflow-controls-and-durable-batches.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-11-03-production-workflow-controls-and-durable-batches.md
+/agent-note-safe-workflow-controls-durable-batches-and-clip-edits:
+  en: cecaa4ad4bb059da
+  zh: a384a3492afa4b99
+/agent-note-safe-workflow-controls-durable-batches-and-clip-edits/problem:
+  en: 99e669b5195e78c1
+  zh: c76a2e3b20dcbc3c
+/agent-note-safe-workflow-controls-durable-batches-and-clip-edits/decision:
+  en: d6e497ecb52a9744
+  zh: 0bec910bb7398355
+/agent-note-safe-workflow-controls-durable-batches-and-clip-edits/alternatives-considered:
+  en: a76bd80a8f41a6c2
+  zh: ff886df6fac82ff9
+/agent-note-safe-workflow-controls-durable-batches-and-clip-edits/consequences:
+  en: d55dcd0188117c82
+  zh: 81facc89c2b263c7
+/agent-note-safe-workflow-controls-durable-batches-and-clip-edits/verification:
+  en: 7685bb0679fbd194
+  zh: dad81485555ba29d

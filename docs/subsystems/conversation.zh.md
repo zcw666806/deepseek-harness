@@ -53,6 +53,8 @@ Group 存储在安装前校验完整提交结果：根 Group 引用与记录一�
 
 渲染器按两种引用 kind 切换，由所属 View 选择组件，不通过组数据中的 renderer 字段选择。根 Node 引用与被引用组的成员构成完整渲染列表；未被引用的目标 Node 仍保留在存储中，但不渲染。组 body 将成员与摘要数据分开读取。展示模式必须保留组件类型、key 和成员父级；业务数据改变成员归属时，移动成员可以正常重挂载。框架不解释部分内容完备性、分段或展示策略。
 
+已存在的 blank Session 可在首次消息前选择已注册的非 Chat View。blank Chat 保留常驻 Hero，选中的非 Chat View 拥有自己的空数据内容。header 公开 View 导航，不显示 blank Session 的标题与工具行。返回 Chat，或在 Chat 仍注册时移除所选 View，会恢复 Hero，不改变 Session 生命周期数据。
+
 ## 可回放 event family
 
 编写 Definition 前先选定稳定的业务 id。构成同一个 Node 的每条事件都必须携带该 id，或只凭自身 payload 独立推导出该 id；Client 绝不能把 update 猜测为属于“最近一个未完成”的 Context。

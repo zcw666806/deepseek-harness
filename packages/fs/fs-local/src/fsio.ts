@@ -706,9 +706,6 @@ export async function removeFile(absolutePath: string, displayPath: string, inte
 
 // --- Editing ---
 
-/** Line ending style detected before LF normalization. */
-export type LineEndings = 'LF' | 'CRLF'
-
 /**
  * Collapse CRLF to LF — the canonical in-memory form every edit/diff basis
  * uses. Lone `\r` bytes (not followed by `\n`) are left untouched.
@@ -719,55 +716,40 @@ function normalizeLineEndings(content: string): string {
   return content.replaceAll('\r\n', '\n')
 }
 
-function detectLineEndings(raw: string): LineEndings {
-  const sample = raw.slice(0, 4096)
-  const crlfCount = sample.split('\r\n').length - 1
-  const lfCount = sample.split('\n').length - 1 - crlfCount
-  return crlfCount > lfCount ? 'CRLF' : 'LF'
+function detectLineEndings(raw: string): '\r\n' | '\n' {
+  const crlfCount = raw.split('\r\n').length - 1
+  const lfCount = raw.split('\n').length - 1 - crlfCount
+  return crlfCount > lfCount ? '\r\n' : '\n'
 }
 
 /**
- * Convert LF-normalized content back to the line-ending style detected at read
- * time, for write-back. `LF` returns the content unchanged; `CRLF` re-normalizes
- * first so an already-CRLF sequence is never doubled to `\r\r\n`.
- * @param content - the LF-normalized (edited) text.
- * @param lineEndings - the original file's style, as detected by {@link readForEdit}.
- * @returns the text in the original file's line-ending style.
+ * Apply the source file's sampled newline style to patch and move output.
+ * @param content - LF-normalized target text.
+ * @param source - original source text before the patch or move.
+ * @returns text suitable for writing to disk.
  */
-function restoreLineEndings(content: string, lineEndings: LineEndings): string {
-  return lineEndings === 'LF' ? content : normalizeLineEndings(content).split('\n').join('\r\n')
-}
-
-function countOccurrences(content: string, needle: string): number {
-  let count = 0
-  let index = 0
-  while (true) {
-    const found = content.indexOf(needle, index)
-    if (found === -1) return count
-    count += 1
-    index = found + needle.length
-  }
+export function restoreLineEndings(content: string, source: string): string {
+  return content.replaceAll('\n', detectLineEndings(source.slice(0, 4096)))
 }
 
 /**
- * Read and decode a file for editing: rejects binaries, returns LF-normalized
- * content plus the original line-ending style for write-back.
+ * Read and decode a file for editing, rejecting binary or invalid UTF-8 content
+ * and preserving its original line endings.
  * @param absolutePath - the file to read (typically a target key).
  * @param displayPath - the caller-facing path used in error messages.
  * @param signal - aborts the read (`FS_ABORTED`).
- * @returns the LF-normalized content and the detected style to restore on write-back.
+ * @returns the decoded text with its original line endings.
  */
 export async function readForEdit(
   absolutePath: string,
   displayPath: string,
   signal?: AbortSignal,
-): Promise<{ content: string; lineEndings: LineEndings }> {
+): Promise<string> {
   throwIfAborted(signal, 'edit')
   const buffer = await readFileAbortable(absolutePath, displayPath, 'edit', signal)
   throwIfAborted(signal, 'edit')
   if (buffer.includes(0)) throw new FsError(`cannot edit "${displayPath}": binary file`, 'FS_NOT_TEXT')
-  const raw = decodeUtf8(buffer, 'edit', displayPath)
-  return { content: normalizeLineEndings(raw), lineEndings: detectLineEndings(raw) }
+  return decodeUtf8(buffer, 'edit', displayPath)
 }
 
 /**
@@ -836,15 +818,16 @@ export async function readTextForDiff(
 }
 
 /**
- * Apply a literal replacement to LF-normalized content. Empty or missing search text throws
- * `FS_EDIT_NOT_FOUND`; multiple matches throw `FS_AMBIGUOUS_EDIT` unless `replaceAll` is true.
- * @param content - the current file content, already LF-normalized.
- * @param oldString - literal text to find; CRLF inside it is normalized to LF before
- *   matching.
- * @param newString - literal replacement text, normalized the same way.
+ * Apply a literal replacement, matching LF and CRLF interchangeably. Unmatched text keeps
+ * its original bytes; replacement newlines use the file's dominant style (LF on a tie).
+ * Empty or missing search text throws `FS_EDIT_NOT_FOUND`; multiple matches throw
+ * `FS_AMBIGUOUS_EDIT` unless `replaceAll` is true.
+ * @param content - the decoded file content with its original line endings.
+ * @param oldString - literal text to find, with LF or CRLF line endings.
+ * @param newString - literal replacement text, with LF or CRLF line endings.
  * @param replaceAll - replace every match instead of requiring exactly one.
  * @param displayPath - the caller-facing path used in error messages.
- * @returns the edited LF-normalized content plus how many occurrences were replaced.
+ * @returns the edited storage text plus how many occurrences were replaced.
  */
 export function applyLiteralEdit(
   content: string,
@@ -857,15 +840,44 @@ export function applyLiteralEdit(
   if (oldNorm.length === 0) {
     throw new FsError('old_string must be a non-empty string', 'FS_EDIT_NOT_FOUND')
   }
-  const newNorm = normalizeLineEndings(newString)
-  const replacements = countOccurrences(content, oldNorm)
+  const normalized = normalizeLineEndings(content)
+  let replacements = 0
+  let searchFrom = 0
+  let found: number
+  while ((found = normalized.indexOf(oldNorm, searchFrom)) !== -1) {
+    replacements += 1
+    searchFrom = found + oldNorm.length
+  }
   if (replacements === 0) {
     throw new FsError(`old_string was not found in "${displayPath}"`, 'FS_EDIT_NOT_FOUND')
   }
   if (!replaceAll && replacements > 1) {
     throw new FsError(`old_string matched ${replacements} times in "${displayPath}"; provide a more specific old_string or set replace_all to true`, 'FS_AMBIGUOUS_EDIT')
   }
-  return { content: content.split(oldNorm).join(newNorm), replacements }
+  const replacement = normalizeLineEndings(newString).replaceAll('\n', detectLineEndings(content))
+  // Map only match endpoints, advancing once through the raw text instead of
+  // retaining an offset for every character or compiling the search as a regex.
+  let rawOffset = 0
+  let normalizedOffset = 0
+  const storageOffset = (target: number): number => {
+    while (normalizedOffset < target) {
+      rawOffset += content[rawOffset] === '\r' && content[rawOffset + 1] === '\n' ? 2 : 1
+      normalizedOffset += 1
+    }
+    return rawOffset
+  }
+  const parts: string[] = []
+  let copiedThrough = 0
+  searchFrom = 0
+  while ((found = normalized.indexOf(oldNorm, searchFrom)) !== -1) {
+    const start = storageOffset(found)
+    const end = storageOffset(found + oldNorm.length)
+    parts.push(content.slice(copiedThrough, start), replacement)
+    copiedThrough = end
+    searchFrom = found + oldNorm.length
+  }
+  parts.push(content.slice(copiedThrough))
+  return { content: parts.join(''), replacements }
 }
 
-export { normalizeLineEndings, restoreLineEndings }
+export { normalizeLineEndings }

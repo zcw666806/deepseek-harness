@@ -1,0 +1,10 @@
+version: 1
+scenario: workflow-background
+profile: headless
+composition: workflow-background
+recording: authored
+header:
+  class: workflow-background
+  pin: true
+replay:
+  override: true

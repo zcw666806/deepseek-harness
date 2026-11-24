@@ -1,0 +1,13 @@
+# Bilingual-pair consistency record for comic-production.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/subsystems/comic-production.md
+/comic-production:
+  en: 8eb6f9e92b1c1410
+  zh: 93de156329047df0
+/comic-production/manuscript-data:
+  en: 91eeb5614eb19f35
+  zh: 57272e13dc3e00db
+/comic-production/original-media-and-project-transfer:
+  en: f50bb3fb6216bbd3
+  zh: 377851bee8cb2943

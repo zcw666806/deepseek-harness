@@ -94,6 +94,7 @@ function mountFrame(windowWidth = frameWidth, content?: AppFrameProps['renderSlo
   const element = () => (
     <AppFrame
       useStore={useStore}
+      SessionProvider={({ children }) => children}
       actions={instance.actions}
       renderSlot={renderSlot}
       useSessions={useSessions}

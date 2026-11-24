@@ -519,6 +519,26 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         parameters: [{ name: 'ref', description: 'durable provider-independent normalized attachment reference.' }, { name: 'target', description: 'route-chosen maximum dimensions, hard byte limit, and preferred byte target.' }, { name: 'signal', description: 'optional cancellation.' }],
         returns: 'request bytes within the hard limit, actual encoded dimensions, and a cache/upload identity covering every transform input.',
       },
+      {
+        signature: 'saveVideo(input: SaveVideoAttachment, signal?: AbortSignal): Promise<VideoAttachmentRef>',
+        description: 'Validate and durably commit one video.',
+        parameters: [{ name: 'input', description: 'raw video bytes, declared media type, and optional metadata.' }, { name: 'signal', description: 'optional cancellation for backend storage work.' }],
+        returns: 'the durable content-addressed video reference.',
+      },
+      {
+        signature: 'readVideo(ref: VideoAttachmentRef, signal?: AbortSignal): Promise<StoredVideoAttachment>',
+        description: 'Read one video and verify that bytes still match the recorded reference.',
+        parameters: [{ name: 'ref', description: 'durable reference from the session log.' }, { name: 'signal', description: 'optional cancellation for backend read and verification work.' }],
+        returns: 'the verified bytes and video attachment reference.',
+        throws: ['the signal reason when aborted, or a storage error when verification fails.'],
+      },
+      {
+        signature: 'videoHostPath(ref: VideoAttachmentRef): string | undefined',
+        description: 'Locate the provider-owned video object in the harness host filesystem.',
+        parameters: [{ name: 'ref', description: 'durable video attachment reference.' }],
+        returns: 'an absolute host path, or undefined when this backend is not host-file-backed.',
+        throws: ['an AttachmentError when the durable reference is invalid.'],
+      },
     ],
   },
   {
@@ -569,6 +589,49 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Reserve the sole provider slot until the contribution is disposed. A second registration fails even when it repeats the current name. Providers must stop their tools and await owned work before releasing this registration.',
         parameters: [{ name: 'name', description: 'provider-owned name used in registration diagnostics.' }],
         returns: 'the effect disposer for this exact registration.',
+      },
+    ],
+  },
+  {
+    key: 'capabilities',
+    summary: 'Capability directory shared by the Web management UI and installed engine providers.',
+    description: 'Capability directory shared by the Web management UI and installed engine providers.',
+    methods: [
+      {
+        signature: 'register(provider: CapabilityProvider): () => Promise<void>',
+        description: 'Register an installed implementation; its callbacks retain process and credential ownership.',
+        parameters: [{ name: 'provider', description: 'Typed installed provider whose inspections contain only public diagnostics.' }],
+        returns: 'Async disposer removing this registration, cancelling its operations, and awaiting settlement.',
+      },
+      {
+        signature: '@Remote(\'list\') async list(signal: AbortSignal): Promise<readonly CapabilityView[]>',
+        description: 'Inspect every current installed capability without installing or starting it.',
+        parameters: [{ name: 'signal', description: 'Caller cancellation; each inspection also observes checkTimeoutMs.' }],
+        returns: 'Current descriptions, actual callback-derived actions, and safe readiness observations.',
+      },
+      {
+        signature: '@Remote(\'perform\') async perform(id: CapabilityId, action: CapabilityAction, signal: AbortSignal): Promise<CapabilityView>',
+        description: 'Execute one fixed operation through its current installed provider, serialized per capability.',
+        parameters: [{ name: 'id', description: 'Current registered capability identity.' }, { name: 'action', description: 'Check, prepare, start, or stop; unsupported operations reject before provider invocation.' }, { name: 'signal', description: 'Caller cancellation and configured complete-operation deadline.' }],
+        returns: 'Post-operation inspection, or a safe error view when provider work fails.',
+      },
+      {
+        signature: '@Remote(\'exportManifest\') async exportManifest(signal: AbortSignal): Promise<PortableCapabilityManifest>',
+        description: 'Export current engine requirements and provider-declared portable configuration.',
+        parameters: [{ name: 'signal', description: 'Caller cancellation; each provider read has the inspection deadline.' }],
+        returns: 'A bounded manifest without runtime commands, environments, weights, or implicit credential copying.',
+      },
+      {
+        signature: '@Remote(\'planRestore\') async planRestore(manifest: PortableCapabilityManifest, signal: AbortSignal): Promise<CapabilityRestorePlan>',
+        description: 'Preview installed engine compatibility and current prerequisites without changing target-machine state.',
+        parameters: [{ name: 'manifest', description: 'Complete untrusted portable manifest, validated before any provider inspection.' }, { name: 'signal', description: 'Caller cancellation; each inspection includes its configured queue and execution deadline.' }],
+        returns: 'Credential-free compatibility results; pending settings still require explicit provider validation during restoration.',
+      },
+      {
+        signature: '@Remote(\'restoreManifest\') async restoreManifest(manifest: PortableCapabilityManifest, signal: AbortSignal): Promise<readonly CapabilityRestoreResult[]>',
+        description: 'Restore matching installed providers\' declarative settings; no runtime is installed or started.',
+        parameters: [{ name: 'manifest', description: 'Untrusted complete portable manifest; invalid or duplicate entries reject before any callback.' }, { name: 'signal', description: 'Caller cancellation; each provider restore has the configured action deadline.' }],
+        returns: 'Per-provider results. Missing engines and version mismatches remain explicit; independent restores can partially succeed.',
       },
     ],
   },
@@ -664,6 +727,97 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Fires after the graph\'s rows or rev change: a flush that recomposed the graph (row added/removed, or a rebuilt rev change), or a republication of synced configuration alone, which leaves the batch artifacts unchanged. Pull model: listeners re-read graph.',
         parameters: [{ name: 'listener', description: 'notified with no payload.' }],
         returns: 'the unsubscriber.',
+      },
+    ],
+  },
+  {
+    key: 'comicProduction',
+    summary: 'Commit manuscript changes and transfer only PNGs referenced by an authorized project.',
+    description: 'Commit manuscript changes and transfer only PNGs referenced by an authorized project.',
+    methods: [
+      {
+        signature: '@Remote(\'list\') list(sessionId: SessionId, signal?: AbortSignal): ComicProjectSummary[]',
+        description: 'List manuscripts in the Workspace that owns the Session.',
+        parameters: [{ name: 'sessionId', description: 'attached Session opening the workbench.' }, { name: 'signal', description: 'cancellation before reading the project list.' }],
+        returns: 'the Workspace\'s project titles and revisions.',
+      },
+      {
+        signature: '@Remote(\'create\') create(sessionId: SessionId, title: string, signal?: AbortSignal): Promise<ComicProject>',
+        description: 'Create a manuscript with three editable pages in the Session\'s Workspace.',
+        parameters: [{ name: 'sessionId', description: 'attached Session selecting the owner Workspace.' }, { name: 'title', description: 'user-supplied manuscript title.' }, { name: 'signal', description: 'cancellation before creating the project.' }],
+        returns: 'the committed initial project.',
+      },
+      {
+        signature: '@Remote(\'storyboardGenerationTargets\') async storyboardGenerationTargets(signal?: AbortSignal): Promise<ComicImageGenerationTarget[]>',
+        description: 'List configured image generation targets whose Host credentials currently resolve.',
+        parameters: [{ name: 'signal', description: 'optional cancellation before returning the list.' }],
+        returns: 'selector entries without provider endpoints or credential references.',
+      },
+      {
+        signature: '@Remote(\'storyboardGenerationTarget\') async storyboardGenerationTarget(sessionId: SessionId, signal?: AbortSignal): Promise<ComicImageGenerationTargetId | undefined>',
+        description: 'Read the Session\'s image target, even if a configured choice has since become unavailable.',
+        parameters: [{ name: 'sessionId', description: 'attached Session selecting the owner Workspace.' }, { name: 'signal', description: 'optional cancellation while inspecting the Session.' }],
+        returns: 'the stored target, the sole configured target, or undefined when the Session has no target.',
+      },
+      {
+        signature: '@Remote(\'selectStoryboardGenerationTarget\') selectStoryboardGenerationTarget(sessionId: SessionId, targetId: ComicImageGenerationTargetId, signal?: AbortSignal): Promise<void>',
+        description: 'Durably choose the image route used for future generations in this Session.',
+        parameters: [{ name: 'sessionId', description: 'attached Session selecting the owner Workspace.' }, { name: 'targetId', description: 'configured image target with a usable credential.' }, { name: 'signal', description: 'optional cancellation before the selection is submitted for storage.' }],
+        returns: 'completion after the selected route is durable.',
+      },
+      {
+        signature: '@Remote(\'storyboardGenerationAvailable\') async storyboardGenerationAvailable(sessionId: SessionId, signal?: AbortSignal): Promise<boolean>',
+        description: 'Check whether the Session can generate artwork with its selected image route.',
+        parameters: [{ name: 'sessionId', description: 'Attached Session selecting the owner Workspace.' }, { name: 'signal', description: 'Cancellation before returning availability.' }],
+        returns: 'Whether the image route and its Host credential are available.',
+      },
+      {
+        signature: '@Remote(\'storyboardResult\') async storyboardResult(sessionId: SessionId, messageId: string, signal?: AbortSignal): Promise<ComicProject | undefined>',
+        description: 'Read the result saved for a storyboard or join its current generation.',
+        parameters: [{ name: 'sessionId', description: 'Attached Session selecting the owner Workspace.' }, { name: 'messageId', description: 'Original Assistant message identity in the Session.' }, { name: 'signal', description: 'Cancellation before delivering the project.' }],
+        returns: 'The saved project, or undefined before generation starts.',
+      },
+      {
+        signature: '@Remote(\'generateStoryboard\') async generateStoryboard( sessionId: SessionId, messageId: string, draft: ComicDraft, artDirection: string, signal?: AbortSignal, ): Promise<ComicProject>',
+        description: 'Draw the four panels together and publish one editable project for this source message.',
+        parameters: [{ name: 'sessionId', description: 'Attached Session selecting the destination Workspace.' }, { name: 'messageId', description: 'Original Assistant message identity in the Session.' }, { name: 'draft', description: 'Four ordered panels and their editable dialogue.' }, { name: 'artDirection', description: 'Visual style and recurring details from the storyboard.' }, { name: 'signal', description: 'Cancellation before accepting the request. Accepted work remains on the Host when a viewer leaves.' }],
+        returns: 'The saved project, including artwork for each panel. Repeated requests share active work or return the saved project.',
+      },
+      {
+        signature: '@Remote(\'open\') open(sessionId: SessionId, projectId: ComicProjectId, signal?: AbortSignal): ComicProject',
+        description: 'Open the current revision of a project in the Session\'s Workspace.',
+        parameters: [{ name: 'sessionId', description: 'attached Session selecting the owner Workspace.' }, { name: 'projectId', description: 'stable project identity from the picker.' }, { name: 'signal', description: 'cancellation before reading the project.' }],
+        returns: 'the committed project, including retained artwork references.',
+      },
+      {
+        signature: '@Remote(\'save\') save(sessionId: SessionId, projectId: ComicProjectId, revision: number, draft: ComicDraft, signal?: AbortSignal): Promise<ComicProject>',
+        description: 'Save complete editable geometry, dialogue, and adopted versions in one revision.',
+        parameters: [{ name: 'sessionId', description: 'attached Session selecting the owner Workspace.' }, { name: 'projectId', description: 'project to edit.' }, { name: 'revision', description: 'expected committed project revision.' }, { name: 'draft', description: 'editable values; retained artwork references must match the current project.' }, { name: 'signal', description: 'cancellation before the revision starts committing.' }],
+        returns: 'the new committed project.',
+      },
+      {
+        signature: '@Remote(\'saveLayerImage\') saveLayerImage( sessionId: SessionId, projectId: ComicProjectId, revision: number, panelId: ComicPanelId, layerId: ComicLayerId, pngBase64: string, signal?: AbortSignal, ): Promise<ComicProject>',
+        description: 'Publish a byte-exact PNG and adopt it as a new layer revision.',
+        parameters: [{ name: 'sessionId', description: 'attached Session selecting the owner Workspace.' }, { name: 'projectId', description: 'project receiving the image.' }, { name: 'revision', description: 'expected committed project revision.' }, { name: 'panelId', description: 'panel containing the target layer.' }, { name: 'layerId', description: 'target layer identity.' }, { name: 'pngBase64', description: 'base64 of the original PNG, at the layer\'s original dimensions on replacement.' }, { name: 'signal', description: 'cancellation before the project revision starts committing.' }],
+        returns: 'the committed project with all previous versions retained.',
+      },
+      {
+        signature: '@Remote(\'readImage\') readImage( sessionId: SessionId, projectId: ComicProjectId, imageId: ComicImageId, offset: number, length: number, signal?: AbortSignal, ): Promise<ComicImageChunk>',
+        description: 'Read a bounded slice from a retained artwork version in an authorized manuscript.',
+        parameters: [{ name: 'sessionId', description: 'attached Session selecting the owner Workspace.' }, { name: 'projectId', description: 'project referencing the original image.' }, { name: 'imageId', description: 'content identity from a retained layer version.' }, { name: 'offset', description: 'zero-based raw byte position.' }, { name: 'length', description: 'number of requested raw bytes, at most 256 KiB.' }, { name: 'signal', description: 'cancellation before delivering the image slice.' }],
+        returns: 'the original byte slice, including exact progress.',
+      },
+      {
+        signature: '@Remote(\'exportProject\') exportProject(sessionId: SessionId, projectId: ComicProjectId, signal?: AbortSignal): Promise<ComicProjectPackage>',
+        description: 'Freeze a portable project package with all retained original images.',
+        parameters: [{ name: 'sessionId', description: 'attached Session selecting the owner Workspace.' }, { name: 'projectId', description: 'project to package.' }, { name: 'signal', description: 'cancellation before delivering the package.' }],
+        returns: 'editable manuscript data and verified original PNGs.',
+      },
+      {
+        signature: '@Remote(\'importProject\') importProject(sessionId: SessionId, data: ComicProjectPackage, signal?: AbortSignal): Promise<ComicProject>',
+        description: 'Validate and import a portable project into the current Workspace as a new project.',
+        parameters: [{ name: 'sessionId', description: 'attached Session selecting the destination Workspace.' }, { name: 'data', description: 'portable draft and its complete original-image set.' }, { name: 'signal', description: 'cancellation before the project starts committing.' }],
+        returns: 'the independently editable imported project.',
       },
     ],
   },
@@ -3151,6 +3305,26 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'reaExperiment',
+    summary: 'Settings owner that composes an independent REA connection into each opted-in session.',
+    description: 'Settings owner that composes an independent REA connection into each opted-in session.',
+    methods: [
+      {
+        signature: 'current(): ReaExperimentSettings',
+        description: 'Read detached settings for the next new session.',
+        parameters: [],
+        returns: 'The opt-in preference and exact launcher configuration.',
+      },
+      {
+        signature: 'async compose(agentCtx: Context, agent: Agent, mode: \'create\' | \'resume\'): Promise<void>',
+        description: 'Await REA discovery before an unpublished session can enter the registry. Creation samples current settings; resume reads only the session\'s durable selection.',
+        parameters: [{ name: 'agentCtx', description: 'Unpublished Agent context owned by the registry factory\'s setup.' }, { name: 'agent', description: 'Unpublished Agent whose session owns the selection.' }, { name: 'mode', description: 'Whether the caller creates a new session or resumes persisted history.' }],
+        returns: 'After the full catalog is registered, or immediately when the session is outside the trial.',
+        throws: ['When startup or discovery fails, after the session-owned connection is disposed.'],
+      },
+    ],
+  },
+  {
     key: 'remoteAccess',
     summary: 'Registry of access policies, the Gateway\'s access decisions, list filtering, and the per-Peer access snapshot.',
     description: 'Registry of access policies, the Gateway\'s access decisions, list filtering, and the per-Peer access snapshot. Every composition that mounts the Gateway mounts this service too.',
@@ -3472,6 +3646,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Read one image from the attachment store after gateway authorization.',
         parameters: [{ name: 'request', description: 'image reference and gateway permission scope; Session existence is not checked.' }],
         returns: 'the durable attachment reference and base64-encoded bytes.',
+      },
+      {
+        signature: '@Remote(\'videoAttachment\') videoAttachment(request: SessionVideoAttachmentRequest): Promise<SessionVideoAttachmentValue>',
+        description: 'Read a bounded video slice proven reachable from a successful Session generation.',
+        parameters: [{ name: 'request', description: 'Session and attachment identities plus raw-byte range.' }],
+        returns: 'verified metadata and a base64 slice containing at most 256 KiB of raw video bytes.',
       },
       {
         signature: '@Remote(\'updateQueue\') updateQueue(request: SessionUpdateQueueRequest): Promise<SessionUpdateQueueValue>',
@@ -5073,6 +5253,206 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         parameters: [{ name: 'request', description: 'Questions, owner agent, and abort signal.' }],
         returns: 'The answer chosen or typed by the human.',
         throws: ['{UserQuestionError} code `ASK_ABORTED` when the supplied signal is already or becomes aborted, `CALLER_NOT_LIVE` when a supplied agent is not the registry\'s exact live instance, `DELEGATED_CALLER` when that live agent has subagent origin, or `PROVIDER_ERROR`, keeping the original message, when an answerer fails with a value that is not a `HarnessError`; a coded `HarnessError` from an answerer keeps its `name` and `code`.'],
+      },
+    ],
+  },
+  {
+    key: 'videoProduction',
+    summary: 'One project per existing Session, persisted through the configured storage-domain backend.',
+    description: 'One project per existing Session, persisted through the configured storage-domain backend.',
+    methods: [
+      {
+        signature: 'registerGenerator(name: string, generator: VideoGenerator, describe: DescribeVideoGenerator = () => [{ title: name }]): () => void',
+        description: 'Register one named generation provider without copying provider credentials.',
+        parameters: [{ name: 'name', description: 'unique configured generation route name.' }, { name: 'generator', description: 'cancellation-aware provider returning a durable attachment.' }, { name: 'describe', description: 'current selectable configurations; omission exposes one unrestricted named route.' }],
+        returns: 'disposer removing only this registration.',
+      },
+      {
+        signature: '@Remote(\'generationTargets\') generationTargets(): VideoGenerationTarget[]',
+        description: 'List current provider-owned configurations without starting generation or contacting a model.',
+        parameters: [],
+        returns: 'selectable generator/model pairs and declared limits, without credentials.',
+      },
+      {
+        signature: '@Remote(\'conversationGenerationTargets\') conversationGenerationTargets(): VideoGenerationTarget[]',
+        description: 'List configured models served by the standalone video tool.',
+        parameters: [],
+        returns: 'Native video targets suitable for selection in a conversation.',
+      },
+      {
+        signature: '@Remote(\'conversationGenerationTarget\') async conversationGenerationTarget(sessionId: SessionId, signal?: AbortSignal): Promise<string | undefined>',
+        description: 'Read the saved selector value for the current Session lifecycle.',
+        parameters: [{ name: 'sessionId', description: 'Existing Session.' }, { name: 'signal', description: 'Caller cancellation during Session inspection.' }],
+        returns: 'Explicit model selection, even if its route was removed, or undefined when unset.',
+      },
+      {
+        signature: '@Remote(\'selectConversationGenerationTarget\') selectConversationGenerationTarget(sessionId: SessionId, model: string, signal?: AbortSignal): Promise<void>',
+        description: 'Save the standalone generation model separately from the conversational model.',
+        parameters: [{ name: 'sessionId', description: 'Existing Session to receive the selection.' }, { name: 'model', description: 'Exact currently configured native video model ID.' }, { name: 'signal', description: 'Caller cancellation before committing the selection.' }],
+        returns: 'Completion after the selection is durable.',
+      },
+      {
+        signature: 'selectedConversationVideoModel(sessionId: SessionId, sessionCreatedAt: number): string | undefined',
+        description: 'Resolve the user\'s standalone generation selection for the initiating tool call.',
+        parameters: [{ name: 'sessionId', description: 'Tool caller\'s Session identity.' }, { name: 'sessionCreatedAt', description: 'Tool caller\'s Session lifecycle timestamp.' }],
+        returns: 'Exact saved model or undefined when no selection belongs to this lifecycle.',
+      },
+      {
+        signature: '@Remote(\'startBatch\') startBatch(sessionId: SessionId, input: VideoBatchInput): Promise<VideoBatch>',
+        description: 'Start missing-shot work owned by the Host, independent of the calling page.',
+        parameters: [{ name: 'sessionId', description: 'existing project Session.' }, { name: 'input', description: 'observed project revision and generation route.' }],
+        returns: 'durably admitted batch without waiting for generation.',
+      },
+      {
+        signature: '@Remote(\'batch\') batch(sessionId: SessionId): Promise<VideoBatch | null>',
+        description: 'Read the latest batch for this Session lifecycle.',
+        parameters: [{ name: 'sessionId', description: 'existing project Session.' }],
+        returns: 'durable descriptor, or null when absent.',
+      },
+      {
+        signature: '@Remote(\'listBatches\') async listBatches(sessionIds: readonly SessionId[]): Promise<readonly VideoBatch[]>',
+        description: 'Read production batches for a bounded set of existing Sessions.',
+        parameters: [{ name: 'sessionIds', description: 'at most 256 Session identities.' }],
+        returns: 'current lifecycle descriptors, omitting Sessions without batches.',
+      },
+      {
+        signature: '@Remote(\'pauseBatch\') pauseBatch(sessionId: SessionId, id: VideoBatchId): Promise<VideoBatch>',
+        description: 'Request pause after the current shot finishes.',
+        parameters: [{ name: 'sessionId', description: 'owning Session.' }, { name: 'id', description: 'observed batch identity.' }],
+        returns: 'pausing while provider work remains, otherwise paused.',
+      },
+      {
+        signature: '@Remote(\'cancelBatch\') cancelBatch(sessionId: SessionId, id: VideoBatchId): Promise<VideoBatch>',
+        description: 'Request cancellation after the current shot finishes; saved results remain available.',
+        parameters: [{ name: 'sessionId', description: 'owning Session.' }, { name: 'id', description: 'observed batch identity.' }],
+        returns: 'cancelling while provider work remains, otherwise cancelled.',
+      },
+      {
+        signature: '@Remote(\'resumeBatch\') resumeBatch(sessionId: SessionId, id: VideoBatchId): Promise<VideoBatch>',
+        description: 'Resume unattempted shots without replaying unconfirmed submissions.',
+        parameters: [{ name: 'sessionId', description: 'owning Session.' }, { name: 'id', description: 'observed batch identity.' }],
+        returns: 'admitted descriptor after frozen inputs and saved results are checked.',
+      },
+      {
+        signature: '@Remote(\'projectSummaries\') async projectSummaries(sessionIds: readonly SessionId[], signal: AbortSignal): Promise<readonly VideoProjectSummary[]>',
+        description: 'Read bounded saved-project summaries for existing Session identities without creating or resuming an Agent.',
+        parameters: [{ name: 'sessionIds', description: 'at most 256 distinct Session identities, each at most 256 characters.' }, { name: 'signal', description: 'caller cancellation during lifecycle inspection.' }],
+        returns: 'only currently matching saved projects; display titles contain at most 160 Unicode code points. Deleted Sessions and rows from an earlier lifecycle are omitted; unrelated persistence failures reject.',
+      },
+      {
+        signature: '@Remote(\'view\') async view(sessionId: SessionId): Promise<VideoProject>',
+        description: 'Read this Session\'s project without creating or resuming an Agent.',
+        parameters: [{ name: 'sessionId', description: 'existing Session selecting the project.' }],
+        returns: 'the current project, or an unpersisted revision-zero project.',
+      },
+      {
+        signature: '@Remote(\'importWorkspaceStoryboard\') async importWorkspaceStoryboard(sessionId: SessionId, path: string, signal?: AbortSignal): Promise<VideoProject>',
+        description: 'Open a saved project or initialize it from the Session workspace storyboard.',
+        parameters: [{ name: 'sessionId', description: 'existing Session selecting the workspace and project.' }, { name: 'path', description: 'the workspace\'s `storyboard.md` path.' }, { name: 'signal', description: 'cancellation until the project commit starts.' }],
+        returns: 'the saved project, including a concurrent first import if another caller won.',
+      },
+      {
+        signature: '@Remote(\'update\') async update(sessionId: SessionId, input: VideoProjectInput): Promise<VideoProject>',
+        description: 'Replace editable fields while preserving attempts for retained shot identities.',
+        parameters: [{ name: 'sessionId', description: 'existing Session selecting the project.' }, { name: 'input', description: 'observed revision and complete editable project fields.' }],
+        returns: 'the committed project; stale revisions and foreign image references reject.',
+      },
+      {
+        signature: '@Remote(\'addAsset\') async addAsset(sessionId: SessionId, input: VideoAssetUpload, signal: AbortSignal): Promise<VideoProject>',
+        description: 'Admit a user-uploaded reference and append its asset after durable storage succeeds.',
+        parameters: [{ name: 'sessionId', description: 'existing Session selecting the project.' }, { name: 'input', description: 'observed revision, asset description, and encoded raster image.' }, { name: 'signal', description: 'cancellation before image admission and project commit.' }],
+        returns: 'the committed project containing the newly owned image.',
+      },
+      {
+        signature: '@Remote(\'reorder\') reorder(sessionId: SessionId, shotIds: readonly VideoShotId[]): Promise<VideoProject>',
+        description: 'Reorder every current shot exactly once without changing its generation versions.',
+        parameters: [{ name: 'sessionId', description: 'existing Session selecting the project.' }, { name: 'shotIds', description: 'complete permutation of current shot identities.' }],
+        returns: 'the committed film order.',
+      },
+      {
+        signature: '@Remote(\'generate\') async generate( sessionId: SessionId, shotId: VideoShotId, selection: VideoGenerationSelection, signal: AbortSignal, ): Promise<VideoProject>',
+        description: 'Generate a new version from this shot\'s current prompt and selected reference assets.',
+        parameters: [{ name: 'sessionId', description: 'existing Session selecting the project.' }, { name: 'shotId', description: 'current shot whose versions receive the attempt.' }, { name: 'selection', description: 'optional generator, video model, and atomic missing-shot condition.' }, { name: 'signal', description: 'caller cancellation; provider work also observes the configured deadline.' }],
+        returns: 'the unchanged project when onlyIfMissing finds a completed video; otherwise the committed project with a completed, failed, or interrupted attempt.',
+      },
+      {
+        signature: '@Remote(\'export\') export(sessionId: SessionId, signal: AbortSignal): Promise<VideoProject>',
+        description: 'Normalize and concatenate the currently selected completed versions in shot order.',
+        parameters: [{ name: 'sessionId', description: 'existing Session selecting the project.' }, { name: 'signal', description: 'caller cancellation; FFmpeg also observes the configured deadline.' }],
+        returns: 'the project retaining this successful or failed export attempt.',
+      },
+      {
+        signature: '@Remote(\'readMedia\') async readMedia( sessionId: SessionId, projectId: VideoProjectId, attachmentId: AttachmentId, offset: number, length: number, ): Promise<VideoMediaChunk>',
+        description: 'Read a bounded media slice only after this exact project proves attachment ownership.',
+        parameters: [{ name: 'sessionId', description: 'existing Session selecting the project.' }, { name: 'projectId', description: 'exact project identity from its latest view.' }, { name: 'attachmentId', description: 'image or completed-video identity owned by that project.' }, { name: 'offset', description: 'zero-based encoded byte position.' }, { name: 'length', description: 'requested bytes, at most the fixed 256 KiB transport safety limit.' }],
+        returns: 'canonical metadata, base64 slice, and byte offsets.',
+      },
+      {
+        signature: '@Remote(\'prepareProjectExport\') prepareProjectExport(sessionId: SessionId, signal: AbortSignal): Promise<VideoProjectTransfer>',
+        description: 'Freeze a portable project snapshot and its referenced media in a bounded download.',
+        parameters: [{ name: 'sessionId', description: 'existing source Session owning the saved project.' }, { name: 'signal', description: 'cancellation during attachment reads and package preparation.' }],
+        returns: 'ephemeral download ticket; the package contains no source Session identity or executable host configuration.',
+      },
+      {
+        signature: '@Remote(\'readProjectTransfer\') readProjectTransfer( sessionId: SessionId, transferId: VideoProjectTransferId, offset: number, length: number, signal: AbortSignal, ): Promise<VideoProjectTransferChunk>',
+        description: 'Read a prepared portable package without exposing its host path.',
+        parameters: [{ name: 'sessionId', description: 'Session owning the transfer.' }, { name: 'transferId', description: 'live download identity from preparation.' }, { name: 'offset', description: 'zero-based encoded file position.' }, { name: 'length', description: 'requested raw bytes, from 1 through 262,144.' }, { name: 'signal', description: 'caller cancellation.' }],
+        returns: 'base64 slice and exact raw-byte offsets.',
+      },
+      {
+        signature: '@Remote(\'beginProjectImport\') beginProjectImport(sessionId: SessionId, bytes: number, signal: AbortSignal): Promise<VideoProjectTransfer>',
+        description: 'Reserve a bounded upload for restoring into an existing Session with no saved project.',
+        parameters: [{ name: 'sessionId', description: 'target Session; existing projects are never overwritten.' }, { name: 'bytes', description: 'exact total raw package size.' }, { name: 'signal', description: 'caller cancellation before reservation.' }],
+        returns: 'ephemeral upload ticket and its next required byte offset.',
+      },
+      {
+        signature: '@Remote(\'writeProjectTransfer\') writeProjectTransfer( sessionId: SessionId, transferId: VideoProjectTransferId, offset: number, data: string, signal: AbortSignal, ): Promise<VideoProjectTransfer>',
+        description: 'Append one canonical base64 slice to an owned project upload.',
+        parameters: [{ name: 'sessionId', description: 'target Session owning the upload.' }, { name: 'transferId', description: 'live upload identity.' }, { name: 'offset', description: 'exact next raw byte offset, preventing gaps and duplicate writes.' }, { name: 'data', description: 'at most 262,144 decoded bytes as canonical base64.' }, { name: 'signal', description: 'caller cancellation during the write.' }],
+        returns: 'upload ticket with the committed next offset.',
+      },
+      {
+        signature: '@Remote(\'commitProjectImport\') commitProjectImport(sessionId: SessionId, transferId: VideoProjectTransferId, signal: AbortSignal): Promise<VideoProjectImportResult>',
+        description: 'Verify the complete package and all media before atomically restoring its project.',
+        parameters: [{ name: 'sessionId', description: 'target Session, still required to have no saved project.' }, { name: 'transferId', description: 'complete live upload identity.' }, { name: 'signal', description: 'cancellation through verification, attachment admission, and project commit.' }],
+        returns: 'restored project and declarative model/workflow requirements; no generator is installed or started.',
+      },
+      {
+        signature: '@Remote(\'cancelProjectTransfer\') cancelProjectTransfer(sessionId: SessionId, transferId: VideoProjectTransferId): Promise<void>',
+        description: 'Release one owned package upload or download and its private files.',
+        parameters: [{ name: 'sessionId', description: 'Session owning the transfer.' }, { name: 'transferId', description: 'live transfer identity.' }],
+        returns: 'completion after temporary files are removed; an absent or already-consumed ticket is a no-op.',
+      },
+    ],
+  },
+  {
+    key: 'videoWorkflows',
+    summary: 'Workflow editor; saving and enabling never contact or start the engine.',
+    description: 'Workflow editor; saving and enabling never contact or start the engine.',
+    methods: [
+      {
+        signature: '@Remote view(): Promise<WorkflowConfigurationView>',
+        description: 'Read a portable configuration and its optimistic write revision.',
+        parameters: [],
+        returns: 'Safe editable data; unsafe host templates fail without returning their values.',
+      },
+      {
+        signature: '@Remote validate(configuration: WorkflowConfiguration): Promise<{ valid: true }>',
+        description: 'Validate editable fields against this host\'s transport limits without persistence.',
+        parameters: [{ name: 'configuration', description: 'Endpoint and API workflows to validate.' }],
+        returns: 'Successful validation; invalid data raises a value-free diagnostic.',
+      },
+      {
+        signature: '@Remote async save(configuration: WorkflowConfiguration, expectedRevision: number): Promise<WorkflowConfigurationView>',
+        description: 'Persist safe workflow edits disabled, retaining host headers and runtime binding.',
+        parameters: [{ name: 'configuration', description: 'Complete editable workflow fields; omitted URL retains the host URL.' }, { name: 'expectedRevision', description: 'Revision read by the editor; stale writes are refused.' }],
+        returns: 'Committed safe configuration and revision.',
+      },
+      {
+        signature: '@Remote async setEnabled(enabled: boolean, expectedRevision: number): Promise<WorkflowConfigurationView>',
+        description: 'Register or unregister saved workflow targets without starting the engine.',
+        parameters: [{ name: 'enabled', description: 'Desired workflow availability; disabling cancels active attempts.' }, { name: 'expectedRevision', description: 'Revision read by the editor; stale writes are refused.' }],
+        returns: 'Committed safe configuration and revision.',
       },
     ],
   },
@@ -6759,6 +7139,46 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface ButtonProps {\n    readonly label: string;\n    readonly hotkey?: string | undefined;\n    readonly disabled?: boolean | undefined;\n    readonly onPress?: (() => unknown) | undefined;\n}',
   },
   {
+    name: 'CapabilityAction',
+    declaration: 'export type CapabilityAction = \'check\' | \'prepare\' | \'start\' | \'stop\';',
+  },
+  {
+    name: 'CapabilityDescriptor',
+    declaration: 'export interface CapabilityDescriptor {\n    readonly id: CapabilityId;\n    readonly title: string;\n    readonly description: string;\n    readonly category: string;\n    readonly engineId: string;\n    readonly version?: string;\n    readonly kind: \'local\' | \'remote\';\n}',
+  },
+  {
+    name: 'CapabilityHealth',
+    declaration: 'export interface CapabilityHealth {\n    readonly status: \'ready\' | \'stopped\' | \'missing\' | \'unavailable\' | \'error\';\n    readonly message?: string;\n    readonly requirements: readonly CapabilityRequirement[];\n    readonly owned?: boolean;\n}',
+  },
+  {
+    name: 'CapabilityId',
+    declaration: 'export type CapabilityId = Branded<\'CapabilityId\'>;',
+  },
+  {
+    name: 'CapabilityProvider',
+    declaration: 'export interface CapabilityProvider {\n    readonly descriptor: CapabilityDescriptor;\n    inspect(signal: AbortSignal): Promise<CapabilityHealth>;\n    prepare?(signal: AbortSignal): Promise<void>;\n    start?(signal: AbortSignal): Promise<void>;\n    stop?(signal: AbortSignal): Promise<void>;\n    exportConfiguration?(signal: AbortSignal): Promise<JsonValue>;\n    restoreConfiguration?(configuration: JsonValue, signal: AbortSignal): Promise<void>;\n}',
+  },
+  {
+    name: 'CapabilityRequirement',
+    declaration: 'export interface CapabilityRequirement {\n    readonly id: string;\n    readonly title: string;\n    readonly status: \'available\' | \'missing\' | \'unsupported\';\n    readonly message?: string;\n}',
+  },
+  {
+    name: 'CapabilityRestorePlan',
+    declaration: 'export interface CapabilityRestorePlan {\n    readonly items: readonly CapabilityRestorePlanItem[];\n}',
+  },
+  {
+    name: 'CapabilityRestorePlanItem',
+    declaration: 'export interface CapabilityRestorePlanItem {\n    readonly id: CapabilityId;\n    readonly expectedEngineId: string;\n    readonly expectedVersion?: string;\n    readonly status: \'compatible\' | \'missing\' | \'unsupported\';\n    readonly configuration: \'none\' | \'pending-validation\' | \'unsupported\';\n    readonly current?: CapabilityView;\n    readonly message?: string;\n}',
+  },
+  {
+    name: 'CapabilityRestoreResult',
+    declaration: 'export interface CapabilityRestoreResult {\n    readonly id: CapabilityId;\n    readonly status: \'restored\' | \'missing\' | \'unsupported\' | \'failed\';\n    readonly message?: string;\n}',
+  },
+  {
+    name: 'CapabilityView',
+    declaration: 'export interface CapabilityView extends CapabilityDescriptor, CapabilityHealth {\n    readonly actions: readonly CapabilityAction[];\n}',
+  },
+  {
     name: 'ChangeRequestBrief',
     declaration: 'export type ChangeRequestBrief = Pick<ChangeRequestSnapshot, \'ref\' | \'url\' | \'title\' | \'state\' | \'draft\' | \'mergeability\' | \'reviewDecision\' | \'checksRollup\'>;',
   },
@@ -6897,6 +7317,86 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'CollectedOutput',
     declaration: 'export interface CollectedOutput {\n    text: string;\n    truncated: boolean;\n    spillPath?: string;\n}',
+  },
+  {
+    name: 'ComfyWorkflow',
+    declaration: 'export interface ComfyWorkflow {\n    readonly id: string;\n    readonly title: string;\n    readonly template: Readonly<Record<string, JsonValue>>;\n    readonly prompt: ScalarBinding;\n    readonly duration: WorkflowDuration;\n    readonly width: ScalarBinding;\n    readonly height: ScalarBinding;\n    readonly references: readonly ScalarBinding[];\n    readonly outputPrefix: ScalarBinding;\n    readonly durations: readonly number[];\n    readonly sizes: readonly WorkflowSize[];\n    readonly output: WorkflowOutput;\n}',
+  },
+  {
+    name: 'ComicBubble',
+    declaration: 'export interface ComicBubble {\n    readonly id: ComicBubbleId;\n    readonly text: string;\n    readonly speaker: string;\n    readonly x: number;\n    readonly y: number;\n    readonly width: number;\n    readonly height: number;\n    readonly fontSize?: number | undefined;\n    readonly tailX?: number | undefined;\n    readonly tailY?: number | undefined;\n}',
+  },
+  {
+    name: 'ComicBubbleId',
+    declaration: 'export type ComicBubbleId = Branded<\'ComicBubbleId\'>;',
+  },
+  {
+    name: 'ComicDraft',
+    declaration: 'export interface ComicDraft {\n    readonly title: string;\n    readonly pages: readonly ComicPage[];\n}',
+  },
+  {
+    name: 'ComicImage',
+    declaration: 'export interface ComicImage {\n    readonly id: ComicImageId;\n    readonly width: number;\n    readonly height: number;\n    readonly bytes: number;\n}',
+  },
+  {
+    name: 'ComicImageChunk',
+    declaration: 'export interface ComicImageChunk {\n    readonly data: string;\n    readonly offset: number;\n    readonly nextOffset: number;\n    readonly done: boolean;\n}',
+  },
+  {
+    name: 'ComicImageGenerationTarget',
+    declaration: 'export interface ComicImageGenerationTarget {\n    readonly id: ComicImageGenerationTargetId;\n    readonly title: string;\n    readonly model: string;\n}',
+  },
+  {
+    name: 'ComicImageGenerationTargetId',
+    declaration: 'export type ComicImageGenerationTargetId = Branded<\'ComicImageGenerationTargetId\'>;',
+  },
+  {
+    name: 'ComicImageId',
+    declaration: 'export type ComicImageId = Branded<\'ComicImageId\'>;',
+  },
+  {
+    name: 'ComicLayer',
+    declaration: 'export interface ComicLayer {\n    readonly id: ComicLayerId;\n    readonly name: string;\n    readonly visible: boolean;\n    readonly versions: readonly ComicImage[];\n    readonly imageId: ComicImageId | null;\n}',
+  },
+  {
+    name: 'ComicLayerId',
+    declaration: 'export type ComicLayerId = Branded<\'ComicLayerId\'>;',
+  },
+  {
+    name: 'ComicPackageImage',
+    declaration: 'export interface ComicPackageImage {\n    readonly id: ComicImageId;\n    readonly data: string;\n}',
+  },
+  {
+    name: 'ComicPage',
+    declaration: 'export interface ComicPage {\n    readonly id: ComicPageId;\n    readonly title: string;\n    readonly width: number;\n    readonly height: number;\n    readonly panels: readonly ComicPanel[];\n}',
+  },
+  {
+    name: 'ComicPageId',
+    declaration: 'export type ComicPageId = Branded<\'ComicPageId\'>;',
+  },
+  {
+    name: 'ComicPanel',
+    declaration: 'export interface ComicPanel {\n    readonly id: ComicPanelId;\n    readonly x: number;\n    readonly y: number;\n    readonly width: number;\n    readonly height: number;\n    readonly description: string;\n    readonly notes: string;\n    readonly layers: readonly ComicLayer[];\n    readonly bubbles: readonly ComicBubble[];\n}',
+  },
+  {
+    name: 'ComicPanelId',
+    declaration: 'export type ComicPanelId = Branded<\'ComicPanelId\'>;',
+  },
+  {
+    name: 'ComicProject',
+    declaration: 'export interface ComicProject extends ComicDraft {\n    readonly id: ComicProjectId;\n    readonly workspaceId: WorkspaceId;\n    readonly revision: number;\n}',
+  },
+  {
+    name: 'ComicProjectId',
+    declaration: 'export type ComicProjectId = Branded<\'ComicProjectId\'>;',
+  },
+  {
+    name: 'ComicProjectPackage',
+    declaration: 'export interface ComicProjectPackage {\n    readonly format: \'dsh-comic-project\';\n    readonly version: 1;\n    readonly draft: ComicDraft;\n    readonly images: readonly ComicPackageImage[];\n}',
+  },
+  {
+    name: 'ComicProjectSummary',
+    declaration: 'export interface ComicProjectSummary {\n    readonly id: ComicProjectId;\n    readonly title: string;\n    readonly revision: number;\n}',
   },
   {
     name: 'CommandDefinition',
@@ -7369,6 +7869,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'DeliveryRetentionBounds',
     declaration: 'export interface DeliveryRetentionBounds {\n    readonly days: number;\n    readonly records: number;\n}',
+  },
+  {
+    name: 'DescribeVideoGenerator',
+    declaration: 'export type DescribeVideoGenerator = () => readonly VideoGeneratorDetails[];',
   },
   {
     name: 'DeveloperMessage',
@@ -8364,7 +8868,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'LlmModelInfo',
-    declaration: 'export interface LlmModelInfo {\n    provider: string;\n    id: string;\n    name: string;\n    description?: string;\n    inputModalities?: readonly ModelModality[];\n    badge?: LlmModelBadge;\n}',
+    declaration: 'export interface LlmModelInfo {\n    provider: string;\n    id: string;\n    name: string;\n    description?: string;\n    inputModalities?: readonly ModelModality[];\n    outputModalities?: readonly ModelOutputModality[];\n    badge?: LlmModelBadge;\n}',
   },
   {
     name: 'LlmModelReasoningInfo',
@@ -8755,6 +9259,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface ModelModalityMap {\n    text: \'text\';\n    image: \'image\';\n}',
   },
   {
+    name: 'ModelOutputModality',
+    declaration: 'export type ModelOutputModality = ModelModality | \'video\';',
+  },
+  {
     name: 'ModelProviderGroup',
     declaration: 'export interface ModelProviderGroup {\n    readonly id: string;\n    readonly name: string;\n    readonly models: readonly ModelCatalogModel[];\n}',
   },
@@ -9115,6 +9623,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type PluginVersionList = {\n    readonly status: \'listed\';\n    readonly installed: string;\n    readonly registry: Registry;\n    readonly attempts: readonly RegistryAttempt[];\n    readonly versions: readonly PluginVersion[];\n    readonly omitted: number;\n} | {\n    readonly status: \'refused\';\n    readonly problem: \'not-updatable\' | \'not-found\' | \'network\' | \'unknown\';\n    readonly reason: string;\n    readonly attempts: readonly RegistryAttempt[];\n};',
   },
   {
+    name: 'PortableCapability',
+    declaration: 'export interface PortableCapability {\n    readonly id: CapabilityId;\n    readonly engineId: string;\n    readonly version?: string;\n    readonly configuration?: JsonValue;\n}',
+  },
+  {
+    name: 'PortableCapabilityManifest',
+    declaration: 'export interface PortableCapabilityManifest {\n    readonly format: \'dsh-capabilities\';\n    readonly version: 1;\n    readonly capabilities: readonly PortableCapability[];\n}',
+  },
+  {
     name: 'PostToolDecision',
     declaration: 'export type PostToolDecision = {\n    kind: \'accept\';\n    content?: ContentBlock[];\n    value?: never;\n    additionalContexts?: UserMessage[];\n} | {\n    kind: \'accept\';\n    value: JsonValue;\n    content?: never;\n    additionalContexts?: UserMessage[];\n} | {\n    kind: \'block\';\n    feedback: ContentBlock[];\n    info?: ToolErrorInfo;\n    additionalContexts?: UserMessage[];\n};',
   },
@@ -9337,6 +9853,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ReadResultView',
     declaration: 'export interface ReadResultView {\n    card: \'read\';\n    title?: string;\n    path: string;\n    offset: number;\n    lines: ReadFileLine[];\n    totalLines: number;\n    lang?: string;\n    content?: ContentBlock[];\n}',
+  },
+  {
+    name: 'ReaExperimentSelection',
+    declaration: 'export interface ReaExperimentSelection {\n    command: string;\n    args: string[];\n    toolCallTimeoutMs: number;\n}',
+  },
+  {
+    name: 'ReaExperimentSettings',
+    declaration: 'export interface ReaExperimentSettings extends ReaExperimentSelection {\n    enabled: boolean;\n}',
   },
   {
     name: 'ReasoningBlock',
@@ -9625,6 +10149,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'SaveTextSpill',
     declaration: 'export interface SaveTextSpill {\n    owner: SpillOwner;\n    source: SpillSource;\n    suggestedName: string;\n    content: string;\n}',
+  },
+  {
+    name: 'SaveVideoAttachment',
+    declaration: 'export interface SaveVideoAttachment {\n    data: Uint8Array;\n    mediaType: VideoMediaType;\n    name?: string | undefined;\n    durationSeconds?: number | undefined;\n    width?: number | undefined;\n    height?: number | undefined;\n}',
+  },
+  {
+    name: 'ScalarBinding',
+    declaration: 'export interface ScalarBinding {\n    readonly node: string;\n    readonly input: string;\n}',
   },
   {
     name: 'ScheduleCatalogEntry',
@@ -10216,7 +10748,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'SessionPromptRequest',
-    declaration: 'export interface SessionPromptRequest {\n    readonly requestId: SessionRequestId;\n    readonly sessionId: SessionId;\n    readonly mode: \'queue\' | \'steer\';\n    readonly content: readonly PromptContentPart[];\n    readonly clientTimeZone?: string;\n}',
+    declaration: 'export interface SessionPromptRequest {\n    readonly requestId: SessionRequestId;\n    readonly sessionId: SessionId;\n    readonly mode: \'queue\' | \'steer\';\n    readonly content: readonly PromptContentPart[];\n    readonly clientTimeZone?: string;\n    readonly modelSelection?: ModelSelection;\n}',
   },
   {
     name: 'SessionPromptValue',
@@ -10304,7 +10836,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'SessionSelectModelRequest',
-    declaration: 'export interface SessionSelectModelRequest extends ModelSelection {\n    readonly sessionId: SessionId;\n}',
+    declaration: 'export interface SessionSelectModelRequest extends ModelSelection {\n    readonly sessionId: SessionId;\n    readonly sessionOnly?: boolean;\n}',
   },
   {
     name: 'SessionSelectModelValue',
@@ -10417,6 +10949,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'SessionUpdateQueueValue',
     declaration: 'export interface SessionUpdateQueueValue {\n    readonly accepted: true;\n}',
+  },
+  {
+    name: 'SessionVideoAttachmentRequest',
+    declaration: 'export interface SessionVideoAttachmentRequest {\n    readonly sessionId: SessionId;\n    readonly attachmentId: AttachmentIdType;\n    readonly offset: number;\n    readonly length: number;\n}',
+  },
+  {
+    name: 'SessionVideoAttachmentValue',
+    declaration: 'export interface SessionVideoAttachmentValue {\n    readonly attachment: VideoAttachmentRef;\n    readonly data: string;\n    readonly offset: number;\n    readonly nextOffset: number;\n    readonly total: number;\n}',
   },
   {
     name: 'SessionWaitOutput',
@@ -10753,6 +11293,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'StoredImageAttachment',
     declaration: 'export interface StoredImageAttachment {\n    ref: ImageAttachmentRef;\n    data: Uint8Array;\n}',
+  },
+  {
+    name: 'StoredVideoAttachment',
+    declaration: 'export interface StoredVideoAttachment {\n    ref: VideoAttachmentRef;\n    data: Uint8Array;\n}',
   },
   {
     name: 'StreamableHttpConfig',
@@ -11579,6 +12123,150 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface VerifiedWebhookDelivery<K extends string = string> {\n    readonly kind: K;\n    readonly source: WebhookSourceId;\n    readonly deliveryId: WebhookDeliveryId;\n    readonly event: WebhookEventOf<K>;\n    readonly receivedAt: number;\n}',
   },
   {
+    name: 'VideoAspectRatio',
+    declaration: 'export type VideoAspectRatio = \'16:9\' | \'9:16\' | \'1:1\';',
+  },
+  {
+    name: 'VideoAsset',
+    declaration: 'export interface VideoAsset {\n    readonly id: VideoAssetId;\n    readonly name: string;\n    readonly kind: \'character\' | \'scene\' | \'prop\';\n    readonly description: string;\n    readonly image?: ImageAttachmentRef | undefined;\n}',
+  },
+  {
+    name: 'VideoAssetId',
+    declaration: 'export type VideoAssetId = Branded<\'VideoAssetId\'>;',
+  },
+  {
+    name: 'VideoAssetUpload',
+    declaration: 'export interface VideoAssetUpload {\n    readonly revision: number;\n    readonly name: string;\n    readonly kind: \'character\' | \'scene\' | \'prop\';\n    readonly description: string;\n    readonly image: EncodedImageAttachment;\n}',
+  },
+  {
+    name: 'VideoAttachmentRef',
+    declaration: 'export interface VideoAttachmentRef {\n    attachmentId: AttachmentId;\n    mediaType: VideoMediaType;\n    bytes: number;\n    width?: number | undefined;\n    height?: number | undefined;\n    durationSeconds?: number | undefined;\n    name?: string | undefined;\n}',
+  },
+  {
+    name: 'VideoBatch',
+    declaration: 'export interface VideoBatch {\n    readonly id: VideoBatchId;\n    readonly sessionId: SessionId;\n    readonly sessionCreatedAt: number;\n    readonly projectId: VideoProjectId;\n    readonly inputRevision: number;\n    readonly generator: string;\n    readonly model?: string | undefined;\n    readonly generatorRevision?: string | undefined;\n    readonly status: \'running\' | \'pausing\' | \'paused\' | \'cancelling\' | \'cancelled\' | \'completed\' | \'needs-review\';\n    readonly shots: readonly VideoBatchShot[];\n    readonly error?: string | undefined;\n}',
+  },
+  {
+    name: 'VideoBatchId',
+    declaration: 'export type VideoBatchId = Branded<\'VideoBatchId\'>;',
+  },
+  {
+    name: 'VideoBatchInput',
+    declaration: 'export interface VideoBatchInput extends VideoGenerationSelection {\n    readonly revision: number;\n}',
+  },
+  {
+    name: 'VideoBatchShot',
+    declaration: 'export interface VideoBatchShot {\n    readonly shotId: VideoShotId;\n    readonly input: string;\n    readonly status: \'pending\' | \'running\' | \'completed\' | \'uncertain\';\n    readonly versionId?: VideoVersionId | undefined;\n    readonly error?: string | undefined;\n}',
+  },
+  {
+    name: 'VideoCaption',
+    declaration: 'export interface VideoCaption {\n    readonly startSeconds: number;\n    readonly endSeconds: number;\n    readonly text: string;\n}',
+  },
+  {
+    name: 'VideoClipEdit',
+    declaration: 'export interface VideoClipEdit {\n    readonly trimStartSeconds?: number | undefined;\n    readonly trimEndSeconds?: number | undefined;\n    readonly volume?: number | undefined;\n    readonly captions?: readonly VideoCaption[] | undefined;\n}',
+  },
+  {
+    name: 'VideoExport',
+    declaration: 'export interface VideoExport {\n    readonly id: VideoVersionId;\n    readonly status: \'running\' | \'completed\' | \'failed\' | \'interrupted\';\n    readonly shotVersionIds: readonly VideoVersionId[];\n    readonly clipEdits?: readonly (VideoClipEdit | null)[] | undefined;\n    readonly attachment?: VideoAttachmentRef | undefined;\n    readonly error?: string | undefined;\n}',
+  },
+  {
+    name: 'VideoGenerationInput',
+    declaration: 'export interface VideoGenerationInput {\n    readonly sessionId: SessionId;\n    readonly prompt: string;\n    readonly duration: number;\n    readonly aspectRatio: VideoAspectRatio;\n    readonly resolution: VideoResolution;\n    readonly referenceImages: readonly ImageAttachmentRef[];\n    readonly model?: string;\n}',
+  },
+  {
+    name: 'VideoGenerationLimits',
+    declaration: 'export interface VideoGenerationLimits {\n    readonly durations?: readonly number[];\n    readonly aspectRatios?: readonly VideoAspectRatio[];\n    readonly resolutions?: readonly VideoResolution[];\n    readonly minReferenceImages?: number;\n    readonly maxReferenceImages?: number;\n}',
+  },
+  {
+    name: 'VideoGenerationResult',
+    declaration: 'export interface VideoGenerationResult {\n    readonly attachment: VideoAttachmentRef;\n    readonly model?: string;\n}',
+  },
+  {
+    name: 'VideoGenerationSelection',
+    declaration: 'export interface VideoGenerationSelection {\n    readonly generator?: string;\n    readonly model?: string;\n    readonly onlyIfMissing?: boolean;\n}',
+  },
+  {
+    name: 'VideoGenerationTarget',
+    declaration: 'export interface VideoGenerationTarget extends VideoGeneratorDetails {\n    readonly generator: string;\n}',
+  },
+  {
+    name: 'VideoGenerator',
+    declaration: 'export type VideoGenerator = (request: VideoGenerationInput, signal: AbortSignal) => Promise<VideoGenerationResult>;',
+  },
+  {
+    name: 'VideoGeneratorDetails',
+    declaration: 'export interface VideoGeneratorDetails {\n    readonly title: string;\n    readonly model?: string;\n    readonly revision?: string;\n    readonly limits?: VideoGenerationLimits;\n}',
+  },
+  {
+    name: 'VideoMediaChunk',
+    declaration: 'export interface VideoMediaChunk {\n    readonly attachment: ImageAttachmentRef | VideoAttachmentRef;\n    readonly data: string;\n    readonly offset: number;\n    readonly nextOffset: number;\n    readonly totalBytes: number;\n}',
+  },
+  {
+    name: 'VideoMediaType',
+    declaration: 'export type VideoMediaType = \'video/mp4\' | \'video/webm\';',
+  },
+  {
+    name: 'VideoProject',
+    declaration: 'export interface VideoProject {\n    readonly id: VideoProjectId;\n    readonly sessionId: SessionId;\n    readonly revision: number;\n    readonly title: string;\n    readonly assets: readonly VideoAsset[];\n    readonly shots: readonly VideoShot[];\n    readonly exports: readonly VideoExport[];\n}',
+  },
+  {
+    name: 'VideoProjectId',
+    declaration: 'export type VideoProjectId = Branded<\'VideoProjectId\'>;',
+  },
+  {
+    name: 'VideoProjectImportResult',
+    declaration: 'export interface VideoProjectImportResult {\n    readonly project: VideoProject;\n    readonly requirements: readonly VideoProjectRequirement[];\n    readonly capabilities?: PortableCapabilityManifest;\n}',
+  },
+  {
+    name: 'VideoProjectInput',
+    declaration: 'export interface VideoProjectInput {\n    readonly revision: number;\n    readonly title: string;\n    readonly assets: readonly VideoAsset[];\n    readonly shots: readonly VideoShotInput[];\n}',
+  },
+  {
+    name: 'VideoProjectRequirement',
+    declaration: 'export interface VideoProjectRequirement {\n    readonly generator: string;\n    readonly model?: string;\n    readonly revision?: string;\n}',
+  },
+  {
+    name: 'VideoProjectSummary',
+    declaration: 'export interface VideoProjectSummary {\n    readonly sessionId: SessionId;\n    readonly projectId: VideoProjectId;\n    readonly revision: number;\n    readonly displayTitle: string;\n}',
+  },
+  {
+    name: 'VideoProjectTransfer',
+    declaration: 'export interface VideoProjectTransfer {\n    readonly id: VideoProjectTransferId;\n    readonly direction: \'export\' | \'import\';\n    readonly bytes: number;\n    readonly nextOffset: number;\n    readonly expiresAt: number;\n    readonly fileName: string;\n}',
+  },
+  {
+    name: 'VideoProjectTransferChunk',
+    declaration: 'export interface VideoProjectTransferChunk {\n    readonly data: string;\n    readonly offset: number;\n    readonly nextOffset: number;\n    readonly totalBytes: number;\n}',
+  },
+  {
+    name: 'VideoProjectTransferId',
+    declaration: 'export type VideoProjectTransferId = Branded<\'VideoProjectTransferId\'>;',
+  },
+  {
+    name: 'VideoResolution',
+    declaration: 'export type VideoResolution = \'480p\' | \'720p\';',
+  },
+  {
+    name: 'VideoShot',
+    declaration: 'export interface VideoShot extends VideoShotInput {\n    readonly versions: readonly VideoVersion[];\n}',
+  },
+  {
+    name: 'VideoShotId',
+    declaration: 'export type VideoShotId = Branded<\'VideoShotId\'>;',
+  },
+  {
+    name: 'VideoShotInput',
+    declaration: 'export interface VideoShotInput {\n    readonly id: VideoShotId;\n    readonly title: string;\n    readonly prompt: string;\n    readonly duration: number;\n    readonly aspectRatio: VideoAspectRatio;\n    readonly resolution: VideoResolution;\n    readonly assetIds: readonly VideoAssetId[];\n    readonly position: {\n        readonly x: number;\n        readonly y: number;\n    };\n    readonly selectedVersionId?: VideoVersionId | undefined;\n    readonly edit?: VideoClipEdit | undefined;\n}',
+  },
+  {
+    name: 'VideoVersion',
+    declaration: 'export interface VideoVersion {\n    readonly id: VideoVersionId;\n    readonly status: \'running\' | \'completed\' | \'failed\' | \'interrupted\';\n    readonly prompt: string;\n    readonly duration: number;\n    readonly aspectRatio: VideoAspectRatio;\n    readonly resolution: VideoResolution;\n    readonly referenceImages: readonly ImageAttachmentRef[];\n    readonly generator?: string | undefined;\n    readonly generatorTitle?: string | undefined;\n    readonly generatorRevision?: string | undefined;\n    readonly model?: string | undefined;\n    readonly attachment?: VideoAttachmentRef | undefined;\n    readonly error?: string | undefined;\n}',
+  },
+  {
+    name: 'VideoVersionId',
+    declaration: 'export type VideoVersionId = Branded<\'VideoVersionId\'>;',
+  },
+  {
     name: 'ViewerPluginAccess',
     declaration: 'export type ViewerPluginAccess = \'all\' | \'none\' | \'custom\';',
   },
@@ -11767,12 +12455,28 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type WorkflowAgentOutcome = \'completed\' | \'failed\' | \'cancelled\';',
   },
   {
+    name: 'WorkflowConfiguration',
+    declaration: 'export interface WorkflowConfiguration {\n    readonly baseURL?: string;\n    readonly workflows: readonly ComfyWorkflow[];\n}',
+  },
+  {
+    name: 'WorkflowConfigurationView',
+    declaration: 'export interface WorkflowConfigurationView {\n    readonly revision: number;\n    readonly enabled: boolean;\n    readonly configuration: WorkflowConfiguration;\n    readonly hasHeaders: boolean;\n    readonly templates: readonly WorkflowStarterTemplate[];\n}',
+  },
+  {
+    name: 'WorkflowDuration',
+    declaration: 'export interface WorkflowDuration extends ScalarBinding {\n    readonly unit: \'seconds\' | \'frames\';\n    readonly fps?: number | undefined;\n    readonly frameOffset?: number | undefined;\n}',
+  },
+  {
     name: 'WorkflowErrorCode',
     declaration: 'export type WorkflowErrorCode = \'SCRIPT_PARSE\' | \'META_INVALID\' | \'INVALID_ARGUMENT\' | \'UNSUPPORTED_OPTION\' | \'UNSUPPORTED_SCHEMA\' | \'AGENT_CAP\' | \'ITEM_CAP\' | \'AGENT_START\' | \'AGENT_RESULT\' | \'RESULT_UNSERIALIZABLE\' | \'CANCELLED\' | \'RUN_FAILED\';',
   },
   {
     name: 'WorkflowMeta',
     declaration: 'export interface WorkflowMeta {\n    name: string;\n    description: string;\n    whenToUse?: string;\n    phases?: WorkflowPhase[];\n}',
+  },
+  {
+    name: 'WorkflowOutput',
+    declaration: 'export interface WorkflowOutput {\n    readonly node: string;\n    readonly key: string;\n    readonly index: number;\n}',
   },
   {
     name: 'WorkflowPhase',
@@ -11797,6 +12501,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'WorkflowRunInfo',
     declaration: 'export interface WorkflowRunInfo {\n    id: WorkflowRunId;\n    meta: WorkflowMeta;\n}',
+  },
+  {
+    name: 'WorkflowSize',
+    declaration: 'export interface WorkflowSize {\n    readonly aspectRatio: VideoAspectRatio;\n    readonly resolution: VideoResolution;\n    readonly width: number;\n    readonly height: number;\n}',
+  },
+  {
+    name: 'WorkflowStarterTemplate',
+    declaration: 'export interface WorkflowStarterTemplate {\n    readonly category: \'diagnostic\';\n    readonly workflow: ComfyWorkflow;\n}',
   },
   {
     name: 'WorkflowStartRequest',

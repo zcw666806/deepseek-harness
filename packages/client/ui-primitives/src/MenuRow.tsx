@@ -18,8 +18,8 @@ type MenuRowProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children'>
   & {
     /** Whether this data row is the menu's current selection. */
     selected?: boolean
-    /** Selection marker: a trailing check, or the row fill. */
-    selection?: 'check' | 'fill'
+    /** Selection presentation and checked state for radio rows. */
+    selection?: 'check' | 'fill' | 'radio'
     /** Keep an empty icon column so grouped rows stay aligned. */
     reserveIcon?: boolean
     /** Hide the icon from assistive technology; component rows keep it exposed. */
@@ -40,7 +40,8 @@ export function MenuRow({ children, icon, shortcut, current, disabled = false, d
   return <div {...wrapperProps} className={css.itemWrap}>
     {separatorBefore && <div className={css.separator} role="separator" />}
     <Tooltip label={disabledReason ?? ''} disabled={!explained} side="bottom" delayMs={500} maxWidth={300} portal>
-      <button {...button} type="button" role="menuitem"
+      <button {...button} type="button" role={selection === 'radio' ? 'menuitemradio' : 'menuitem'}
+        aria-checked={selection === 'radio' ? selected === true : undefined}
         className={clsx(css.item, selected && (selection === 'fill' ? css.selectedFill : css.selected), danger && css.danger)}
         disabled={disabled && !explained} aria-disabled={explained || undefined}
         aria-describedby={explained ? reasonId : undefined} aria-keyshortcuts={shortcut?.aria}
@@ -48,7 +49,7 @@ export function MenuRow({ children, icon, shortcut, current, disabled = false, d
         {(icon !== undefined || reserveIcon) && <span aria-hidden={decorativeIcon || undefined} className={css.itemIcon}>{icon}</span>}
         <span className={css.itemLabel}>{children}</span>
         {shortcut !== undefined && <span aria-hidden="true" className={css.shortcut}><ShortcutKeys keys={shortcut.keys} className={css.shortcutKeys} /></span>}
-        {selected && selection === 'check' && <IconCheckOutlineRegular className={css.check} />}
+        {selected && selection !== 'fill' && <IconCheckOutlineRegular className={css.check} />}
         {button['aria-haspopup'] === 'menu' && <IconChevronRightOutlineRegular aria-hidden="true" className={css.check} />}
       </button>
     </Tooltip>

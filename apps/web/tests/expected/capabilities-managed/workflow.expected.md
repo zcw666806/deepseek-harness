@@ -1,0 +1,44 @@
+- region "视频工作流":
+  - heading "视频工作流" [level=2]
+  - paragraph: 导入已安装模型使用的 ComfyUI API 工作流并配置字段映射。保存后保持禁用，需单独启用；此处不会安装模型或启动引擎。
+  - paragraph: 工作流已启用
+  - paragraph: 服务未配置请求头。
+  - button "重新读取并放弃草稿"
+  - group:
+    - text: 服务地址（HTTP 或 HTTPS，不含凭据、查询参数或片段）
+    - textbox "服务地址（HTTP 或 HTTPS，不含凭据、查询参数或片段）": http://127.0.0.1:{{port}}
+    - text: 选择工作流
+    - combobox "选择工作流":
+      - option "黑帧传输诊断（非 AI）" [selected]
+    - button "新增工作流"
+    - button "删除工作流"
+    - button "添加黑帧传输诊断（非 AI 生成）" [disabled]
+    - text: 目标标识
+    - textbox "目标标识": managed-native-black
+    - text: 目标名称
+    - textbox "目标名称": 黑帧传输诊断（非 AI）
+    - button "导入 API JSON"
+    - text: API 工作流 JSON
+    - textbox "API 工作流 JSON": "{ \"text\": { \"class_type\": \"PrimitiveString\", \"inputs\": { \"value\": \"\" } }, \"frames\": { \"class_type\": \"EmptyImage\", \"inputs\": { \"width\": 480, \"height\": 480, \"batch_size\": 8, \"color\": 0 } }, \"video\": { \"class_type\": \"CreateVideo\", \"inputs\": { \"images\": [ \"frames\", 0 ], \"fps\": 8 } }, \"save\": { \"class_type\": \"SaveVideo\", \"inputs\": { \"video\": [ \"video\", 0 ], \"filename_prefix\": \"\", \"format\": \"mp4\", \"format.codec\": \"h264\" } } }"
+    - paragraph: 填写现有节点和输入字段的 JSON 映射；使用 node 和 input。时长须声明 seconds 或 frames；尺寸须列出画幅、分辨率及宽高；输出须指定 node、key、index。
+    - text: 提示词映射
+    - textbox "提示词映射": "{\"node\":\"text\",\"input\":\"value\"}"
+    - text: 时长映射
+    - textbox "时长映射": "{\"node\":\"frames\",\"input\":\"batch_size\",\"unit\":\"frames\",\"fps\":8}"
+    - text: 宽度映射
+    - textbox "宽度映射": "{\"node\":\"frames\",\"input\":\"width\"}"
+    - text: 高度映射
+    - textbox "高度映射": "{\"node\":\"frames\",\"input\":\"height\"}"
+    - text: 参考图映射（有序数组）
+    - textbox "参考图映射（有序数组）": "[]"
+    - text: 输出文件前缀映射
+    - textbox "输出文件前缀映射": "{\"node\":\"save\",\"input\":\"filename_prefix\"}"
+    - text: 支持的时长（秒数数组）
+    - textbox "支持的时长（秒数数组）": "[1,2]"
+    - text: 支持的尺寸（数组）
+    - textbox "支持的尺寸（数组）": "[{\"aspectRatio\":\"1:1\",\"resolution\":\"480p\",\"width\":480,\"height\":480}]"
+    - text: 视频输出映射
+    - textbox "视频输出映射": "{\"node\":\"save\",\"key\":\"images\",\"index\":0}"
+    - button "校验工作流"
+    - button "保存并禁用"
+    - button "禁用工作流"

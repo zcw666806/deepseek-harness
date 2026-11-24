@@ -29,6 +29,8 @@ This package turns a shipped profile scenario into a keyless snapshot suite: wri
 
 ### Writing a snapshot suite
 
+Identity redaction preserves equality relationships across parent and child logs. A successful `video_project` result establishes its Session-derived project identity through canonical result metadata; failed results, unrelated tools, and another Session's metadata cannot establish that identity. Plain tool text does not establish identifiers.
+
 A consuming `*.snapshot.ts` is the scenario table plus one factory call. `AgentUnderTest` supplies absolute `binScript`, optional `libBinScript`, `configPath`, and `tsconfigPath` paths, because the subprocess cwd sits outside the repository:
 
 ```ts

@@ -8,6 +8,7 @@ import type {} from '@deepseek-ai/dsh-client-product-analytics/client'
 import type { PlanProjection } from '@deepseek-ai/dsh-plan-mode/types'
 import type { GoalProjection } from '@deepseek-ai/dsh-goal/types'
 import type { Context } from '@deepseek-ai/cordis'
+import type { StudioKind } from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {
   ISessions, SessionBinding, SessionFace, SessionReference, SessionSnapshot,
 } from '@deepseek-ai/dsh-api-session-controller/client'
@@ -26,6 +27,7 @@ import type { InputSubmitMode } from '../contract/composer-submission.ts'
 import type { PopupDismissFace } from './facade.ts'
 import { SessionInputShell } from './facade.ts'
 import { reportMessageSubmission } from './submission-analytics.ts'
+import { projectCreationPrompt } from './project-creation.ts'
 import { readConversationDraft } from '../stores.ts'
 
 /** Structural command face for per-session popup resolution. */
@@ -179,7 +181,8 @@ export class InputHub implements SessionInputResolver {
       popup: () => this.popup(actx),
       inbox: session.projections.faceOf('inbox') as ObservableSnapshot<InboxState | undefined>,
       events: binding.eventSource,
-      defaultSink: (text, attachmentIds, mode, signal, accept) => this.sink(session, text, attachmentIds, mode, signal, accept),
+      defaultSink: (text, attachmentIds, mode, signal, accept, creation) =>
+        this.sink(session, text, attachmentIds, mode, signal, accept, creation),
       quoteRemoveLabel: () => this.t('quote.remove'),
       session: () => session.getSnapshot(),
       composerBlock: () => this.conversation().blocks.storeFor(session.sessionId).getSnapshot(),
@@ -366,11 +369,16 @@ export class InputHub implements SessionInputResolver {
     mode: InputSubmitMode,
     signal: AbortSignal,
     accept: () => void,
+    creation?: StudioKind,
   ): Promise<SubmitOutcome> {
     if (text === '' && attachmentIds.length === 0) {
       return session.prompt([], mode, signal).then(result => result.ok ? { kind: 'success' } : { kind: 'error' })
     }
-    return this.conversation().sendSession(session, text, attachmentIds, mode, signal, accept)
+    const activeStudio = this.rootCtx.get('layout')?.studios?.getSnapshot().find(studio => studio === creation)
+    const prompt = activeStudio === undefined ? text : projectCreationPrompt(
+      this.t(activeStudio === 'comic' ? 'creation.comic.instructions' : 'creation.video.instructions'), text,
+    )
+    return this.conversation().sendSession(session, prompt, attachmentIds, mode, signal, accept)
   }
 
   /**

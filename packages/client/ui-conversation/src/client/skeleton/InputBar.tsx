@@ -38,6 +38,7 @@ import { resolveSubmitMode } from '../input/submission-policy.ts'
 import { attachmentErrorText, imageSizeText } from '../image-labels.ts'
 import { isImageMediaType } from '../service.ts'
 import { ContextMeter } from './ContextMeter.tsx'
+import { CreationMenu } from './CreationMenu.tsx'
 import { observeControlRow } from './control-row-layout.ts'
 import css from './InputBar.module.css'
 
@@ -49,12 +50,17 @@ export const InputBar = memo(function InputBar({
   toggleCommandMenu, stop, retry, t,
   renderSlot, renderSlotChain, useBusyEnter, useFileUploads, useNotices, useLexicon, useMenuLauncher, useStopShortcut,
   useAccess,
+  useCreationMode, useStudios, creationNavigation, setCreationMode,
   useProjection, sessionId, variant, occurrence, disabled: inert = false, blocked,
   workspacePickerOpen = false, onRequestWorkspace,
   placeholder, accessory,
 }: InputBarProps) {
   const input = useInput(s => s)
   const notice = useNotices(s => s)
+  const studios = useStudios(s => s)
+  const selectedCreation = useCreationMode(s => s)
+  const creation = selectedCreation !== null && studios.includes(selectedCreation) ? selectedCreation : null
+  const navigation = studios.length === 0 ? undefined : creationNavigation?.(studios)
   const busyEnter = useBusyEnter(s => s)
   const stopKeys = useStopShortcut(keys => keys)
   // A page whose access snapshot excludes prompting, stopping, or uploading to this Session is offered
@@ -530,6 +536,10 @@ export const InputBar = memo(function InputBar({
             <div className={css.modes}>
               {sessionId === undefined ? null : renderSlot('conversation.input.permission', { locked })}
               {sessionId === undefined ? null : renderSlot('conversation.input.plan', { locked })}
+              {navigation !== undefined && subagent === null && setCreationMode !== undefined && (
+                <CreationMenu navigation={navigation} selected={creation} select={setCreationMode}
+                  chatLabel={t('creation.chat')} disabled={locked || modelSeatLocked} />
+              )}
             </div>
             {input === undefined || sessionId === undefined
               ? null
@@ -540,7 +550,12 @@ export const InputBar = memo(function InputBar({
               {input === undefined || sessionId === undefined
                 ? null
                 : renderSlot('conversation.input.right', {})}
-              {sessionId === undefined ? null : renderSlot('conversation.input.model', { locked: modelSeatLocked })}
+              {sessionId === undefined ? null : creation === null
+                ? renderSlot('conversation.input.model', { locked: modelSeatLocked })
+                : <div className={css.creationModels} data-creation-models={variant}>
+                  {renderSlot('conversation.input.model', { locked: modelSeatLocked, planning: true })}
+                  {renderSlot('conversation.input.creation-model', {}, { entryKey: creation })}
+                </div>}
             </div>
             {input === undefined || sessionId === undefined ? null : <div className={activity ? css.activityExpanded : css.activity}>
               {renderSlot('conversation.input.activity', { locked, onActiveChange: setActivity })}

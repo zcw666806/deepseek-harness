@@ -53,6 +53,12 @@
   white-space: nowrap;
 }
 
+.planningCaption {
+  flex: none;
+  color: var(--dsw-alias-label-secondary);
+  white-space: nowrap;
+}
+
 /* Effort value beside the model name (mock's 'High': same 13/20/400, caption
    tone). Adaptive priority: the huge shrink factor makes the effort absorb
    all deficit first — it ellipsizes away to nothing before the model name

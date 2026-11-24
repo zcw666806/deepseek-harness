@@ -1,0 +1,28 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write restaurant-design/README.md
+/restaurant-design-workspace:
+  en: 1ec7e21e166c8b93
+  zh: 0a2ded9a3d047824
+/restaurant-design-workspace/summary:
+  en: 82976792e550ea6f
+  zh: 0496116a1df173e8
+/restaurant-design-workspace/table-of-contents:
+  en: b335894d8ae066f7
+  zh: dcc33fcb81270009
+/restaurant-design-workspace/prepare-a-project:
+  en: 41e12f26e0062500
+  zh: 4261e105c7891872
+/restaurant-design-workspace/open-the-workspace:
+  en: bd7d4de627952c41
+  zh: cfcc6c9a972f9cdc
+/restaurant-design-workspace/edit-a-layout:
+  en: 75c03667b5c1bf07
+  zh: 02b8b12d67b9d944
+/restaurant-design-workspace/limitations:
+  en: 8ece758dfc896d89
+  zh: 6064af279a65ee82
+/restaurant-design-workspace/verification:
+  en: 3567ccc7724d5319
+  zh: 6f5fbef3ff0fab5b

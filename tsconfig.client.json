@@ -56,6 +56,9 @@
     "packages/client/*/tests/**/*.host.ts"
   ],
   "references": [
+    { "path": "./packages/client/ui-video-production" },
+    { "path": "./packages/client/ui-comic-production" },
+    { "path": "./packages/client/ui-capabilities" },
     { "path": "./packages/client/ui-action-cards" },
     { "path": "./packages/client/ui-creation-recommendations" },
     { "path": "./packages/client/ui-plugin-recommendations" },

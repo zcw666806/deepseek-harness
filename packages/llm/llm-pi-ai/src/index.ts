@@ -55,6 +55,7 @@
  * @module @deepseek-ai/dsh-llm-pi-ai
  */
 import type {} from '@deepseek-ai/dsh-settings'
+import type {} from '@deepseek-ai/dsh-capability-manager'
 
 import type {} from '@deepseek-ai/cordis-plugin-loader'
 
@@ -69,13 +70,18 @@ import { deepEqualJson } from '@deepseek-ai/dsh-util-values'
 import { PiAiAdapter } from './adapter.ts'
 import { authContextFrom, credentialStoreFrom } from './auth.ts'
 import { catalogProvider, catalogProviderIds } from './catalog.ts'
+import type { ModelWithOutput } from './catalog.ts'
 import { assertServiceable, Config, resolveProfiles } from './config.ts'
-import type { ResolvedPiAiProviderProfile } from './config.ts'
+import type { Options, ResolvedPiAiProviderProfile } from './config.ts'
 import { discoverModels } from './discovery.ts'
 import type { StoredModelDiscoveryProfile } from './discovery.ts'
 import { registerPiAiFlows } from './login.ts'
+import { createModels } from './models.ts'
 import { providerDefaultsOf } from './provider-data.ts'
 import type { PiAiRequestHeaderContext } from './types.ts'
+import { registerGenerateVideoTool } from './tool-generate-video.ts'
+import { registerVideoProductionGenerator } from './video-production.ts'
+import { registerModelCapability } from './capabilities.ts'
 
 export { PiAiAdapter } from './adapter.ts'
 export type { PiAiAdapterOptions } from './adapter.ts'
@@ -190,7 +196,7 @@ export function apply(ctx: Context, config: Config): void {
   const profiles = (): ReadonlyMap<string, ResolvedPiAiProviderProfile> => {
     const raw = config.providers.get()
     if (raw === lastRaw && memoized !== undefined) return memoized
-    const next = resolveProfiles(structuredClone(raw) as import('./config.ts').Options['providers'], 'deferred')
+    const next = resolveProfiles(structuredClone(raw) as Options['providers'], 'deferred')
     lastRaw = raw
     memoized = next
     return next
@@ -199,10 +205,10 @@ export function apply(ctx: Context, config: Config): void {
   ctx.on('internal/config', (fiber, next) => {
     const raw: unknown = next()
     if (fiber !== ctx.fiber) return raw
-    const candidate = Config(raw as import('./config.ts').Options)
+    const candidate = Config(raw as Options)
     assertServiceable(
-      { providers: structuredClone(candidate.providers.get()) } as import('./config.ts').Options,
-      { providers: structuredClone(config.providers.get()) } as import('./config.ts').Options,
+      { providers: structuredClone(candidate.providers.get()) } as Options,
+      { providers: structuredClone(config.providers.get()) } as Options,
     )
     return raw
   })
@@ -249,6 +255,18 @@ export function apply(ctx: Context, config: Config): void {
   // through `ctx` per call, so they stay correct across the collection rebuilds
   // a configuration change causes, and a sign-in survives one.
   const auth = { credentials: credentialStoreFrom(ctx), authContext: authContextFrom(ctx) }
+  const resolveVideoApiKey = async (
+    provider: string,
+    profile: ResolvedPiAiProviderProfile,
+    signal?: AbortSignal,
+  ): Promise<string | undefined> => {
+    const explicit = await resolveApiKey(provider, profile)
+    if (explicit !== undefined) return explicit
+    if (profile.piProvider === undefined) return undefined
+    const models = createModels(auth)
+    models.setProvider(profile.piProvider)
+    return (await models.getAuth(provider, signal === undefined ? undefined : { signal }))?.auth.apiKey
+  }
   const adapter = new PiAiAdapter({
     profiles,
     resolveApiKey,
@@ -351,9 +369,74 @@ export function apply(ctx: Context, config: Config): void {
   }
   ensureRegistrationFacts()
 
+  // Reconcile video registrations on provider changes and optional service replacement.
+  const videoRegistrationSyncs = new Set<(available: boolean) => void>()
+  const hasVideoModel = (): boolean => [...profiles().values()].some(profile =>
+    profile.piProvider?.getModels().some(model => (model as ModelWithOutput).output?.includes('video')))
+  const syncVideoRegistrations = (): void => {
+    const available = hasVideoModel()
+    for (const sync of videoRegistrationSyncs) sync(available)
+  }
+  ctx.inject(['tools'], (toolsCtx) => {
+    let dispose: (() => void) | undefined
+    const sync = (available: boolean): void => {
+      if (available && dispose === undefined) {
+        dispose = registerGenerateVideoTool(toolsCtx, profiles, resolveVideoApiKey)
+      } else if (!available && dispose !== undefined) {
+        // Double-dispose is a no-op, so a service teardown racing this call is safe.
+        dispose()
+        dispose = undefined
+      }
+    }
+    videoRegistrationSyncs.add(sync)
+    sync(hasVideoModel())
+    toolsCtx.effect(() => () => { videoRegistrationSyncs.delete(sync) })
+  })
+  ctx.inject(['videoProduction'], (productionCtx) => {
+    let dispose: (() => Promise<void>) | undefined
+    let retirement = Promise.resolve()
+    const retire = (): void => {
+      const previous = dispose
+      if (previous === undefined) return
+      dispose = undefined
+      retirement = Promise.allSettled([retirement, previous()]).then((results) => {
+        const failures: unknown[] = []
+        for (const result of results) if (result.status === 'rejected') failures.push(result.reason)
+        if (failures.length > 0) throw new AggregateError(failures, 'Video provider cleanup failed')
+      })
+      void retirement.catch((error: unknown) => {
+        ctx.logger.error('llm-pi-ai: video provider cleanup failed')
+        ctx.logger.error(error)
+      })
+    }
+    const sync = (available: boolean): void => {
+      if (available && dispose === undefined) {
+        dispose = registerVideoProductionGenerator(productionCtx, profiles, resolveVideoApiKey)
+      } else if (!available && dispose !== undefined) {
+        retire()
+      }
+    }
+    videoRegistrationSyncs.add(sync)
+    sync(hasVideoModel())
+    productionCtx.effect(() => async () => {
+      videoRegistrationSyncs.delete(sync)
+      retire()
+      await retirement
+    })
+  })
+
+  ctx.inject(['capabilities'], (capabilityCtx) => {
+    registerModelCapability(capabilityCtx, settingsNs, () => ({
+      providers: structuredClone(config.providers.get()) as NonNullable<Options['providers']>,
+    }), profiles)
+  })
+
   ctx.on('loader/volatile-update', () => {
-    try { ensureRegistrationFacts(); ensureDirectory() }
-    catch (error) {
+    try {
+      ensureRegistrationFacts()
+      ensureDirectory()
+      syncVideoRegistrations()
+    } catch (error) {
       ctx.logger.error('llm-pi-ai: configuration conflicts with an existing provider route')
       ctx.logger.error(error)
     }

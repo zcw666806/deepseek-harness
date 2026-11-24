@@ -26,6 +26,7 @@ import { SessionTitleInvalidError } from '@deepseek-ai/dsh-session-title'
 import { assertNever } from '@deepseek-ai/dsh-util-values'
 import { RemoteError, remoteErrorOf } from '@deepseek-ai/dsh-typert-protocol'
 import type { Workspace } from '@deepseek-ai/dsh-workspace'
+import { readSessionVideoAttachment } from './video-attachment.ts'
 import {
   ApiSessionAgentController,
   ApiSessionCwdConflict,
@@ -36,8 +37,11 @@ import {
   type ApiSessionCreated,
 } from './agent.ts'
 import type {
+  ModelSelection,
   SessionAttachmentRequest,
   SessionAttachmentValue,
+  SessionVideoAttachmentRequest,
+  SessionVideoAttachmentValue,
   SessionCancelRequest,
   SessionCancelValue,
   SessionCreateRequest,
@@ -167,21 +171,15 @@ export class SessionCommandController {
     const agent = await this.resolveAgent(request.sessionId)
     return this.agents.serializeImageAdmission(agent, async () => {
       try {
-        await this.requireModel(request)
-        const selected: AgentModelSelection = {
-          provider: request.provider,
-          model: request.model,
-          ...(request.reasoningEffort === undefined
-            ? {}
-            : { reasoningEffort: brandString<ReasoningEffortId>(request.reasoningEffort) }),
-        }
-        await this.ctx.llm.resolveCallConfig(selected)
+        const selected = await this.resolveModelSelection(request)
         agent.model.select(selected)
-        void this.ctx.agentDefaultModel.saveSelection(selected).catch((error: unknown) => {
-          this.ctx.logger.warn(
-            `session-controller: model selection changed for the Session but the default was not saved: ${String(error)}`,
-          )
-        })
+        if (request.sessionOnly !== true) {
+          void this.ctx.agentDefaultModel.saveSelection(selected).catch((error: unknown) => {
+            this.ctx.logger.warn(
+              `session-controller: model selection changed for the Session but the default was not saved: ${String(error)}`,
+            )
+          })
+        }
         return { selected: { ...selected } }
       } catch (error) {
         if (remoteErrorOf(error) !== undefined) throw error
@@ -290,7 +288,7 @@ export class SessionCommandController {
             : { agentPreset: composition.agentPreset }),
         },
         agentOptions: { provider, model },
-        setup: composition.setup,
+        setup: composition.setupExisting,
       })
     } catch (error) {
       throw new RemoteError(
@@ -321,6 +319,10 @@ export class SessionCommandController {
    * @returns acknowledgement that the Agent accepted the prompt.
    */
   async prompt(request: SessionPromptRequest, source: MessageSource): Promise<SessionPromptValue> {
+    const requestedModel = request.modelSelection
+    if (requestedModel !== undefined && (request.mode !== 'queue' || request.content.length === 0)) {
+      throw new RemoteError('gateway/bad-request', 'A prompt with a model selection must start a new queued turn.', {})
+    }
     const agent = await this.resolveAgent(request.sessionId)
     if (this.hasPromptRequest(agent.session, request.requestId)) return { accepted: true }
     if (request.content.length === 0) {
@@ -348,8 +350,9 @@ export class SessionCommandController {
     const admit = async (): Promise<SessionPromptValue> => {
       try {
         if (this.hasPromptRequest(agent.session, request.requestId)) return { accepted: true }
+        const selected = requestedModel === undefined ? undefined : await this.resolveModelSelection(requestedModel)
         if (hasImage) {
-          const current = agent.model.current()
+          const current = selected ?? agent.model.current()
           if (current !== undefined) {
             const model = await this.ctx.llm.resolveModelInfo(current.provider, current.model)
             if (model.inputModalities !== undefined && !model.inputModalities.includes('image')) {
@@ -372,6 +375,14 @@ export class SessionCommandController {
           )
         }
         using binding = this.ctx.fileUploads.bindPrompt(agent, admission.receiptIds, request.requestId)
+        if (selected !== undefined) {
+          if (agent.status !== 'idle' || agent.inbox.nextTurn.length > 0) {
+            throw new RemoteError('session/agent-busy', 'Wait for the current turn to finish before choosing a model for this prompt.', {
+              reason: 'model selection requires an idle Session',
+            })
+          }
+          agent.model.select(selected)
+        }
         if (request.mode === 'steer') agent.steer(message)
         else agent.followup(message)
         binding.commit()
@@ -385,7 +396,7 @@ export class SessionCommandController {
       }
       return { accepted: true }
     }
-    return hasImage ? this.agents.serializeImageAdmission(agent, admit) : admit()
+    return hasImage || requestedModel !== undefined ? this.agents.serializeImageAdmission(agent, admit) : admit()
   }
 
   /** Recover first input acceptance, including claimed or removed messages, from unseen log entries. */
@@ -414,6 +425,19 @@ export class SessionCommandController {
     return receipts.requests.has(requestId)
   }
 
+  private async resolveModelSelection(request: ModelSelection): Promise<AgentModelSelection> {
+    await this.requireModel(request)
+    const selected: AgentModelSelection = {
+      provider: request.provider,
+      model: request.model,
+      ...(request.reasoningEffort === undefined
+        ? {}
+        : { reasoningEffort: brandString<ReasoningEffortId>(request.reasoningEffort) }),
+    }
+    await this.ctx.llm.resolveCallConfig(selected)
+    return selected
+  }
+
   private async requireModel(selection: Pick<AgentModelSelection, 'provider' | 'model'>): Promise<void> {
     if (!await modelAvailable(this.ctx, selection)) {
       throw new RemoteError('session/model-unavailable', 'Select an available model before sending a message.',
@@ -438,6 +462,23 @@ export class SessionCommandController {
         throw new RemoteError('session/attachment-invalid', error.message, { reason: error.code })
       }
       throw new RemoteError('gateway/internal', 'Unable to read image attachment.', {})
+    }
+  }
+
+  /**
+   * Read a video slice authorized by a successful generation in a Session log.
+   * @param request - Session identity, attachment identity, and raw byte range.
+   * @returns verified metadata and one bounded encoded slice.
+   */
+  async videoAttachment(request: SessionVideoAttachmentRequest): Promise<SessionVideoAttachmentValue> {
+    try {
+      using source = await this.ctx.sessionQuery.observeSession(request.sessionId)
+      return await readSessionVideoAttachment(this.ctx, source.events, request)
+    } catch (error) {
+      if (error instanceof SessionQueryError && error.code === 'SESSION_QUERY_SESSION_NOT_FOUND') {
+        throw new RemoteError('session/not-found', error.message, { sessionId: request.sessionId })
+      }
+      throw error
     }
   }
 

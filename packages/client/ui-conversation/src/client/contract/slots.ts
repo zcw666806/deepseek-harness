@@ -13,7 +13,7 @@ import type {
   InjectFace, PropsLocale, PropsRenderFactories, PropsRenderSlots, PropsRuntime, PropsStore,
 } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SessionPendingInteraction } from '@deepseek-ai/dsh-client-ui-session/client'
-import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
+import type { StudioKind, StudioNavigation } from '@deepseek-ai/dsh-client-ui-layout/client'
 import type { SessionId, SessionSeq } from '@deepseek-ai/dsh-session/types'
 import type { WorkspaceId } from '@deepseek-ai/dsh-workspace/types'
 import type { ComposerBlock } from './composer-blocks.ts'
@@ -369,7 +369,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * --dsh-composer-model-icon-display to block for an occupant's compact display.
      * Fixed overlays must portal to the document body because the docked composer contains them.
      */
-    'conversation.input.model': { kind: 'single'; scope: 'session'; owner: InputControlOwnerProps }
+    'conversation.input.model': { kind: 'single'; scope: 'session'; owner: ModelControlOwnerProps }
   }
 
   interface SlotFactoryMap {
@@ -617,6 +617,10 @@ export type ComposerFileIntake = (target: ComposerFileIntakeTarget) => () => voi
 
 /** Package-private operations injected into the resident composer bar. */
 export interface ComposerBarInjected {
+  /** Choose a creation workflow for the receiving Session. */
+  setCreationMode?: (mode: StudioKind | null) => void
+  /** Build localized options for the creation workspaces available at render time. */
+  creationNavigation?: (kinds: readonly StudioKind[]) => StudioNavigation
   /** Document paste routing across mounted composers. */
   registerFileIntake: ComposerFileIntake
   keyboard: ComposerKeyboard | undefined
@@ -640,6 +644,8 @@ export interface ComposerBarInjected {
    */
   retry: ((failureSeq: SessionSeq) => void) | undefined
   hooks: {
+    creationMode: ObservableSnapshot<StudioKind | null>
+    studios: ObservableSnapshot<readonly StudioKind[]>
     /** Readable sequence while the fixed Stop command is registered. */
     stopShortcut: ObservableSnapshot<readonly string[]>
     /**
@@ -661,6 +667,11 @@ export interface InputControlOwnerProps {
   locked: boolean
 }
 
+/** A planning model selection remains local to its Session. */
+export interface ModelControlOwnerProps extends InputControlOwnerProps {
+  planning?: boolean
+}
+
 /** A toolbar activity hides ordinary accessory controls while expanded; its occupant must release expansion on unmount. */
 export interface InputActivityOwnerProps extends InputControlOwnerProps {
   /** @param active - whether the occupant needs the toolbar width before the submit action. */
@@ -676,6 +687,7 @@ const baseComposerChildren = {
   'conversation.input.plan': { kind: 'single', scope: 'session' },
   'conversation.input.right': { kind: 'list', scope: 'session' },
   'conversation.input.model': { kind: 'single', scope: 'session' },
+  'conversation.input.creation-model': { kind: 'keyed', scope: 'session' },
   'conversation.input.activity': { kind: 'single', scope: 'session' },
   'conversation.composer.dock': { kind: 'list', scope: 'session' },
 } as const satisfies ChildrenDecl

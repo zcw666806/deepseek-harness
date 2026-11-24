@@ -1,0 +1,25 @@
+# Bilingual-pair consistency record for 2026-10-22-rea-experiment.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-10-22-rea-experiment.md
+/agent-note-session-scoped-rea-experiment:
+  en: 689f4c198afde60d
+  zh: 0ab83e34e51ec6f9
+/agent-note-session-scoped-rea-experiment/problem:
+  en: 64a2ae7c4e37736b
+  zh: dc0f748533f535a8
+/agent-note-session-scoped-rea-experiment/decision:
+  en: 904497393e670ba2
+  zh: a864325713e27035
+/agent-note-session-scoped-rea-experiment/alternatives-considered:
+  en: ce183d9faccf76f6
+  zh: 4e1c129b97dbc1c8
+/agent-note-session-scoped-rea-experiment/consequences:
+  en: 69cae62861c1f906
+  zh: ab70f7aface5aa54
+/agent-note-session-scoped-rea-experiment/verification:
+  en: b01566eac58188d1
+  zh: e0cd33356f6276ad
+/agent-note-session-scoped-rea-experiment/related-decisions:
+  en: 2137de10febf48cb
+  zh: 6e714debde3c5e84

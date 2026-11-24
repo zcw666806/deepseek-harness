@@ -12,7 +12,7 @@ import type { MessageId } from '@deepseek-ai/dsh-llm/types'
 import type { SessionId, SessionSeq } from '@deepseek-ai/dsh-session/types'
 import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
 import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
-import type { PromptContentPart, QueueAction, SessionRequestId } from '../../types.ts'
+import type { ModelSelection, PromptContentPart, QueueAction, SessionRequestId } from '../../types.ts'
 import type { PendingSubmissionAttachment, SessionSnapshot } from './snapshot.ts'
 
 /**
@@ -93,6 +93,7 @@ export interface ISession {
    * @param mode - 'queue' appends a turn; 'steer' interrupts the running one.
    * @param signal - optional caller cancellation for the complete admission round-trip.
    * @param requestId - identity from {@link beginSubmission}; a failed identified prompt retires its echo.
+   * @param modelSelection - optional Session-local model for an idle ordinary Session's queued turn.
    * @returns acceptance, or the business error (also mirrored into snapshot.promptError).
    */
   prompt(
@@ -100,6 +101,7 @@ export interface ISession {
     mode: 'queue' | 'steer',
     signal?: AbortSignal,
     requestId?: SessionRequestId,
+    modelSelection?: ModelSelection,
   ): Promise<RemoteResult<{ accepted: true }>>
   /**
    * Resolve one stored image using this Session's gateway permission scope.

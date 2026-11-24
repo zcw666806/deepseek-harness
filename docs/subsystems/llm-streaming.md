@@ -35,6 +35,8 @@ The block interfaces (full fields in source): `TextBlock` (`text`), `ReasoningBl
 
 Image access belongs to request serialization rather than the durable attachment or deterministic request-image version. `resolveImageAttachmentAccess()` combines the attachment provider's optional host object path with a mapping supplied by the consumer for the current tool execution filesystem. The result is available only for that request and does not participate in `variantId`.
 
+`VideoBlock` carries the video provider's durable attachment reference. The generation tool records the reference in the tool result's presentation metadata and supplies text to the next model request.
+
 Source: [`packages/llm/llm/src/content.ts`](../../packages/llm/llm/src/content.ts)
 
 ```ts type-equiv
@@ -568,6 +570,8 @@ interface LlmModelInfo {
   description?: string
   /** Accepted request modalities; absent means unknown, while an explicit omission is negative capability. */
   inputModalities?: readonly ModelModality[]
+  /** Produced response modalities. An absent declaration uses text output. */
+  outputModalities?: readonly ModelOutputModality[]
   /**
    * Selector label advertised by catalog discovery; exact-route resolution
    * omits it, and no model request or Session event carries it.

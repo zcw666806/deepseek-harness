@@ -15,6 +15,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session-status/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { StudioKind } from '@deepseek-ai/dsh-client-ui-layout/client'
 import type { ShortcutCommandId, ShortcutFixedCommand } from '@deepseek-ai/dsh-client-shortcuts/client'
 import { UiConversation } from './conversation/assembly.ts'
 import { UserText, PlainUserText, SessionReference } from './user-text/UserText.tsx'
@@ -76,6 +77,9 @@ const ABSENT_NOTICES = {
   getSnapshot: (): InputNotice | null => null,
   subscribe: () => () => {},
 }
+const NO_STUDIOS: readonly StudioKind[] = []
+const ABSENT_STUDIOS = { getSnapshot: () => NO_STUDIOS, subscribe: () => () => {} }
+const ABSENT_CREATION = { getSnapshot: (): StudioKind | null => null, subscribe: () => () => {} }
 const ABSENT_BLOCK = {
   getSnapshot: (): ComposerBlock | undefined => undefined,
   subscribe: () => () => {},
@@ -185,6 +189,7 @@ export function apply(ctx: Context, config: SyncedConfig<ConversationConfig>): v
 
   ctx.effect(() => ctx.locale.register(NS, { zh, en, ja, es, fr, de, ru, pt }), 'ui-conversation: dictionaries')
   const t = ctx.locale.bind(NS)
+  const common = ctx.locale.bind('common')
   const conversationStore = createConversationStore()
   const submissionPolicy = new ComposerSubmissionPolicy(
     ctx.configForms.get<ConversationSettings>(CONVERSATION_SETTINGS_NAMESPACE),
@@ -483,6 +488,8 @@ export function apply(ctx: Context, config: SyncedConfig<ConversationConfig>): v
             busyEnter: submissionPolicy.busyEnter,
             fileUploads: ABSENT_FILE_UPLOADS,
             notices: ABSENT_NOTICES,
+            creationMode: ABSENT_CREATION,
+            studios: ABSENT_STUDIOS,
             lexicon: ABSENT_LEXICON,
             menuLauncher: ABSENT_MENU_LAUNCHER,
           },
@@ -490,10 +497,18 @@ export function apply(ctx: Context, config: SyncedConfig<ConversationConfig>): v
       }
       const conversation = concreteConversation(ctx)
       const shell = inputHub.shell(sessionId)
+      const layout = ctx.get('layout')
       const inputTriggers = inputHub.inputTriggers(sessionId)
       const bridge = hostPathBridge()
       return {
         registerFileIntake: fileIntake,
+        setCreationMode: (mode) => { shell.creationMode.set(mode) },
+        creationNavigation: kinds => ({
+          entries: kinds.map(kind => ({ kind, label: common(kind === 'comic' ? 'studio.comic' : 'studio.video') })),
+          label: common('studio.launcher'),
+          existingLabel: common('studio.existing'),
+          openExisting: (kind) => { layout?.showStudio?.(kind) },
+        }),
         keyboard: shell,
         addFiles: (files, directories = new Set()) => {
           if (sessions.binding(sessionId) === undefined) return t('file.sessionUnavailable')
@@ -563,6 +578,8 @@ export function apply(ctx: Context, config: SyncedConfig<ConversationConfig>): v
           busyEnter: submissionPolicy.busyEnter,
           fileUploads: conversation.fileUploads,
           notices: shell.notices,
+          creationMode: shell.creationMode,
+          studios: layout?.studios ?? ABSENT_STUDIOS,
           lexicon: shell.lexicon,
           menuLauncher: inputTriggers?.launcher ?? ABSENT_MENU_LAUNCHER,
         },

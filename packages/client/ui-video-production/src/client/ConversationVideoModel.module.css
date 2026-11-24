@@ -1,0 +1,12 @@
+.root {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  justify-items: start;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+}
+
+.root [role='alert'] button {
+  margin-inline-start: 6px;
+}

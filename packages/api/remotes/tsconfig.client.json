@@ -17,6 +17,12 @@
       "path": "../../../vendor/cordis"
     },
     {
+      "path": "../../capability/capability-manager"
+    },
+    {
+      "path": "../../video/video-comfyui"
+    },
+    {
       "path": "../gateway/tsconfig.client.json"
     },
     {

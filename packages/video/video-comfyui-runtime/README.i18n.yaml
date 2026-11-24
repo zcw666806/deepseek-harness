@@ -1,0 +1,46 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/video/video-comfyui-runtime/README.md
+/:
+  en: 63f5e6de6242367f
+  zh: 58dd555b2bbb43d0
+/deepseek-ai-dsh-video-comfyui-runtime:
+  en: 3a67d9ce7afcbbf9
+  zh: 68a1159c42b243ff
+/deepseek-ai-dsh-video-comfyui-runtime/summary:
+  en: 60105066db430a2a
+  zh: acaed8df8e5c7546
+/deepseek-ai-dsh-video-comfyui-runtime/table-of-contents:
+  en: 65663b0d5dfa1600
+  zh: dc8dd4f5941b9f74
+/deepseek-ai-dsh-video-comfyui-runtime/use-this-package:
+  en: 7c30d7b0a341cad5
+  zh: 1e0a574d0662f556
+/deepseek-ai-dsh-video-comfyui-runtime/understand-the-implementation:
+  en: 598adcebd2689e59
+  zh: ba6dca71263ab242
+/deepseek-ai-dsh-video-comfyui-runtime/further-exploration:
+  en: 56f358eab0fdd316
+  zh: 2145cc431ab7e4a9
+/deepseek-ai-dsh-video-comfyui-runtime/model-experience:
+  en: 215e7ba838619b7b
+  zh: e61c78b7d37628ed
+/deepseek-ai-dsh-video-comfyui-runtime/model-experience/managed-execution-prerequisites:
+  en: 5032c7ee878c58cb
+  zh: f39be42e1fca48c4
+/deepseek-ai-dsh-video-comfyui-runtime/model-experience/managed-execution-prerequisites/what-the-model-sees:
+  en: 4e252e74703b22c0
+  zh: fd484a43f70247ee
+/deepseek-ai-dsh-video-comfyui-runtime/model-experience/managed-execution-prerequisites/token-effect:
+  en: 34988290ccf522fd
+  zh: e76c75110f63d5b7
+/deepseek-ai-dsh-video-comfyui-runtime/model-experience/managed-execution-prerequisites/kv-cache-effect:
+  en: 361b8d3e8cf1bc5e
+  zh: 19f8edfe435f4c55
+/deepseek-ai-dsh-video-comfyui-runtime/known-limitations-and-deferred-work:
+  en: ca6fccb34f48e400
+  zh: 57cd0b2fb374e319
+/deepseek-ai-dsh-video-comfyui-runtime/known-limitations-and-deferred-work/dev-note:
+  en: 0a1253c6f7b5e8b9
+  zh: 9f56528562c7c914

@@ -220,6 +220,25 @@ describe('client bundle CSS Modules', () => {
 })
 
 describe('client bundle global CSS', () => {
+  it('resolves exported package stylesheets without evaluating a package entry', async () => {
+    const packagePath = 'node_modules/@fixture/canvas-ui'
+    const relativeStylesheet = `${packagePath}/dist/theme.css`
+    const root = await assetPackage({
+      [`${packagePath}/package.json`]: JSON.stringify({
+        name: '@fixture/canvas-ui', version: '0.0.0', type: 'module',
+        exports: { './theme.css': './dist/theme.css' },
+      }),
+      [relativeStylesheet]: '.canvas { color: blue; }\n',
+    })
+    for (const name of ['dsh-css-global-inline', 'dsh-css-text-inline'] as const) {
+      const context = recordingContext()
+      const specifier = `@fixture/canvas-ui/theme.css${name === 'dsh-css-text-inline' ? '?inline' : ''}`
+      const output = await loadImport(browserPlugins(root)(name), context, specifier, join(root, 'lib/types/client/index.js'))
+      expect(context.watched).toEqual([join(root, relativeStylesheet)])
+      expect(output).toContain('.canvas{color:#00f}')
+    }
+  })
+
   it('compiles a side-effect stylesheet into watched metadata', async () => {
     const root = await assetPackage({})
     const stylesheet = join(root, 'base.css')

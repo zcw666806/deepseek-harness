@@ -94,6 +94,8 @@ Each profile may set a `retryPolicy`; omission uses normal mode with five retrie
 | `maxRequestImageBytes` | `20 MiB` | Aggregate base64 image-payload bound; a request whose retained images exceed it fails with `IMAGE_OFFLOAD_REQUIRED` |
 | `maxRequestImages` | `50` | Retained request-image count bound; a request whose retained images exceed it fails with `IMAGE_OFFLOAD_REQUIRED`. The default follows Azure OpenAI's 50-image limit; raise it on routes whose provider accepts more images |
 | `imageOffloadCountQuantum` | `10`, capped at `maxRequestImages` | Oldest images offloaded per count overflow |
+| `videoPollIntervalMs` | `3,000` | Delay between video status requests |
+| `videoTimeoutMs` | `300,000` | Total video submission, polling, and download deadline |
 | `retryPolicy` | normal, 5 retries | Provider-owned retry policy executed by `dsh-llm-retry` |
 
 Request images inherit the selected pi-ai model's `inputLimits.images.resize` width, height, and base64-byte cap. `requestImageMaxDimension` overrides both dimensions with one value; it cannot express unequal width and height overrides. `requestImageMaxBytes` overrides the per-image cap in raw encoded bytes. The effective hard limit is `min(3 × floor(maxRequestImageBytes / (4 × requestImageBudgetCount)), requestImageMaxBytes or catalog cap or 1 MiB)`, with the catalog cap converted using `3 × floor(catalogBytes / 4)`. Configuration must allow at least four aggregate base64 bytes per budget share. Defaults allocate 0.75 MiB per image, so 20 images at that limit use at most 20 MiB of base64 payload. Budget shares stay fixed as history grows; `maxRequestImages` separately controls retained occurrences. Missing catalog dimensions leave that axis uncapped, while total pixels remain governed by `requestImagePixelBudget`.
@@ -109,6 +111,24 @@ A provider pi-ai ships a login for can be signed into through the harness author
 ### Resolve the model catalog
 
 A profile's `models` list replaces the route's installed catalog rather than extending it; each entry defaults its unset fields from the installed model of the same id, so narrowing a route to two models, correcting one capacity, or adding a model newer than the installed catalog are one-line edits. `modelOverrides` reshapes individual installed-catalog models without that cost — correct one model, keep the other thirty-seven — and is refused when set beside a `models` list, on a hand-declared route, or naming a model the catalog does not describe, because a silently unchanged model would be a typo someone hunts for later.
+
+### Unified capability management
+
+When the optional capability manager is present, this adapter contributes `models.pi-ai` without adding another settings document. Its inspection lists configured model counts and local authorization metadata; it makes no model request, refreshes no OAuth grant, and does not claim remote inference availability. Missing explicit credential references or unconfirmed ambient authentication remain visible as missing prerequisites. Model configuration remains editable through the existing Models settings interface.
+
+Portable capability configuration contains declared provider settings and credential reference names, excluding all header values, OAuth records, and nested credential or host-path values. Only HTTPS DNS endpoints without embedded credentials, query, fragment, or local-domain suffixes travel directly; IP literals and other endpoints require a target-machine binding. On restore, that machine's existing endpoint, headers, and credential-reference choices take precedence. Required endpoint or header bindings must exist before the complete candidate resolves and commits through the settings namespace with its observed revision. Unbound credential references may restore as definitions and remain missing in the capability inspection until the user binds them locally.
+
+### Generate video
+
+The production target directory lists each configured video model with its current route title and native reference-image limit. When multiple routes contain the same model id, the first configured route owns that selectable entry, matching generation resolution. Directory reads do not resolve credentials or contact a provider. A newly recorded attempt retains its selected generator and model; removing that target requires an explicit new selection.
+
+Keep a conversational model selected for the session. Declare a video-generation target with a model `output` list containing `video`; the chat model calls `generate_video` with that target. Video-output models are excluded from conversational model lists, and direct chat requests selecting one fail with a diagnostic directing the caller to choose a chat model and use the tool.
+
+An explicit Session video model selection in the composer takes precedence over the tool's model argument. When no selection is saved, the tool uses its model argument or the first configured video model.
+
+The tool reads current provider profiles and attachment storage when execution starts. It uses the target model's resolved endpoint, provider credentials, and custom headers; download requests carry those credentials only to the same origin. Submission, polling, and download share one cancellable deadline. Per-provider `videoPollIntervalMs` defaults to `3000` and `videoTimeoutMs` defaults to `300000`; both require positive bounded integers. A successful result stores a video attachment and returns its reference.
+
+When the [video-production service](../../video/video-production/README.md) is mounted, this adapter also contributes the `llm-pi-ai` project generator while a video target is configured. Each shot uses current profiles, credentials, headers, and timing limits. Removing the generator cancels its active attempts; adapter unload waits for those attempts to settle. Character, scene, and prop images selected by the project are read from attachment storage and sent as native xAI `reference_images` in the same order; image bytes and provider URLs are not added to project records. Reference images require `grok-imagine-video` (up to seven images and ten seconds) or `grok-imagine-video-1.5` (up to fourteen images and fifteen seconds), as defined by the [native reference-to-video API](https://docs.x.ai/developers/model-capabilities/video/reference-to-video). Other configured model ids remain available for text-to-video and explicitly reject image references.
 
 ### Run with reasoning and wire compatibility
 
@@ -241,6 +261,20 @@ Provider tokenization governs exact input. Retained images add the stable attach
 
 Later system messages supplied to the adapter stay out of the initial prompt, preserving the preceding request prefix. This does not change the agent loop’s prompt admission, which consolidates updates on routes without native system-update support. Conversion preserves logical request order, while image handles and offload placeholders add model-visible text. A changed execution-world path rewrites a historical handle and can prevent reuse from that image even when attachment identity and request bytes stay stable. Changing adapter instance, provider, model, or another upstream token has the same suffix effect. Omitting stale Anthropic thinking follows a prefix change that already ended reuse at the changed message. The first request that omits thinking recorded without a digest ends reuse at the first such message once. An offload decision turns an earlier image into placeholder text, so reuse ends at that message; the omission never reverts, so the prefix stays stable until the next decision. Changing configured byte budgets can resize historical request images and end prefix reuse; merely adding an image does not change the per-image allocation. A count overflow offloads `imageOffloadCountQuantum` images at once, so a saturated route ends reuse at the oldest retained image once per that many new images.
 
+### Video generation tool
+
+#### What the model sees
+
+When configured video targets and attachment storage are available, the conversational model can call `generate_video`. The result names the stored attachment and available video metadata; video bytes are not sent back as conversational input.
+
+#### Token effect
+
+The tool schema, call arguments, and textual result contribute tokens to subsequent requests.
+
+#### KV Cache effect
+
+The recorded tool exchange appends to history. Changing tool availability changes the tool definitions and can invalidate their reusable prefix.
+
 ### Provider response
 
 #### What the model sees
@@ -264,6 +298,7 @@ These limits define where the adapter stops and future work begins. They are cur
 
 - **`maxRequestImageBytes` counts base64 image payload only** — text, tools, descriptors, and JSON structure ride outside the bound, so it must sit below the gateway's request-body cap with headroom.
 - **The byte bound has no removal quantum** — at `maxRequestImageBytes`, every new image offloads the minimum oldest prefix, so prompt-cache reuse restarts from that point on each image-adding request.
+- **Video generation uses the native xAI video API** — declaring `video` output does not add another provider protocol. Generation waits for polling and download before returning; this adapter does not provide video playback or an artifact preview UI.
 - **A sign-in lives only in the process that started it** — an authorization attempt is not durable, so reloading the page mid-login abandons it and the human starts over. Signing out is `deleteRecord` on the stored record, which forgets it locally without telling the issuer.
 - **OpenAI offers no ChatGPT sign-in** — pi-ai's Sign in with ChatGPT identifies the installation to OpenAI with a stable UUID the app supplies, and the harness keeps no installation ID meant for a third-party account sign-in; the `openai` route signs in with an API key.
 - **Provider-native discovery answers through this plugin's ambient context** — a route naming no credential defers to the catalog provider's own resolution, which asks for environment values (`AZURE_OPENAI_API_KEY`, `AWS_PROFILE`, and each provider's own set) and for local credential files. Both questions are answered here: the credential seam is consulted before the process environment, and file existence is checked against the host process's filesystem with `~` expanded. What it cannot do is *read* a credential file's contents — a provider that parses `~/.aws/credentials` itself does so directly, outside the seam.

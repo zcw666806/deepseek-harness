@@ -2,8 +2,9 @@
 /** Portal menus delegate minimum width and viewport limits to CSS. */
 import { useRef } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render } from '@testing-library/react'
+import { cleanup, fireEvent, render, waitFor, within } from '@testing-library/react'
 import { Menu } from '../src/Menu.tsx'
+import { ChoiceMenu } from '../src/ChoiceMenu.tsx'
 
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals() })
 
@@ -58,4 +59,23 @@ it('passes the visible-row limit to CSS and clears it when the option is removed
   expect(menu.style.getPropertyValue('--dsh-menu-visible-rows')).toBe('3')
   view.rerender(<Menu {...props} />)
   expect(menu.style.getPropertyValue('--dsh-menu-visible-rows')).toBe('')
+})
+
+it('opens a labelled single-choice menu with arrow keys and restores trigger focus on selection', async () => {
+  const onSelect = vi.fn()
+  const view = render(<ChoiceMenu label="Image model" value="First" placeholder="Choose a model"
+    options={[{ id: 'first', label: 'First' }, { id: 'second', label: 'Second' }]}
+    selectedId="first" onSelect={onSelect} />)
+  const trigger = view.getByRole('button', { name: 'Image model First' })
+  trigger.focus()
+  fireEvent.keyDown(trigger, { key: 'ArrowDown' })
+  const menu = view.getByRole('menu', { name: 'Image model' })
+  const first = within(menu).getByRole('menuitemradio', { name: 'First', checked: true })
+  const second = within(menu).getByRole('menuitemradio', { name: 'Second', checked: false })
+  expect(document.activeElement).toBe(first)
+  fireEvent.keyDown(first, { key: 'ArrowDown' })
+  expect(document.activeElement).toBe(second)
+  fireEvent.keyDown(second, { key: 'Tab' })
+  expect(onSelect).toHaveBeenCalledExactlyOnceWith('second')
+  await waitFor(() => { expect(document.activeElement).toBe(trigger) })
 })

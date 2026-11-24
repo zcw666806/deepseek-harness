@@ -124,6 +124,7 @@ function mount(overrides: Partial<WorkspaceBrowserProps> = {}) {
     useWorkspaceActionRequest: bindSnapshotSelector(request),
     settleWorkspaceAction: () => { request.set(null) },
     useContextMenuTarget: selector => selector(null),
+    useSessionPresentations: selector => selector([]),
     useShortcuts: select => select([]),
     useWorkspaceShortcuts: bindSnapshotSelector(controls.state),
     requestSearch: controls.search,
@@ -786,6 +787,19 @@ describe('WorkspaceBrowser', () => {
     // Collapse hides the row again.
     fireEvent.click(screen.getByText('alpha'))
     expect(screen.queryByText('alpha-s')).toBeNull()
+  })
+
+  it('opens a saved video project whose chat is empty', () => {
+    const open = vi.fn()
+    mount({
+      useSessions: hook(sessionState([summary('movie', 1, { blank: true })])),
+      useSessionPresentations: hook([{ sessionId: sid('movie'), displayTitle: 'Storyboard draft' }]),
+      useWorkspaces: hook(workspaceState([workspace('alpha', ['movie'])])),
+      open,
+    })
+    fireEvent.click(screen.getByText('alpha'))
+    fireEvent.click(screen.getByText('Storyboard draft'))
+    expect(open).toHaveBeenCalledWith(sid('movie'))
   })
 
   it('a title double-click asks for the rename dialog with the row title', () => {

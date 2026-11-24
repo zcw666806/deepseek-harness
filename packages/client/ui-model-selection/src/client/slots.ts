@@ -107,7 +107,8 @@ export interface ModelSelectInjected {
   /**
    * Select a complete provider/model/reasoning selection.
    * @param selection - model selection and optional adapter-owned effort.
+   * @param sessionOnly - scope this selection to the addressed Session.
    * @returns the Host outcome, or undefined when this Session cannot select a model.
    */
-  select: (selection: ModelSelection) => Promise<RemoteResult<void> | undefined>
+  select: (selection: ModelSelection, sessionOnly?: boolean) => Promise<RemoteResult<void> | undefined>
 }

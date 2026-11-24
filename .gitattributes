@@ -25,3 +25,11 @@ locales.ts dsh-review-layer=test
 snapshots/** dsh-review-layer=test
 *.i18n.yaml dsh-review-layer=test
 packages/*/*/src/types.ts dsh-review-layer=interface
+
+# Mixed line endings are the filesystem snapshot's byte-level oracle.
+snapshots/session/fs-edit-mixed-eol/workspace/config.txt binary
+snapshots/session/fs-edit-mixed-eol/workspace.expected/config.txt binary
+
+# Pairing records are generated from the three confirmed owner-blob pairs.
+# The worktree-local installer registers the fail-closed driver command.
+*.i18n.yaml merge=dsh-translation-pairing

@@ -71,7 +71,7 @@ kind: "package-reference"
 
 ### 后台生命周期
 
-后台调用在任务 starter 内经 `jobs.start` 注册运行，因此引擎的同步拒绝什么都不会注册，准入预检也先于引擎生成执行。任务的 `done` 链接自 `run.result`：先 dispose（释放失败只告警，绝不 reject 进注册表），再停止镜像，然后把停止原因映射到任务结果。环镜像（`src/record.ts`）按插件订阅一次 `workflow/phase`、`workflow/log` 与成员事件，并把它们路由进被跟踪运行的 `JobHandle` 面（`append` 写行，`updateProgress` 写阶段）；结算后的零星事件找不到被跟踪的运行，对已结算任务的 append 则在注册表内丢弃。
+后台调用在任务 starter 内经 `jobs.start` 注册运行，因此引擎的同步拒绝什么都不会注册，准入预检也先于引擎生成执行。释放资源并停止镜像后，任务才会结算。若已完成的运行无法释放资源，任务与已记录的运行结束事件均报告失败。环镜像（`src/record.ts`）按插件订阅一次 `workflow/phase`、`workflow/log` 与成员事件，并把它们路由进被跟踪运行的 `JobHandle` 面（`append` 写行，`updateProgress` 写阶段）；结算后的零星事件找不到被跟踪的运行，对已结算任务的 append 则在注册表内丢弃。
 
 ### 持久会话记录
 

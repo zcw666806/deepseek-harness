@@ -269,17 +269,14 @@ export class LocalFileSystem extends FileSystem {
       }
 
       const original = await readForEdit(target.targetKey, target.displayPath, signal)
-      const edited = applyLiteralEdit(original.content, edit.oldString, edit.newString, edit.replaceAll, target.displayPath)
-      const content = restoreLineEndings(edited.content, original.lineEndings)
-      await writeFileAtomic(target.targetKey, content, existing.mode, signal, this.internals, { displayPath: target.displayPath })
+      const edited = applyLiteralEdit(original, edit.oldString, edit.newString, edit.replaceAll, target.displayPath)
+      await writeFileAtomic(target.targetKey, edited.content, existing.mode, signal, this.internals, { displayPath: target.displayPath })
 
       const after = await probe(target.targetKey)
       return {
         version: this.versionAfterWrite(after, target),
-        // The LF-normalized before/after text (the applied-hunk diff basis);
-        // line-ending restoration is a storage detail the diff ignores.
-        before: original.content,
-        after: edited.content,
+        before: normalizeLineEndings(original),
+        after: normalizeLineEndings(edited.content),
       }
     })
   }
@@ -290,10 +287,11 @@ export class LocalFileSystem extends FileSystem {
     return this.withLock(target.targetKey, async () => {
       const existing = await this.requireFile(target, expected, 'patch')
       const original = await readForEdit(target.targetKey, target.displayPath, signal)
-      const after = this.patchContent(target, original.content, hunks)
-      await writeFileAtomic(target.targetKey, restoreLineEndings(after, original.lineEndings), existing.mode, signal, this.internals,
+      const before = normalizeLineEndings(original)
+      const after = this.patchContent(target, before, hunks)
+      await writeFileAtomic(target.targetKey, restoreLineEndings(after, original), existing.mode, signal, this.internals,
         { displayPath: target.displayPath })
-      return { version: this.versionAfterWrite(await probe(target.targetKey), target), before: original.content, after }
+      return { version: this.versionAfterWrite(await probe(target.targetKey), target), before, after }
     })
   }
 
@@ -318,8 +316,9 @@ export class LocalFileSystem extends FileSystem {
       const sourceInfo = await this.requireFile(source, options.expectedSource, 'move')
       const existing = await this.writeTarget(destination, options.expectedDestination)
       const original = await readForEdit(source.targetKey, source.displayPath, signal)
-      const after = options.hunks === undefined ? original.content : this.patchContent(source, original.content, options.hunks)
-      const content = restoreLineEndings(after, original.lineEndings)
+      const normalized = normalizeLineEndings(original)
+      const after = options.hunks === undefined ? normalized : this.patchContent(source, normalized, options.hunks)
+      const content = restoreLineEndings(after, original)
       const before = existing && Buffer.byteLength(content, 'utf8') < this.config.diffBasisMaxBytes
         ? await readTextForDiff(destination.targetKey, this.config.diffBasisMaxBytes, signal) : null
       await this.internals.inspectBeforeMutation?.(source)
@@ -334,7 +333,7 @@ export class LocalFileSystem extends FileSystem {
         operation: existing ? 'update' : 'create',
         version: this.versionAfterWrite(await probe(destination.targetKey), destination), before, after,
       }
-      const sourceBefore = Buffer.byteLength(original.content, 'utf8') < this.config.diffBasisMaxBytes ? original.content : null
+      const sourceBefore = Buffer.byteLength(normalized, 'utf8') < this.config.diffBasisMaxBytes ? normalized : null
       try {
         await removeFile(source.targetKey, source.displayPath, this.internals)
       } catch (error) {

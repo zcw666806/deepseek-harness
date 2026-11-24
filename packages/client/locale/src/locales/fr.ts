@@ -44,4 +44,9 @@ export const fr = {
   'markdown.truncatedCharacters': '… tronqué à {total} caractères',
   'number.thousand': '{value}K',
   'number.million': '{value}M',
+  'studio.launcher': 'Création',
+  'studio.comic': 'Créer une BD',
+  'studio.video': 'Créer une vidéo',
+  'studio.existing': 'Projets existants',
+  'studio.sessionRequired': 'Ouvrez une session dans la barre latérale pour commencer à créer.',
 } satisfies Record<keyof typeof en, string>

@@ -73,8 +73,8 @@ interface EffortChoice {
  * @returns the trigger and, while open, the two-level menu.
  */
 export function ModelSelect(
-  { locked, available, directory, load, select, resolveText, t, renderSlot }:
-  ModelSelectInjected & Pick<PropsRuntime<'conversation.input.model'>, 'locked'> & PropsLocale<'model'>
+  { locked, planning = false, available, directory, load, select, resolveText, t, renderSlot }:
+  ModelSelectInjected & Pick<PropsRuntime<'conversation.input.model'>, 'locked' | 'planning'> & PropsLocale<'model'>
     & Omit<PropsRenderSlots<'conversation.input.model.label' | 'conversation.input.model.options' | 'conversation.input.model.pane'>, 'SessionProvider'>,
 ) {
   const state = useSyncExternalStore(
@@ -412,7 +412,7 @@ export function ModelSelect(
     // Disabled option rows cannot retain focus while a selection is pending.
     setSelectionFocus(true)
     triggerRef.current?.focus()
-    void select(selection).then(settleSelection)
+    void (planning ? select(selection, true) : select(selection)).then(settleSelection)
   }
 
   const choose = (selection: ModelSelection): void => {
@@ -501,7 +501,7 @@ export function ModelSelect(
         type="button"
         className={css.trigger}
         style={anchorStyle}
-        aria-label={triggerAria}
+        aria-label={planning ? t('trigger.planningAria', { model: triggerLabel }) : triggerAria}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? `${id}-menu` : undefined}
@@ -518,7 +518,8 @@ export function ModelSelect(
           }
         }}
       >
-        <IconDataOutlineRegular className={css.triggerIcon} size={16} />
+        {planning ? <span className={css.planningCaption}>{t('trigger.planningLabel')}</span>
+          : <IconDataOutlineRegular className={css.triggerIcon} size={16} />}
         <span className={css.triggerLabel}>
           {currentChoice === undefined ? modelLabel : renderModelLabel(currentChoice.group.provider, currentChoice.model, 'trigger', true)}
         </span>

@@ -1,0 +1,22 @@
+# Bilingual-pair consistency record for 2026-10-19-video-generation-routing.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-10-19-video-generation-routing.md
+/agent-note-route-video-generation-through-its-tool:
+  en: aaa625006d68a4fe
+  zh: 7cde86944b9e9fc5
+/agent-note-route-video-generation-through-its-tool/problem:
+  en: 95a49410760b8f31
+  zh: 436cbd1da49e4638
+/agent-note-route-video-generation-through-its-tool/decision:
+  en: 05b8273e9bd2cebc
+  zh: ec15c2105c7aad97
+/agent-note-route-video-generation-through-its-tool/alternatives-considered:
+  en: a40f9acc84632c62
+  zh: 26660794147e554a
+/agent-note-route-video-generation-through-its-tool/consequences:
+  en: 5bffe9f4392f7856
+  zh: 12dbf438ed0e19a1
+/agent-note-route-video-generation-through-its-tool/verification:
+  en: efad32a78b598abb
+  zh: 9ee60af3e8aa5e83

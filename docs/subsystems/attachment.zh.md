@@ -306,6 +306,31 @@ fileHostPath(ref: FileAttachmentRef): string | undefined
  * @returns request bytes within the hard limit, actual encoded dimensions, and a cache/upload identity covering every transform input.
  */
 readImageRequest( ref: ImageAttachmentRef, target: ImageRequestTarget, signal?: AbortSignal, ): Promise<RequestImageAttachment>
+
+/**
+ * Validate and durably commit one video.
+ * @param input - raw video bytes, declared media type, and optional metadata.
+ * @param signal - optional cancellation for backend storage work.
+ * @returns the durable content-addressed video reference.
+ */
+saveVideo(input: SaveVideoAttachment, signal?: AbortSignal): Promise<VideoAttachmentRef>
+
+/**
+ * Read one video and verify that bytes still match the recorded reference.
+ * @param ref - durable reference from the session log.
+ * @param signal - optional cancellation for backend read and verification work.
+ * @returns the verified bytes and video attachment reference.
+ * @throws the signal reason when aborted, or a storage error when verification fails.
+ */
+readVideo(ref: VideoAttachmentRef, signal?: AbortSignal): Promise<StoredVideoAttachment>
+
+/**
+ * Locate the provider-owned video object in the harness host filesystem.
+ * @param ref - durable video attachment reference.
+ * @returns an absolute host path, or undefined when this backend is not host-file-backed.
+ * @throws an AttachmentError when the durable reference is invalid.
+ */
+videoHostPath(ref: VideoAttachmentRef): string | undefined
 ```
 
 Source: [`packages/attachment/attachment/src/index.ts`](../../packages/attachment/attachment/src/index.ts)

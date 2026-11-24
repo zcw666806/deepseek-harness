@@ -56,7 +56,6 @@ export interface ToolCallCommonProps {
   useDisclosure: UseDisclosure
   /** Call identity, stable across all stages. */
   callId: string
-  /** Wire Tool name and keyed dispatch value. */
   toolName: string
   /** Session workspace root for relative summaries. */
   cwd?: string | undefined

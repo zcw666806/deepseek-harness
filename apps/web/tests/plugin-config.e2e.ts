@@ -9,6 +9,7 @@ import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import type { Browser, Locator, Page } from 'playwright'
 import { chromium } from 'playwright'
+import type {} from '@deepseek-ai/dsh-plugin-manager'
 import { HIDDEN_BUNDLES } from '@deepseek-ai/dsh-official-bundles'
 import { afterAll, beforeAll, describe, expect, it, onTestFailed, onTestFinished } from 'vitest'
 import { join } from 'node:path'
@@ -91,14 +92,13 @@ describe('web e2e: plugin configuration pages', () => {
     onTestFailed(() => saveFailureShot(page, 'web-e2e-plugin-config-cards'))
     const panel = await openPlugins()
 
-    // Every page the shipped web composition exposes: the shell executor, the
-    // agent loop, subagent selection, and the DeepSeek search provider.
     await panel.getByRole('button', { name: '查看 网页搜索与获取', exact: true }).waitFor({ timeout: 20_000 })
     const basic = panel.locator('[data-plugin-group="basic"]')
-    expect(await basic.locator('[data-plugin-item]').count()).toBe(4)
+    await basic.getByRole('button', { name: '查看 REA 实验功能', exact: true }).waitFor()
+    expect(await basic.locator('[data-plugin-item]').count()).toBe(5)
     expect(await basic.locator(':scope > ul > li').evaluateAll(cards => cards.map(card => card.getAttribute('data-plugin-item'))))
-      .toEqual(['subagent', 'web-search', 'agent-loop', 'shell'])
-    for (const title of ['子智能体', '网页搜索与获取', 'Agent 循环', '终端']) {
+      .toEqual(['subagent', 'rea-experiment', 'web-search', 'agent-loop', 'shell'])
+    for (const title of ['子智能体', 'REA 实验功能', '网页搜索与获取', 'Agent 循环', '终端']) {
       expect(await basic.getByRole('button', { name: `查看 ${title}`, exact: true }).count()).toBe(1)
     }
     // A card carries the one-liner; the fields wait for the page.
@@ -369,6 +369,23 @@ describe('web e2e: plugin configuration pages', () => {
     await expect.poll(() => toggle.getAttribute('aria-checked'), { timeout: 5_000 }).toBe('false')
     expect(tripwire.pageErrors).toEqual([])
   }, 60_000)
+
+  it('stages the REA opt-in until the user saves', async () => {
+    onTestFailed(() => saveFailureShot(page, 'web-e2e-plugin-config-rea'))
+    const panel = await openPlugins()
+    await openPage(panel, 'REA 实验功能')
+    const toggle = panel.getByRole('switch', { name: '在新会话中启用 REA', exact: true })
+    await toggle.waitFor()
+    expect(await toggle.getAttribute('aria-checked')).toBe('false')
+    const before = await settingsDocument()
+    await toggle.click()
+    expect(await toggle.getAttribute('aria-checked')).toBe('true')
+    expect(await settingsDocument()).toBe(before)
+    await openPlugins()
+    await openPage(panel, 'REA 实验功能')
+    expect(await toggle.getAttribute('aria-checked')).toBe('false')
+    expect(tripwire.pageErrors).toEqual([])
+  })
 
   it('stages an edit and writes it only when saved', async () => {
     onTestFailed(() => saveFailureShot(page, 'web-e2e-plugin-config-write'))

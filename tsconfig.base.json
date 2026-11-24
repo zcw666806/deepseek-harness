@@ -28,6 +28,21 @@
     // not declaration path aliases, keep each package/vendor source compiled
     // under its own tsconfig boundary.
     "paths": {
+      "@deepseek-ai/dsh-mcp-client/rea-experiment": ["./packages/mcp/mcp-client/src/rea-experiment.ts"],
+      "@deepseek-ai/dsh-client-ui-video-production": ["./packages/client/ui-video-production/src"],
+      "@deepseek-ai/dsh-client-ui-comic-production": ["./packages/client/ui-comic-production/src"],
+      "@deepseek-ai/dsh-client-ui-capabilities": ["./packages/client/ui-capabilities/src"],
+      "@deepseek-ai/dsh-video-production/types": ["./packages/video/video-production/src/types.ts"],
+      "@deepseek-ai/dsh-comic-production/types": ["./packages/comic/comic-production/src/types.ts"],
+      "@deepseek-ai/dsh-comic-production/storyboard": ["./packages/comic/comic-production/src/storyboard.ts"],
+      "@deepseek-ai/dsh-capability-manager/types": ["./packages/capability/capability-manager/src/types.ts"],
+      "@deepseek-ai/dsh-capability-manager/portable": ["./packages/capability/capability-manager/src/portable.ts"],
+      "@deepseek-ai/dsh-capability-manager": ["./packages/capability/capability-manager/src"],
+      "@deepseek-ai/dsh-comic-production": ["./packages/comic/comic-production/src"],
+      "@deepseek-ai/dsh-video-comfyui": ["./packages/video/video-comfyui/src"],
+      "@deepseek-ai/dsh-video-comfyui/types": ["./packages/video/video-comfyui/src/types.ts"],
+      "@deepseek-ai/dsh-video-comfyui-runtime": ["./packages/video/video-comfyui-runtime/src"],
+      "@deepseek-ai/dsh-video-production": ["./packages/video/video-production/src"],
       "@deepseek-ai/dsh-desktop-publisher/*": ["./apps/desktop-publisher/src/*"],
       "@deepseek-ai/dsh-client-script-realm": ["./packages/client/script-realm/src/index.ts"],
       "@deepseek-ai/dsh-client-script-realm/client": ["./packages/client/script-realm/src/client/index.ts"],

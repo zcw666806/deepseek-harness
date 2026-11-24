@@ -270,6 +270,22 @@ describe('Session Controller access', () => {
     ])
   })
 
+  it('rejects a model override from a non-owner before accepting the prompt', async () => {
+    const { shared, as } = await harness()
+    const before = shared.session.snapshotEvents()
+    await expect(as(GUEST, 'prompt').sessionController.prompt({
+      sessionId: SHARED,
+      requestId: 'guest-model' as SessionRequestId,
+      mode: 'queue',
+      content: [{ type: 'text', text: 'Ask with a different model' }],
+      modelSelection: { provider: 'other-provider', model: 'other-model' },
+    }, new AbortController().signal)).rejects.toMatchObject({
+      code: 'remote-access/denied',
+      details: { action: 'session/prompt', reason: 'no-allow' },
+    })
+    expect(shared.session.snapshotEvents()).toEqual(before)
+  })
+
   it('keeps gateway permission checks while allowing an image referenced only by another Session', async () => {
     const { ctx, hidden } = await harness()
     await ctx.plugin(TypertGatewayService)

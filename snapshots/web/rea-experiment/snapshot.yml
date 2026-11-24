@@ -1,0 +1,8 @@
+version: 1
+scenario: rea-experiment
+profile: web
+composition: web-rea-trial
+recording: authored
+header:
+  class: web-rea-trial
+  pin: true

@@ -68,6 +68,11 @@ export interface AssistantActionOwnerProps {
   messageId: MessageId
 }
 
+/** Durable reply identity and text for contributions displayed below the reply. */
+export interface AssistantFollowUpOwnerProps extends AssistantActionOwnerProps {
+  text: string
+}
+
 /** Stable quota failure codes retained in the Session log; both raise the frame-wide notice. */
 export type QuotaNoticeCode = 'QUOTA' | 'ACCOUNT_QUOTA'
 
@@ -510,6 +515,8 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * that entry. With no entries, the standard action row remains unchanged.
      */
     'conversation.chat.assistant-actions': { kind: 'list'; scope: 'session'; owner: AssistantActionOwnerProps }
+    /** Follow-up surfaces derived from one finalized assistant reply. */
+    'conversation.chat.assistant-follow-up': { kind: 'list'; scope: 'session'; owner: AssistantFollowUpOwnerProps }
     /**
      * Frame-wide quota notice chain. The Chat-owned host in `shell.overlay`
      * offers the one live notice; the first entry whose selector claims its

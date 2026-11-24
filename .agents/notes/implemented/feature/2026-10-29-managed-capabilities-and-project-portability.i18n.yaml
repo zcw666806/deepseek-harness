@@ -1,0 +1,22 @@
+# Bilingual-pair consistency record for 2026-10-29-managed-capabilities-and-project-portability.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-10-29-managed-capabilities-and-project-portability.md
+/agent-note-managed-capabilities-and-portable-production-projects:
+  en: 02923a47a7e8a0d8
+  zh: 009eb089f46986b3
+/agent-note-managed-capabilities-and-portable-production-projects/problem:
+  en: d21c997fc5c224a4
+  zh: abc4467db2577ab4
+/agent-note-managed-capabilities-and-portable-production-projects/decision:
+  en: 69254ccf51ff841e
+  zh: dabc1138a8809ae1
+/agent-note-managed-capabilities-and-portable-production-projects/alternatives-considered:
+  en: f1a4f96562437b6a
+  zh: 459a2696c7585e14
+/agent-note-managed-capabilities-and-portable-production-projects/consequences:
+  en: cda2d2eddd20a59c
+  zh: 6bcb8924a00a611e
+/agent-note-managed-capabilities-and-portable-production-projects/verification:
+  en: 40ba39489bb9d1f7
+  zh: 55b9042a8aa99ca5

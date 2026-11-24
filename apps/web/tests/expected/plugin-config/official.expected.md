@@ -11,6 +11,9 @@
     - button "查看 子智能体": 子智能体
     - text: 设置子智能体的递归层级、数量和模型。
   - listitem:
+    - button "查看 REA 实验功能": REA 实验功能
+    - text: 新会话可使用本机 REA 服务提供的工具。现有会话保留各自的配置。
+  - listitem:
     - button "查看 网页搜索与获取": 网页搜索与获取
     - text: 选择网页搜索与网页获取使用的提供方。
   - listitem:

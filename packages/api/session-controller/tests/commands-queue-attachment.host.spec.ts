@@ -113,7 +113,7 @@ async function commandHarness(
   const resolveAgent = vi.spyOn(agents, 'resolveAgent').mockImplementation(id => Promise.resolve(id === agent.id
     ? { agent }
     : { error: new RemoteError('session/not-found', 'missing', { sessionId: id }) }))
-  vi.spyOn(agents, 'composeAgent').mockResolvedValue({ setup: () => {} })
+  vi.spyOn(agents, 'composeAgent').mockResolvedValue({ setup: () => {}, setupExisting: () => {} })
   return {
     ctx,
     controller: new SessionCommandController(ctx, agents, '/workspace'),

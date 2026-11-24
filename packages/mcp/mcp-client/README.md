@@ -101,6 +101,10 @@ Images are supported when the current model accepts image input and the harness 
 
 The server's tools appear before the harness starts its first turn. Set `startupTimeoutMs` to bound each connection attempt, including template resolution and initial tool discovery; an omitted value adds no whole-attempt deadline. Tool-list notifications refresh the registered tools; discovery failures preserve the previous set, while registration conflicts close the connection and apply the reconnect policy.
 
+<a id="rea-experiment-in-web"></a>
+
+The optional `@deepseek-ai/dsh-mcp-client/rea-experiment` entry adds a dedicated REA connection to each new Web session when its `enabled` setting is turned on. The setting is editable in Settings and defaults to off. Each opted-in session records its launcher and uses it again when restored. Configure the launcher in the Cordis profile and keep secrets out of `command` and `args`, which are recorded in the session log.
+
 When a server connection drops — for example a local server process crashes — the plugin reconnects automatically with delays that double from 500 ms up to 30 s and then refreshes the tool set; reconnect progress is visible in the logs. During an outage the last known tools stay listed but calls to them fail until the server recovers. After ten consecutive failed attempts the server's tools are removed and reconnection stops until you reload the configuration or restart the harness; a server that stays connected for a while resets that counter. Set `reconnect.enabled: false` to disable automatic reconnection — tools then stay listed but fail until you reload. Editing the configuration entry reloads the server connection in place, and unchanged names stay unchanged.
 
 <a id="on-demand-tool-loading"></a>

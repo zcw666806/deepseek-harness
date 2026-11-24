@@ -52,6 +52,8 @@ kind: "package-reference"
 
 完整或流式读取普通 UTF-8 文件、读取有界字节，并列出一层目录。写入、字面量编辑、补丁和删除按目标串行化。移动按字典序锁定两端。`patchText` 在调用 `applyHunks` 前检查版本；`deleteFile` 只删除普通文件。源缺失使用 `FS_STALE_VERSION`，hunk 不匹配使用 `FS_PATCH_MISMATCH`，移动两端相同使用 `FS_SAME_TARGET`。
 
+字面量编辑将 LF 和 CRLF 视为等价，并保留所有未匹配文本的原始行尾，包括混用两种行尾的文件。替换正文中的换行采用整份文件的主要风格；数量相同或文件没有换行时采用 LF。返回的 diff 文本仍统一为 LF。
+
 补丁与移动的文本在内存中规范化为 LF，写回时还原源文件的行尾风格；结果文本使用 LF。删除基线和被覆盖目标的基线遵循 `diffBasisMaxBytes`。移动在暂存目标前检查取消，随后完成两个效果；源删除失败返回已发布目标及 `sourceDeleted: false`。原子写入失败时，目录或临时目录创建被拒绝映射为 `FS_PERMISSION_DENIED`，其他 Node I/O 错误映射为 `FS_IO_ERROR`。解析、元数据、读取与目录列表失败经由 `dsh-fs` 的 `fsErrorFromErrno` 分类，因此每个 errno 都变为 `FsError` 错误码；不带 errno 码的抛出值属于缺陷，原样传播。
 
 读取、列出与变更操作的失败是携带稳定错误码的类型化 `FsError`——`FS_NOT_FOUND`、`FS_NOT_TEXT`（二进制内容）、`FS_STALE_VERSION`（自观察以来已变化）、`FS_EDIT_NOT_FOUND` 或 `FS_AMBIGUOUS_EDIT`（无唯一字面量匹配）等——因此调用方依据错误码分支，绝不解析消息文本。编辑遇到缺失目标时，无论是否提供版本防护，都报告 `FS_STALE_VERSION`。
@@ -90,7 +92,7 @@ Chokidar 通过 OS 事件观察单个文件或目录的直接子项，不使用�
 
 ### 编辑路径
 
-每次编辑先探测、在字面量匹配前校验版本防护（陈旧编辑因此报告 `FS_STALE_VERSION`，绝不会给出误导性的无匹配）、读取文件、以 LF 规范化执行字面量替换、恢复文件主要的行尾风格，然后重新发布——全部在每目标锁内完成。
+每次编辑先探测、在字面量匹配前校验版本防护（陈旧编辑因此报告 `FS_STALE_VERSION`，绝不会给出误导性的无匹配）、读取原始文本、将 LF 规范化后的字面量匹配映射回原始位置、替换命中区域，然后重新发布——全部在每目标锁内完成。
 
 ### 归属与不变式
 

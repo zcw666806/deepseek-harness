@@ -10,7 +10,7 @@ import type { ChatSnapshot } from '../contract/snapshot.ts'
 import css from './TurnTailNodeView.module.css'
 
 type TurnTailNodeViewProps = ChatNodeViewProps<'turn-tail'>
-  & PropsRenderSlots<'conversation.chat.turnTail' | 'conversation.chat.assistant-actions'>
+  & PropsRenderSlots<'conversation.chat.turnTail' | 'conversation.chat.assistant-actions' | 'conversation.chat.assistant-follow-up'>
   & InjectFace<PerformanceUsageInjected>
 
 function lastContent(snapshot: ChatSnapshot, turn: number, skipWarning: boolean): ChatNode | undefined {
@@ -51,6 +51,10 @@ export const TurnTailNodeView = memo(function TurnTailNodeView({
   // Interruption-frozen partials carry no messageId, so they address no
   // durable message and contribute no per-message actions.
   const messageId = closing.finalNode.messageId
+  const text = assistantText(closing.blocks)
+  const followUp = messageId === undefined
+    ? null
+    : renderSlot('conversation.chat.assistant-follow-up', { messageId, text })
   const assistantActions = messageId === undefined
     ? null
     : renderSlot('conversation.chat.assistant-actions', { messageId })
@@ -60,9 +64,10 @@ export const TurnTailNodeView = memo(function TurnTailNodeView({
       data-turn-tail={data.turn}
       data-actions-reveal={endsWithResponse ? 'always' : 'hover'}
     >
+      {followUp}
       {tail}
       <MessageIconActions
-        text={assistantText(closing.blocks)}
+        text={text}
         time={closing.time}
         clock="end"
         // The branch action owns boundary resolution: it sends the real

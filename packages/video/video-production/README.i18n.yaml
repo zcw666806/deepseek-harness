@@ -1,0 +1,61 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/video/video-production/README.md
+/:
+  en: 646e58184f54bbf8
+  zh: 2bd88abe4d2b8087
+/deepseek-ai-dsh-video-production:
+  en: 619e1064fa6f17e2
+  zh: 72db9eab4853e59d
+/deepseek-ai-dsh-video-production/summary:
+  en: 69aca860ac415358
+  zh: 0bafa3b754b97834
+/deepseek-ai-dsh-video-production/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/deepseek-ai-dsh-video-production/use-this-package:
+  en: a93fabbe1af105f0
+  zh: 19e43bde10576a14
+/deepseek-ai-dsh-video-production/use-this-package/editing-and-generation:
+  en: 5d281eab51570f76
+  zh: 15c888bbf2a7bc56
+/deepseek-ai-dsh-video-production/use-this-package/host-owned-production-batches:
+  en: 80c253f263d6a84d
+  zh: 11d41324df0b3ecb
+/deepseek-ai-dsh-video-production/use-this-package/export-and-media:
+  en: 0cfe9da7b271c735
+  zh: 60e3a071b68b0a3a
+/deepseek-ai-dsh-video-production/use-this-package/portable-project-packages:
+  en: 8bc8e5506acba76e
+  zh: a6098c7b88f2b55e
+/deepseek-ai-dsh-video-production/use-this-package/configuration:
+  en: 1b7de1d395eb8962
+  zh: b125ca65d9c6fc8d
+/deepseek-ai-dsh-video-production/understand-the-implementation:
+  en: be5f7ac7b5c82577
+  zh: ce9d1b310052752a
+/deepseek-ai-dsh-video-production/further-exploration:
+  en: cf0fba92f1512388
+  zh: 29db42b2a552ccc0
+/deepseek-ai-dsh-video-production/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-video-production/model-experience/project-tool:
+  en: 0de63836b16f8bff
+  zh: b1bc56f73f8cefa3
+/deepseek-ai-dsh-video-production/model-experience/project-tool/what-the-model-sees:
+  en: 38fa8de47e1aae61
+  zh: 282c9a5e82a65fb5
+/deepseek-ai-dsh-video-production/model-experience/project-tool/token-effect:
+  en: 6fe3a450f3cd7cc5
+  zh: 78793185cf6a1219
+/deepseek-ai-dsh-video-production/model-experience/project-tool/kv-cache-effect:
+  en: 0b5c48b41875901c
+  zh: 94e8bfed78f19177
+/deepseek-ai-dsh-video-production/known-limitations-and-deferred-work:
+  en: 3a6f400d5b696fbf
+  zh: 62b7fa26a759708b
+/deepseek-ai-dsh-video-production/known-limitations-and-deferred-work/dev-note:
+  en: 0a1253c6f7b5e8b9
+  zh: 9f56528562c7c914

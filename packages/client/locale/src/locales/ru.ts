@@ -44,4 +44,9 @@ export const ru = {
   'markdown.truncatedCharacters': '… обрезано до {total} символов',
   'number.thousand': '{value}K',
   'number.million': '{value}M',
+  'studio.launcher': 'Создание',
+  'studio.comic': 'Создать комикс',
+  'studio.video': 'Создать видео',
+  'studio.existing': 'Существующие проекты',
+  'studio.sessionRequired': 'Откройте сеанс на боковой панели, чтобы начать работу.',
 } satisfies Record<keyof typeof en, string>

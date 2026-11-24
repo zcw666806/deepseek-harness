@@ -8,6 +8,8 @@
 
 表单命名空间是当前 profile 中可唯一定位条目的本地 id。多个插件实例在条目 id 不同时拥有独立表单。普通字段被排除。描述符包含实际值、继承值、显式 profile 覆盖值和乐观修订号。
 
+[REA 实验](../../packages/mcp/mcp-client/README.zh.md#rea-experiment-in-web)的设置拥有方在新建 Web 会话时采样 `ReaExperimentSettings`。启用的会话将所选启动配置保留在会话日志中；恢复或 fork 时使用该选择，而非当前用户设置。
+
 ## 编辑
 
 `update` 合并提交的字段。`replace` 先将即时字段重置为继承配置，再应用提交的字段。`mutate` 操作独立路径，保留客户端响应中未包含的秘密值。每次写入都会验证完整 Config，并在持久化前拒绝过期修订号。
@@ -21,6 +23,35 @@
 ## Cordis API
 
 Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnpm run verify-cordis-catalog` in doc-sync; regenerate with `pnpm run gen-cordis-catalog`) — the language sides differ only in locale-specific paired document paths. Signature blocks use a `ts cordis-catalog` fence and keep the original source JSDoc; dispatch modes are defined in the [primer](../cordis-primer.zh.md#dispatch-modes), and the framework-inherited `ctx` API lives in [cordis-api/inherited.md](../cordis-api/inherited.md).
+
+<a id="ctxreaexperiment--reaexperimentservice"></a>
+
+### `ctx.reaExperiment` — `ReaExperimentService`
+
+Settings owner that composes an independent REA connection into each opted-in session.
+
+```ts cordis-catalog
+/**
+ * Read detached settings for the next new session.
+ * @returns The opt-in preference and exact launcher configuration.
+ */
+current(): ReaExperimentSettings
+
+/**
+ * Await REA discovery before an unpublished session can enter the registry.
+ * Creation samples current settings; resume reads only the session's durable selection.
+ * @param agentCtx - Unpublished Agent context owned by the registry factory's setup.
+ * @param agent - Unpublished Agent whose session owns the selection.
+ * @param mode - Whether the caller creates a new session or resumes persisted history.
+ * @returns After the full catalog is registered, or immediately when the session is outside the trial.
+ * @throws When startup or discovery fails, after the session-owned connection is disposed.
+ */
+async compose(agentCtx: Context, agent: Agent, mode: 'create' | 'resume'): Promise<void>
+```
+
+Types: [Agent](core.zh.md)
+
+Source: [`packages/mcp/mcp-client/src/rea-experiment.ts`](../../packages/mcp/mcp-client/src/rea-experiment.ts)
 
 <a id="ctxsettings--settingsforms"></a>
 

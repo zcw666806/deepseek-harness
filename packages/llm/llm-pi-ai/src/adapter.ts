@@ -63,6 +63,7 @@ import { requestImageTarget, toPiContext } from './context.ts'
 import { resolveImageRequestBudget } from './image-policy.ts'
 import { conversationUpdates, createModels, getSupportedThinkingLevels } from './models.ts'
 import { toStreamChunks } from './stream.ts'
+import type { ModelWithOutput } from './catalog.ts'
 import { bindThinkingToPrefix } from './prefix-binding.ts'
 import type { PrefixDigests } from './prefix-binding.ts'
 import type { PiAiRequestHeaderContext } from './types.ts'
@@ -275,6 +276,11 @@ function requestHeaders(
   }
 }
 
+/** Whether the configured model generates video through `generate_video`. */
+function isVideoModel(model: Model<Api>): boolean {
+  return (model as ModelWithOutput).output?.includes('video') === true
+}
+
 /**
  * pi-ai-backed multi-provider adapter. Each operation reads the current
  * profiles, so a configuration change reaches the next request without a
@@ -330,6 +336,12 @@ export class PiAiAdapter extends LlmAdapter {
     if (resolved === undefined) {
       throw new LlmError(`pi-ai provider "${provider}" has no configured model "${model}"`, 'UNKNOWN_MODEL')
     }
+    if (isVideoModel(resolved)) {
+      throw new LlmError(
+        `pi-ai model "${provider}/${model}" is a video generation target; choose a chat model and use generate_video to generate videos`,
+        'INVALID_REQUEST',
+      )
+    }
     return resolved
   }
 
@@ -354,12 +366,16 @@ export class PiAiAdapter extends LlmAdapter {
         if (error instanceof LlmError && error.code === 'MISSING_CREDENTIAL') return []
         throw error
       }
-      return snapshot.models.getModels(provider).map(model => ({
-        provider,
-        id: model.id,
-        name: model.name,
-        inputModalities: [...model.input],
-      }))
+      return snapshot.models.getModels(provider).filter(model => !isVideoModel(model)).map((model) => {
+        const output = (model as ModelWithOutput).output
+        return {
+          provider,
+          id: model.id,
+          name: model.name,
+          inputModalities: [...model.input],
+          ...output === undefined ? {} : { outputModalities: [...output] },
+        }
+      })
     })
   }
 
@@ -378,6 +394,7 @@ export class PiAiAdapter extends LlmAdapter {
     const profile = this.profileOf(snapshot, provider)
     const resolvedModel = this.modelOf(snapshot, provider, model)
     const defaultLevel = describableReasoningLevel(resolvedModel, profile.reasoning)
+    const output = (resolvedModel as ModelWithOutput).output
     // Only a cap the deployment configured is a request default; the
     // catalog's `maxTokens` sizes the model and stops there.
     const configuredMaxTokens = profile.configuredMaxTokens.get(model)
@@ -386,6 +403,7 @@ export class PiAiAdapter extends LlmAdapter {
       id: model,
       name: resolvedModel.name,
       inputModalities: [...resolvedModel.input],
+      ...output === undefined ? {} : { outputModalities: [...output] },
       context: { contextWindow: resolvedModel.contextWindow },
       ...configuredMaxTokens === undefined ? {} : { defaultMaxTokens: configuredMaxTokens },
       ...reasoningInfo(resolvedModel, defaultLevel),

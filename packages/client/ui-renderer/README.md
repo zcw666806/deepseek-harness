@@ -55,6 +55,8 @@ For modules with `meta`, stylesheets are collected from its optional `stylesheet
 
 `createSlotRenderer` connects the slot registry to React: ordinary entry lists and Factory definitions become reactive sources, and each outlet or occurrence renders through the installed renderer. Business plugins pass bare observable sources through typed `hooks`; the renderer binds them at the render position via the uSES adapter. A Factory Store factory stays lazy until an occurrence first materializes; its exclusive handle rejects persistence, render-time records stay weak, and an idempotent effect strongly retains only mounted occurrences while preserving identity across effect replay. Factory errors use the ordinary supervision channel without abdicating the shared definition: the definition and its fallback local Components report against the definition, caller-selected local Components report against the caller registration, and each boundary resets with its own scope incarnation.
 
+Store handles have separate root and Session axes. Strict and optional Session entries resolve the same live instance for the same handle and Session binding. An optional entry without a Session receives a cached frozen initial source and rejecting actions, with no live-store creation or persistence access. The cache leaves with the last registration holding that handle; strict entries still reject a missing binding.
+
 ### Identity
 
 React, React DOM, Cordis, ui-slots, and ui-primitives retain one browser identity through the web shell's static module table; this package arrives as a dynamic client bundle.

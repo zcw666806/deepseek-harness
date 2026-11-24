@@ -1,0 +1,19 @@
+# Bilingual-pair consistency record for 2026-11-12-workspace-comic-projects.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-11-12-workspace-comic-projects.md
+/agent-note-workspace-owned-comic-projects-and-original-artwork:
+  en: 7a1610c996463bb6
+  zh: fddc8ce36285ff80
+/agent-note-workspace-owned-comic-projects-and-original-artwork/problem:
+  en: ae1b44e0dccd8b18
+  zh: f1d2005b26629da7
+/agent-note-workspace-owned-comic-projects-and-original-artwork/decision:
+  en: 292cc799ed0d6cbf
+  zh: eba6001514bd087a
+/agent-note-workspace-owned-comic-projects-and-original-artwork/alternatives-considered:
+  en: f7040d0d6a4e0a6f
+  zh: be3a13f488028dde
+/agent-note-workspace-owned-comic-projects-and-original-artwork/consequences:
+  en: 72dc1803776a36c2
+  zh: a29108582610e517

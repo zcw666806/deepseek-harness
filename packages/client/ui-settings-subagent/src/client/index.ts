@@ -18,6 +18,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import { SubagentCard } from './SubagentCard.tsx'
+import { ReaExperimentCard, reaExperimentForm, type ReaExperimentFace } from './ReaExperimentCard.tsx'
 import { subagentCardFace } from './subagent-card-controller.ts'
 import { SubagentLimitsCardController } from './subagent-limits-card-controller.ts'
 import {
@@ -59,6 +60,17 @@ export const inject = ['slots', 'locale', 'remote', 'remote.session', 'configFor
 export function apply(ctx: ClientContext): void {
   const t = ctx.locale.bind(NS)
   ctx.effect(() => ctx.locale.register(NS, { zh, en, ja, es, fr, de, ru, pt }), 'ui-settings-subagent: dictionaries')
+  const rea = reaExperimentForm(ctx.configForms.get('rea-experiment'))
+  const reaState = rea.bind(() => ({ ...rea.shell(), enabled: rea.field('enabled').text === 'true' }))
+  ctx.effect(() => () => { rea.dispose() }, 'ui-settings-subagent: REA form')
+  ctx.effect(() => ctx.configForms.whileServed(['rea-experiment'], () => ctx.slots.inject('plugins.item', () => ctx.slots.register({
+    name: 'plugins.item',
+    id: 'rea-experiment',
+    order: 11,
+    label: () => t('reaTitle'),
+    locale: NS,
+    inject: (): ReaExperimentFace => ({ hooks: { reaExperiment: reaState }, ...rea.actions() }),
+  }, ReaExperimentCard))), 'ui-settings-subagent: REA page')
   const limits = new SubagentLimitsCardController(ctx.configForms.get(SUBAGENT_NS))
   ctx.effect(() => () => { limits.dispose() }, 'ui-settings-subagent: limits form subscription')
   const models = new SubagentModelSelectionCardController(

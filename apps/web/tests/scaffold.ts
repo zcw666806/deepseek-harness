@@ -33,7 +33,7 @@ import { expect } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { DSH_LAUNCH_ENVIRONMENT_KEY, type LaunchEnvironmentSnapshot } from '@deepseek-ai/dsh-launch-environment'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
-import { stringifyEntryYaml, type PatchOptions } from '@deepseek-ai/cordis-plugin-include'
+import { parseEntryYaml, stringifyEntryYaml, type PatchOptions } from '@deepseek-ai/cordis-plugin-include'
 import {
   captureExpectedWorkspaceSnapshot,
   captureWorkspaceSnapshot,
@@ -58,7 +58,7 @@ import {
   type NormalizeContext,
 } from '@deepseek-ai/dsh-session-snapshot'
 import type { Profile, ProfileContext } from '@deepseek-ai/dsh-app-boot'
-import type { PresetDefinition } from '@deepseek-ai/dsh-agent-preset-registry'
+import { entryListProblem, type PresetDefinition } from '@deepseek-ai/dsh-agent-preset-registry'
 import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
 import { LlmAdapter } from '@deepseek-ai/dsh-llm'
 import type {
@@ -165,6 +165,28 @@ async function ownsReplayFixture(replayFixture: string | undefined): Promise<boo
   if (!existsSync(manifestPath)) return false
   const manifest = parseSnapshotManifest(await readFile(manifestPath, 'utf8'), manifestPath)
   return manifest.session === undefined
+}
+
+/**
+ * Read the preset declared by a recorded Web scenario.
+ * @param scenario - snapshot directory containing its preset files.
+ * @param id - preset identity in the fixture directory.
+ * @returns the definition accepted by the shipped preset registry.
+ */
+export async function loadFixturePreset(scenario: string, id: string): Promise<PresetDefinition> {
+  const directory = join(scenario, 'presets', id)
+  const [metadataText, pluginsText] = await Promise.all([
+    readFile(join(directory, 'preset.yml'), 'utf8'),
+    readFile(join(directory, 'agent.cordis.yml'), 'utf8'),
+  ])
+  const metadata = parseEntryYaml(metadataText)
+  if (metadata === null || typeof metadata !== 'object' || Array.isArray(metadata)) {
+    throw new Error(`Invalid preset metadata for ${id}.`)
+  }
+  const plugins = parseEntryYaml(pluginsText)
+  const problem = entryListProblem(plugins)
+  if (problem !== undefined) throw new Error(`Invalid preset ${id}: ${problem}`)
+  return { ...metadata, id, plugins: plugins as PresetDefinition['plugins'] }
 }
 
 /**

@@ -64,7 +64,8 @@ import { registerToasts } from './toast/register.ts'
 import { WorkspacePicker, WorkspacePickerFactory } from './WorkspacePicker.tsx'
 import { en, ja, es, fr, de, ru, pt, zh, type WorkspaceKey } from './locales.ts'
 
-export type { StartSessionOptions, UiWorkspace } from './navigation.ts'
+export type { SessionReuseGuard, StartSessionOptions, UiWorkspace } from './navigation.ts'
+export type { WorkspaceSessionPresentation } from './contract/presentations.ts'
 export type {
   DirectoryFlowOwnerProps, DirectoryFlowSlotName, DirectoryPickingHooks, DirectoryPickingInjected,
   MenuOpenState, RowToast, SessionDragType, SessionRenameTarget, SessionRowOwnerProps, UseMenuOpenState, WorkspaceBrowserInjected,
@@ -369,7 +370,8 @@ export function apply(ctx: Context, config: SyncedConfig<WorkspaceNavigationConf
     closeAddWorkspace: shortcutControls.closeAdd,
     setDirectoryBusy: shortcutControls.directoryBusy,
     hooks: { workspaceActionRequest, contextMenuTarget: ctx.contextMenus.active, directoryFlow: browserFlowSource, hostInfo,
-      workspaceShortcuts: shortcutControls.state, shortcuts: ctx.shortcuts.catalog },
+      workspaceShortcuts: shortcutControls.state, shortcuts: ctx.shortcuts.catalog,
+      sessionPresentations: uiWorkspace.sessionPresentations },
   })
   const pickerInjected = (directoryFlow: HostObservable<boolean>) => (): WorkspacePickerInjected => ({
     createWorkspace: input => workspaces.create(input),
