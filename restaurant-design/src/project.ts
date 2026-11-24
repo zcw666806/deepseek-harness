@@ -8,6 +8,8 @@ import type { BasePlan, DiningProposal, DiningProposalId, Door, Furniture, Furni
 
 /** A recoverable project-domain rejection with a stable RPC/tool error code. */
 export class ProjectError extends Error {
+  /** Stable project operation error category. */
+  readonly code: string
   readonly issues: readonly LayoutIssue[] | undefined
 
   /**
@@ -16,9 +18,10 @@ export class ProjectError extends Error {
    * @param message - Task-relevant explanation.
    * @param issues - Layout conflicts responsible for the rejection, if any.
    */
-  constructor(readonly code: string, message: string, issues?: readonly LayoutIssue[]) {
+  constructor(code: string, message: string, issues?: readonly LayoutIssue[]) {
     super(message)
     this.name = 'ProjectError'
+    this.code = code
     this.issues = issues
   }
 }
@@ -224,6 +227,7 @@ function newConflicts(current: Project, candidate: Project): LayoutIssue[] {
 
 /** Owns one local project's synchronous commits; callers share this instance rather than opening competing writers. */
 export class FileProjectStore {
+  private readonly path: string
   private current: Project
   private history: History
   private readonly baselineIssues: readonly LayoutIssue[]
@@ -235,7 +239,8 @@ export class FileProjectStore {
    * @param path - Project JSON path owned by this single writer.
    * @param initialProject - Complete seed required when the file does not exist.
    */
-  constructor(private readonly path: string, initialProject?: Project) {
+  constructor(path: string, initialProject?: Project) {
+    this.path = path
     if (!existsSync(path) && initialProject === undefined) throw new ProjectError('PROJECT_NOT_FOUND', `Project file does not exist: ${path}`)
     const stored = existsSync(path) ? parseStored(JSON.parse(readFileSync(path, 'utf8')) as unknown) : parseStored(initialProject)
     this.current = parseProject(stored)

@@ -25,7 +25,7 @@ export default defineConfig(async () => {
     ],
     test: {
       include: [join(directory, 'tests/**/*.spec.ts').replaceAll('\\', '/')],
-      setupFiles: [join(repository, 'scripts/test-invariants.ts')],
+      setupFiles: [join(repository, 'scripts/test-proxy-environment.ts')],
       pool: 'forks',
       execArgv: vitestExecArgv,
       testTimeout: 30_000,

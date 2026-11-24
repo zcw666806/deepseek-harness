@@ -8,12 +8,11 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import Include from '@deepseek-ai/cordis-plugin-include'
+import { mountAgentLoopTestDependencies, mountAgentLoopTestHarness } from '@deepseek-ai/dsh-agent-loop-testkit'
 import { ToolCallId, createUserMessage } from '@deepseek-ai/dsh-llm'
-import { Session, SessionId } from '@deepseek-ai/dsh-session'
-import AgentRegistry, { Inbox } from '@deepseek-ai/dsh-agent'
+import { SessionId } from '@deepseek-ai/dsh-session'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
-import ToolRuntime from '@deepseek-ai/dsh-tools'
+import { executeToolFixture } from '@deepseek-ai/dsh-tool-testkit'
 import * as RestaurantProject from '../src/service.ts'
 import * as RestaurantTools from '../src/plugin.ts'
 
@@ -43,32 +42,13 @@ function sourcePage(): string {
   ].join('\n')
 }
 
-function owner(ctx: Context): Agent {
-  const scope = ctx.plugin(() => {})
-  const id = SessionId('restaurant-loader-owner')
-  const session = Session.create(id)
-  const value: Agent = {
-    id, options: {}, session,
-    inbox: new Inbox(session, { inserted: () => {}, discarded: () => {}, claimed: () => {} }),
-    status: 'idle', ctx: scope.ctx,
-    followup: () => {}, steer: () => {}, inject: () => {}, send: () => {}, cancel() {},
-    runMaintenance: task => task(new AbortController().signal),
-    whenIdle: () => Promise.resolve(),
-  }
-  ctx.agents.register(value)
-  return value
-}
-
-async function boot(): Promise<{ ctx: Context; projectPath: string }> {
+async function boot(): Promise<{ ctx: Context; projectPath: string; createAgent: () => Promise<Agent> }> {
   directory = await mkdtemp(join(tmpdir(), 'dsh-restaurant-loader-'))
   const sourcePath = join(directory, 'restaurant.html')
   const projectPath = join(directory, 'project.json')
   const configPath = join(directory, 'cordis.yml')
   await writeFile(sourcePath, sourcePage())
   await writeFile(configPath, [
-    "- name: '@deepseek-ai/dsh-agent'",
-    "- name: '@deepseek-ai/dsh-system-prompt'",
-    "- name: '@deepseek-ai/dsh-tools'",
     "- name: 'restaurant-project'",
     '  config:',
     `    sourceHtml: ${JSON.stringify(sourcePath)}`,
@@ -80,12 +60,11 @@ async function boot(): Promise<{ ctx: Context; projectPath: string }> {
   const ctx = new Context()
   context = ctx
   ctx.baseUrl = pathToFileURL(directory).href + '/'
+  await mountAgentLoopTestDependencies(ctx)
+  const harness = await mountAgentLoopTestHarness(ctx)
   await ctx.plugin(Loader)
   ctx.loader.builtins.include = Include
   const modules = new Map<string, unknown>([
-    ['@deepseek-ai/dsh-agent', AgentRegistry],
-    ['@deepseek-ai/dsh-system-prompt', SystemPrompt],
-    ['@deepseek-ai/dsh-tools', ToolRuntime],
     ['restaurant-project', RestaurantProject],
     ['restaurant-tools', RestaurantTools],
   ])
@@ -98,11 +77,11 @@ async function boot(): Promise<{ ctx: Context; projectPath: string }> {
   } as unknown as NonNullable<typeof ctx.loader.internal>
   await ctx.loader.create({ name: 'cordis:include', config: { path: pathToFileURL(configPath).href } })
   await ctx.loader.await()
-  return { ctx, projectPath }
+  return { ctx, projectPath, createAgent: () => harness.create(SessionId('restaurant-loader-owner')) }
 }
 
 function invoke(ctx: Context, agent: Agent, name: string, args: Record<string, unknown>) {
-  return ctx.tools.execute({
+  return executeToolFixture(ctx, {
     signal: new AbortController().signal,
     callId: ToolCallId(randomUUID()), name, arguments: args, agent,
   })
@@ -110,8 +89,8 @@ function invoke(ctx: Context, agent: Agent, name: string, args: Record<string, u
 
 describe('restaurant workspace Loader composition', () => {
   it('groups, moves and restores furniture through the registered tools and durable writer', async () => {
-    const { ctx, projectPath } = await boot()
-    const agent = owner(ctx)
+    const { ctx, projectPath, createAgent } = await boot()
+    const agent = await createAgent()
     const read = await invoke(ctx, agent, 'restaurant_read', {})
     expect(read.isError).toBe(false)
     expect(read.value).toMatchObject({ project: { revision: 0 }, selection: [], issues: [] })
@@ -144,8 +123,8 @@ describe('restaurant workspace Loader composition', () => {
   })
 
   it('refuses a stale tool change without altering the durable project', async () => {
-    const { ctx, projectPath } = await boot()
-    const agent = owner(ctx)
+    const { ctx, projectPath, createAgent } = await boot()
+    const agent = await createAgent()
     const accepted = await invoke(ctx, agent, 'restaurant_move', {
       expectedRevision: 0, itemIds: ['table-1'], dxMm: 100, dyMm: 0,
     })
@@ -160,8 +139,8 @@ describe('restaurant workspace Loader composition', () => {
   })
 
   it('previews the group selected at submission after the browser selection changes', async () => {
-    const { ctx, projectPath } = await boot()
-    const agent = owner(ctx)
+    const { ctx, projectPath, createAgent } = await boot()
+    const agent = await createAgent()
     const store = ctx.restaurantProject.store
     const grouped = store.group(0, 'Window table', ['table-1', 'chair-1', 'chair-2'])
     const groupId = grouped.groups[0]!.id

@@ -3,6 +3,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { Service, type Context } from '@deepseek-ai/cordis'
 import s from '@deepseek-ai/schemastery'
 import { z } from 'zod'
+import type {} from '@deepseek-ai/dsh-agent-preset-registry'
 import { admitEncodedImages } from '@deepseek-ai/dsh-attachment'
 import type { AttachmentId, ImageAttachmentRef, VideoAttachmentRef } from '@deepseek-ai/dsh-attachment'
 import type { SessionEvent, SessionHeader, SessionId } from '@deepseek-ai/dsh-session'
@@ -10,7 +11,7 @@ import { SessionPersistenceNotFoundError } from '@deepseek-ai/dsh-session-persis
 import { brandString } from '@deepseek-ai/dsh-brand'
 import type { KvTable } from '@deepseek-ai/dsh-storage-domain'
 import type {} from '@deepseek-ai/dsh-storage-domain'
-import { defineTool } from '@deepseek-ai/dsh-tools'
+import { defineTool, type ToolRegistrationOptions } from '@deepseek-ai/dsh-tools'
 import { Remote, RemoteError, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import { deadline } from '@deepseek-ai/dsh-timeout'
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
@@ -137,6 +138,7 @@ export class VideoProduction extends TypertRemoteService {
   static inject = ['storageDomain', 'sessions', 'sessionPersistence', 'attachments', 'tools']
   /** Loader validation for project limits and host-local renderer settings. */
   static Config: s<Config> = s.object({
+    projectToolDisabledPresets: s.array(s.string().required()).default([]),
     maxShots: s.number().step(1).min(1).max(256).default(64),
     maxAssets: s.number().step(1).min(1).max(256).default(64),
     maxVersionsPerShot: s.number().step(1).min(1).max(256).default(20),
@@ -215,7 +217,14 @@ export class VideoProduction extends TypertRemoteService {
     this.batches = batches
     this.ctx.effect(() => async () => { await batches.close(); await batchDomain.close() }, 'video-production batches')
     await batches.recover()
-    this.ctx.effect(() => this.ctx.tools.register(this.projectTool()), 'video-production model tool')
+    const disabledPresets = this.config.projectToolDisabledPresets
+    const registration: ToolRegistrationOptions = disabledPresets.length === 0 ? {} : {
+      when: ({ agent }) => {
+        const preset = this.ctx.get('agentPresets')?.presetForSession(agent.session) ?? agent.session.header.agentPreset
+        return preset === undefined || !disabledPresets.includes(preset)
+      },
+    }
+    this.ctx.effect(() => this.ctx.tools.register(this.projectTool(), registration), 'video-production model tool')
     installExportCapability(this.ctx, this.config)
   }
 

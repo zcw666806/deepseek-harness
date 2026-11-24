@@ -233,6 +233,8 @@ export interface VideoProjectImportResult {
 
 /** Deployment-specific bounds and the optional host-local export executable. */
 export interface Config {
+  /** Preset IDs whose model steps cannot call `video_project`. */
+  readonly projectToolDisabledPresets?: string[]
   /** Maximum storyboard shots per project; integer 1–256, default 64. */
   readonly maxShots?: number
   /** Maximum reusable reference assets per project; integer 1–256, default 64. */

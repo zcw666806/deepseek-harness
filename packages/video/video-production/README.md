@@ -116,6 +116,8 @@ The service reserves enough project space to retain a bounded failure before sta
 
 The [`video_project` tool catalog](../../../docs/tool-catalog.md#deepseek-aidsh-video-production) owns the action and parameter descriptions. Every successful action returns the complete current project as JSON, including reference metadata, shot prompts, ordered attempts, selected attachments, and export outcomes. Video and image bytes are absent from this result.
 
+`projectToolDisabledPresets` lists preset IDs that exclude `video_project` from model requests and dispatch. The Web bundle lists `minimal` to keep its tool roster limited. The video workbench continues to use the shared project service.
+
 #### Token effect
 
 The tool schema contributes a fixed request prefix when this plugin is mounted. Each call appends its complete project result; `maxProjectBytes` bounds each individual result, while retained history can contain multiple project versions.

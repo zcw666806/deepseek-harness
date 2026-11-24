@@ -11,6 +11,7 @@ export type ResolvedConfig = Required<Config>
  */
 export function resolveConfig(input: Config): ResolvedConfig {
   return {
+    projectToolDisabledPresets: [...input.projectToolDisabledPresets ?? []],
     maxShots: input.maxShots ?? 64,
     maxAssets: input.maxAssets ?? 64,
     maxVersionsPerShot: input.maxVersionsPerShot ?? 20,

@@ -67,7 +67,7 @@ export function apply(ctx: Context, config: Config): void {
     history: store.historyState(), proposal: store.getProposal(),
   })
   ctx.connection.fetch.register({
-    path: '/api/restaurant.workbench', methods: ['GET', 'HEAD'],
+    path: '/api/restaurant.workbench', methods: ['GET', 'HEAD'], requestBody: 'buffered',
     fetch: async request => new Response(request.method === 'HEAD' ? null : renderWorkbench(), { headers: {
       'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store',
       'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; frame-src 'self'; frame-ancestors 'self'; base-uri 'none'; form-action 'none'",
@@ -75,7 +75,7 @@ export function apply(ctx: Context, config: Config): void {
     } }),
   })
   ctx.connection.fetch.register({
-    path: '/api/restaurant.page', methods: ['GET', 'HEAD'],
+    path: '/api/restaurant.page', methods: ['GET', 'HEAD'], requestBody: 'buffered',
     fetch: async request => {
       const params = new URL(request.url).searchParams
       const view = params.get('view')
@@ -91,11 +91,11 @@ export function apply(ctx: Context, config: Config): void {
     },
   })
   ctx.connection.fetch.register({
-    path: '/api/restaurant.state', methods: ['GET'],
+    path: '/api/restaurant.state', methods: ['GET'], requestBody: 'buffered',
     fetch: async () => Response.json(snapshot(), { headers: { 'cache-control': 'no-store' } }),
   })
   ctx.connection.fetch.register({
-    path: '/api/restaurant.export', methods: ['GET', 'HEAD'],
+    path: '/api/restaurant.export', methods: ['GET', 'HEAD'], requestBody: 'buffered',
     fetch: async request => new Response(request.method === 'HEAD' ? null : JSON.stringify(store.read(), null, 2), {
       headers: {
         'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store',

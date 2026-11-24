@@ -116,6 +116,8 @@ Web 组合在既有附件、storage-domain、会话持久化与工具服务旁�
 
 [`video_project` 工具目录](../../../docs/tool-catalog.zh.md#deepseek-aidsh-video-production)拥有动作与参数说明。每次成功操作以 JSON 返回完整当前项目，包括参考图元数据、镜头提示词、有序尝试、选用附件及导出结果。结果中不包含视频或图片字节。
 
+`projectToolDisabledPresets` 列出排除 `video_project` 声明和调用的会话预设 ID。Web 组合包指定 `minimal`，保留它的精简工具列表。视频工作台继续使用共享项目服务。
+
 #### Token 影响
 
 挂载此插件时，工具 schema 贡献固定请求前缀。每次调用追加完整项目结果；`maxProjectBytes` 限制每个单独结果，但保留历史中可以包含多个项目版本。

@@ -10,6 +10,8 @@ Status: implemented
 
 ## 决策
 
+Web 组合包在 Minimal 预设的模型步骤中排除 `video_project`，保留该预设的两个工具。工具准入在准备模型步骤时读取会话记录的预设，恢复会话沿用同一权限。浏览器编辑继续使用共享项目服务。
+
 [video-production 服务](../../../../packages/video/video-production/README.zh.md)通过既有存储领域提供方为每个 Session 拥有一个带修订号的项目。记录绑定 Session 创建时间，变更串行执行，生成和导出尝试持续保留，恢复时将遗留运行中尝试标为中断。模型工具将完整项目作为已记录输出返回；浏览器编辑通过这些已记录读取进入模型上下文。[工作台 UI](../../../../packages/client/ui-video-production/README.zh.md)消费同一组操作。画布位置与成片顺序是分开的值。
 
 浏览器使用固定版本的 [React Flow](https://reactflow.dev/learn) 呈现参考素材、提示词、生成器、已记录视频、成片编排与已渲染成片。节点与连线从制作记录派生。可编辑参考边修改 `assetIds`，视频采用边修改 `selectedVersionId`。镜头归属边保持固定。坐标、视口和选区属于浏览器视图存储；不持久保存另一套执行图或任务引擎。当前计划变化时，历史视频仍保留冻结输入，历史成片仍保留记录的源版本身份。

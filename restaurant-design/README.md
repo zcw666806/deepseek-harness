@@ -20,7 +20,7 @@ The [workbench development proposal](../.agents/notes/proposed/feature/2026-10-2
 
 ## Prepare a project
 
-Run from a checkout with its existing dependencies. Supply the original offline HTML and a dedicated writable project directory:
+Install dependencies from the repository root before preparing a project. The private `restaurant-design` workspace package declares the dependencies the built Harness needs to load the restaurant plugins. Supply the original offline HTML and a dedicated writable project directory:
 
 ```powershell
 node --import tsx/esm restaurant-design/setup.ts --source "C:/path/restaurant.html" --workspace .artifacts/restaurant-design

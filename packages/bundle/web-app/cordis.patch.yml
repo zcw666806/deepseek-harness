@@ -63,6 +63,8 @@
 
     - id: video-production
       name: '@deepseek-ai/dsh-video-production'
+      config:
+        projectToolDisabledPresets: [minimal]
 
     - id: comic-production
       name: '@deepseek-ai/dsh-comic-production'

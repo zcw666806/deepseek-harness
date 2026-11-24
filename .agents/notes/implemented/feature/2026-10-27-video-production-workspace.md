@@ -10,6 +10,8 @@ A generated video attachment does not preserve a production plan. Authors need r
 
 ## Decision
 
+The Web bundle excludes `video_project` from Minimal preset steps to preserve the preset's two-tool roster. Tool admission reads the Session's recorded preset at step preparation, so restored Sessions inherit the same access. Browser editing continues through the shared project service.
+
 The [video-production service](../../../../packages/video/video-production/README.md) owns one revisioned project per Session through the existing storage-domain provider. It binds the record to the Session's creation time, serializes mutations, retains generation and export attempts, and marks abandoned running attempts interrupted on recovery. Model tools return complete projects as logged output; browser edits become model-visible through those recorded reads. The [workspace UI](../../../../packages/client/ui-video-production/README.md) consumes the same operations. Canvas position and film order are separate values.
 
 The browser uses a pinned [React Flow](https://reactflow.dev/learn) renderer for references, prompts, generators, recorded videos, film assembly, and rendered films. Nodes and connections derive from production records. Editable reference edges change `assetIds`; adopted-video edges change `selectedVersionId`. Shot ownership edges remain fixed. Coordinates, viewport, and selection belong to the browser view store; no second execution graph or job engine is persisted. Historical videos retain their frozen inputs, and a historical film retains its recorded source-version identities when the current plan changes.

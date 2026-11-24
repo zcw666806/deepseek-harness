@@ -20,7 +20,7 @@
 
 ## 准备项目
 
-在已有依赖的仓库中执行，指定原始离线 HTML 和独立的可写项目目录：
+准备项目之前，从仓库根目录安装依赖。构建后的 Harness 加载餐厅插件时，会使用私有 `restaurant-design` 工作区包声明的依赖。指定原始离线 HTML 和独立的可写项目目录：
 
 ```powershell
 node --import tsx/esm restaurant-design/setup.ts --source "C:/path/restaurant.html" --workspace .artifacts/restaurant-design
