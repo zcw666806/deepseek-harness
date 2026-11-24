@@ -35,6 +35,7 @@
 - textbox "メッセージを送信するかタスクを実行、/ コマンド、@ ファイルやセッション"
 - button "ファイルを追加またはコマンドを実行"
 - 'button "アクセスモード、現在: ワークスペース書き込み"': ワークスペース書き込み
+- button "制作"
 - button "モデルを選択、現在 DeepSeek-V4-Flash": DeepSeek-V4-Flash
 - button "メッセージを送信" [disabled]
 - button "1ターン 2ステップ · {{throughput}} tok/s": 1ターン 2ステップ{{throughput}} tok/s

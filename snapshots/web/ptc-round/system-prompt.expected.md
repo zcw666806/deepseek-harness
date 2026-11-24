@@ -310,6 +310,20 @@ interface ToolArgsMap {
     /** Required only with action blocked: the concrete condition that persisted across rounds and blocks progress. */
     blocked_reason?: string;
   } & Record<string, JsonValue>;
+  /** Create and edit a storyboard with reusable character, scene, and prop images. Generate or retry individual shots, select completed versions, reorder shots, and export the selected clips as one MP4. View the project before updating and include its current revision. Every result includes the complete current project. */
+  video_project: {
+    action: "view" | "update" | "generate" | "reorder" | "export";
+    /** For update: {revision,title,assets:[{id,name,kind,description,image?}],shots:[{id,title,prompt,duration,aspectRatio,resolution,assetIds,position:{x,y},selectedVersionId?,edit?:{trimStartSeconds?,trimEndSeconds?,volume?,captions:[{startSeconds,endSeconds,text}]}}]}. Caption times start at zero after trimming; volume 0 mutes and 1 preserves source audio. Use stable unique ids. Images must already belong to this Session or project. */
+    input?: JsonValue;
+    /** Shot identity for generate. */
+    shotId?: string;
+    /** Complete ordered list of shot identities for reorder. */
+    shotIds?: string[];
+    /** Optional configured generation provider for generate. */
+    generator?: string;
+    /** Optional video model for generate. */
+    model?: string;
+  } & Record<string, JsonValue>;
   /** Wait for input at your next step, including agent messages, completion notifications, and user steering. Returns immediately if new input is pending. `timedOut: false` means new input is pending. Pending input is delivered to the model after code execution finishes. */
   wait_agent: {
     /** Wait duration in milliseconds, from 10000 through 3600000. Defaults to 30000. */
@@ -1491,6 +1505,7 @@ interface ToolOutputMap {
     };
     activation: "armed" | "disarmed";
   };
+  video_project: Record<string, JsonValue>;
   wait_agent: {
     timedOut: boolean;
   };

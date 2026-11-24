@@ -9,3 +9,4 @@
   - option "Permission Switch the permission preset (sandbox mode + approval policy)"
   - option "Model Select the model for this conversation"
   - option "Export Download this Session log as a ZIP archive"
+  - option "models Check which models the selected provider lists for its saved credential"
