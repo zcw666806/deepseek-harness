@@ -1081,6 +1081,21 @@ describe('tokenizeSessionFixtureCwd', () => {
     expect(tokenizeSessionFixtureCwd(out)).toBe(out)
   })
 
+  it('tokenizes a fresh Windows path after refresh preserved the old header token', () => {
+    const workspace = String.raw`C:\Users\runner\AppData\Local\Temp\acp-snap-cwd-abc123`
+    const row = JSON.stringify({
+      type: 'developer/message',
+      data: { content: [{
+        type: 'text',
+        text: `Current working directory: ${JSON.stringify(workspace)}. Read ${workspace.replaceAll('\\', '/')}/proof.txt.`,
+      }] },
+    })
+    const raw = `${JSON.stringify({ type: 'session', id: 's', cwd: '{{cwd}}' })}\n${row}\n`
+    const output = tokenizeSessionFixtureCwd(raw, workspace)
+    expect(output).toContain(String.raw`Current working directory: \"{{cwd}}\". Read {{cwd}}/proof.txt.`)
+    expect(output).not.toContain('acp-snap-cwd-abc123')
+  })
+
   it('preserves an independent Session directory relative to the scenario workspace', () => {
     const workspace = '/tmp/snapshot-sessions-abc123'
     const raw = [

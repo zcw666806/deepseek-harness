@@ -1,5 +1,5 @@
 - id: persona
   name: '@deepseek-ai/dsh-persona'
   config:
-    text: You are testing the REA experiment tools.
+    prefix: You are testing the REA experiment tools.
     includeRuntimeContext: false
