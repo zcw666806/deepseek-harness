@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { CapabilityView } from '@deepseek-ai/dsh-capability-manager/types'
 import { CapabilityController } from '../src/client/controller.ts'
-import { capability, ID } from './fixtures.ts'
+import { capability, ID } from './fixtures.client.ts'
 
 describe('capability settings controller', () => {
   it('rejects a malformed capability file before sending configuration to the Host', async () => {

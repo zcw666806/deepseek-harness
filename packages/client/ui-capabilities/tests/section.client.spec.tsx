@@ -7,7 +7,7 @@ import { CapabilitySection, type CapabilitySectionProps } from '../src/client/Ca
 import type { CapabilitySnapshot } from '../src/client/controller.ts'
 import { zh } from '../src/client/locales.ts'
 import type {} from '../src/client/mount.ts'
-import { capability, ID, settingsRuntimeProps } from './fixtures.ts'
+import { capability, ID, settingsRuntimeProps } from './fixtures.client.ts'
 
 afterEach(cleanup)
 function props(state: CapabilitySnapshot): CapabilitySectionProps {

@@ -8,7 +8,7 @@ import type { WorkflowSnapshot } from '../src/client/workflow-controller.ts'
 import { zh } from '../src/client/locales.ts'
 import type { ComfyWorkflow } from '@deepseek-ai/dsh-video-comfyui/types'
 import type {} from '../src/client/mount.ts'
-import { settingsRuntimeProps } from './fixtures.ts'
+import { settingsRuntimeProps } from './fixtures.client.ts'
 
 afterEach(cleanup)
 function props(state: WorkflowSnapshot): WorkflowSectionProps {

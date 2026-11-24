@@ -1,4 +1,4 @@
-/** Minimal Host capability reports used by the settings tests. */
+/** Minimal Host capability reports for browser settings tests. */
 import type { CapabilityId, CapabilityView } from '@deepseek-ai/dsh-capability-manager/types'
 import { allowAllAccess, contextMenuHook, workspaceSnapshot } from '@deepseek-ai/dsh-client-test-runtime'
 import type { PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'

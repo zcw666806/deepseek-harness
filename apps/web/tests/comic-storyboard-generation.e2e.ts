@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
-import { createMessage, createUserMessage, LlmAdapter, ToolCallId } from '@deepseek-ai/dsh-llm'
+import { createMessage, createSystemMessage, createUserMessage, LlmAdapter, ToolCallId } from '@deepseek-ai/dsh-llm'
 import type { GenerateOptions, LlmModelInfo, StreamChunk } from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-agent-default-model'
 import type {} from '@deepseek-ai/dsh-comic-production'
@@ -77,11 +77,12 @@ class StoryPlanner extends LlmAdapter {
 function appendStoryboardTurn(session: Session, title: string, request: string, storyboard: string): readonly SessionEvent[] {
   return session.append([
     ['turn/start', { turn: 1 }],
+    ['step/start', { turn: 1, step: 1 }],
+    ['system/message', { turn: 1, step: 1, message: createSystemMessage('You help plan comic storyboards.') }, { surfaceOp: 'append' }],
     ['user/message', createUserMessage({
       content: [{ type: 'text', text: request }], source: { kind: 'user' },
     }), { surfaceOp: 'append' }],
     ['session/title', { title, messageSeqs: [], source: { kind: 'user' } }],
-    ['step/start', { turn: 1, step: 1 }],
     ['assistant/message', {
       turn: 1,
       step: 1,
