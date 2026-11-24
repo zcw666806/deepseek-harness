@@ -857,6 +857,7 @@
 
 .footerActions {
   display: flex;
+  flex-wrap: wrap;
 }
 
 .collapsed .footArea {

@@ -11,7 +11,7 @@ Desktop product events use the optional [product analytics service](../product-a
 
 ## Summary
 
-The dsh web client sidebar lets users recognize the active build, start a new session, collapse navigation to a 56px rail, browse Workspaces and Sessions, and open Settings. It preserves a bottom-pinned Settings entry and hides idle scrollbars without moving browser rows. New Session uses an explicitly selected Workspace, then the current Session's Workspace, then the most recently active Workspace; if none exists, it opens a blank New Session page. Deployments can replace the brand mark or name while retaining the navigation controls and rail geometry.
+The dsh web client sidebar lets users recognize the active build, start a new session, collapse navigation to a 56px rail, browse Workspaces and Sessions, review token usage, and open Settings. It preserves a bottom-pinned Settings entry and hides idle scrollbars without moving browser rows. New Session uses an explicitly selected Workspace, then the current Session's Workspace, then the most recently active Workspace; if none exists, it opens a blank New Session page. Deployments can replace the brand mark or name while retaining the navigation controls and rail geometry.
 
 ## Table of Contents
 
@@ -65,6 +65,10 @@ Under `html[data-platform='darwin']` (set only by the desktop preload) the expan
 
 Scrollbars in the column are a pointer affordance: the shell rebinds the scrollbar indirection to `transparent` whenever the pointer is outside the column, so a list nobody is pointing at carries no bar. After the pointer leaves, the thumb stays drawn for 500ms and then fades out linearly over 200ms; a pointer that returns before the fade ends redraws it at once, and reduced motion keeps the delay without the fade. Outside is decided by the column's box for every pointer move that reaches the column, so a pointer over the fixed-position Settings panel or a portalled menu outside the box also counts as outside. The reservation that keeps rows from moving belongs to the scrolling region (ui-workspace), so revealing a thumb never reflows.
 
+### Token usage across sessions
+
+The expanded sidebar shows a token total and cache hit rate at the bottom for listed sessions with recorded usage. The total adds uncached input, cache reads, cache writes, and output. When there are input tokens, the cache hit rate shows the share of those tokens read from cache. Hover over the row for the exact total and the number of contributing sessions. The row is hidden when the sidebar is collapsed or the total is zero.
+
 ### Click analytics
 
 On Desktop, the official navigation controls report `sidebar_menu_click` with `menu_name` and `position` before they act. Without the analytics service, the controls only navigate. Selecting a panel by other means reports nothing, and the sidebar reports no exposure events.
@@ -96,7 +100,7 @@ The sidebar root supplies inherited CSS properties to `sidebar.workspaces` and `
 
 ### Slot discipline
 
-Declaration-aware `slots.inject()` lets a replacing package activate before or after the sidebar. The foot is the `sidebar.settings` seat: the sidebar renders only the bottom-pinned layout slot and shares its column state (`wide`). The `/client` exports are the plugin body (`apply`/`inject`) plus the contract types only; SidebarRoot, the row components, and the tree derivation remain package-internal behind the slot registration.
+Declaration-aware `slots.inject()` lets a replacing package activate before or after the sidebar. The bottom-pinned `sidebar.footer.action` list sits above `sidebar.settings`. Both slots receive the sidebar's expanded state (`wide`). The usage row registers in `sidebar.footer.action` and sums the `tokenUsage` values in the client session list. The `/client` exports are the plugin body (`apply`/`inject`) and the associated types.
 
 </details>
 
@@ -134,6 +138,7 @@ These limits define what the shell owns versus what its occupants own; they are 
 - **Session state-dot rendering is owned by ui-workspace** — no done/error notification sources are available to this shell.
 - **Workspace browser behavior is composition-owned** — grouping, ordering, search, and row state belong to ui-workspace, not this shell.
 - **Copying the local-build version is mouse-only** — keyboard activation of the brand starts a session.
+- **Inherited token usage can count more than once** — each listed session contributes the usage in the history it inherits.
 - **Only wheel and trackpad input crosses the navigation boundary in one gesture** — touch drags keep native nested scrolling and stop where the viewport reaches its end; browsers without scroll-state container queries scroll the section first. Wheel steps split in JavaScript run on the main thread without smooth-scrolling animation or overscroll bounce.
 
 <a id="dev-note"></a>

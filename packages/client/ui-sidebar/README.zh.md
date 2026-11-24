@@ -11,7 +11,7 @@ kind: "package-reference"
 
 ## 概述
 
-dsh Web 客户端的侧边栏让用户识别当前构建、启动新会话、将导航折叠为 56px 轨道、浏览 Workspace 与 Session，以及打开 Settings。它会将 Settings 入口固定在底部，并在隐藏空闲滚动条时避免浏览器行发生位移。New Session 优先使用显式选择的 Workspace，其次使用当前 Session 所属的 Workspace，再其次使用最近活跃的 Workspace；如果都不存在，则打开空白的 New Session 页面。部署可以替换品牌标记或名称，同时保留导航控件和轨道几何。
+dsh Web 客户端的侧边栏让用户识别当前构建、启动新会话、将导航折叠为 56px 轨道、浏览 Workspace 与 Session、查看 Token 用量，以及打开 Settings。它会将 Settings 入口固定在底部，并在隐藏空闲滚动条时避免浏览器行发生位移。New Session 优先使用显式选择的 Workspace，其次使用当前 Session 所属的 Workspace，再其次使用最近活跃的 Workspace；如果都不存在，则打开空白的 New Session 页面。部署可以替换品牌标记或名称，同时保留导航控件和轨道几何。
 
 ## 目录
 
@@ -65,6 +65,10 @@ root 作用域的 `sidebar.session.action` 是包裹新建会话行内容的 HOC
 
 栏内的滚动条是一种指针可供性：只要指针不在栏内，外壳就把滚动条间接层重新绑定为 `transparent`，因此没人指向的列表不会带着滚动条。指针离开后，滑块先保留 500ms，再在 200ms 内线性淡出；淡出结束前指针返回会立即重新显示滑块，减弱动态效果时保留延迟但不淡出。是否在栏内按栏的矩形范围判定，对每次到达该栏的指针移动都会判定，因此指针位于固定定位的设置面板或栏外的 portal 菜单上时，同样算作在栏外。避免行位移的空间预留属于滚动区域本身（ui-workspace），所以显示滑块不会引起重排。
 
+### 会话 Token 用量汇总
+
+侧边栏展开时，底部显示列表中有用量记录的会话的 Token 总量和缓存命中率。总量包含未缓存输入、缓存读取、缓存写入和输出。有输入 Token 时，缓存命中率显示其中从缓存读取的比例。悬停可查看精确总量和计入汇总的会话数。侧边栏收起或总量为零时隐藏该行。
+
 ### 点击埋点
 
 在桌面端，官方导航控件在执行操作前上报 `sidebar_menu_click`，携带 `menu_name` 与 `position`。没有埋点服务时，这些控件只执行导航。通过其他途径选中面板不上报，侧边栏也不上报曝光事件。
@@ -96,7 +100,7 @@ root 作用域的 `sidebar.session.action` 是包裹新建会话行内容的 HOC
 
 ### slot 纪律
 
-声明感知的 `slots.inject()` 让替换包无论先于还是后于侧边栏激活都能生效。页脚承载 `sidebar.settings` 席位：侧边栏只渲染固定在底部的布局 slot，并共享其栏状态（`wide`）。`/client` 导出接口只包含插件主体（`apply`/`inject`）及约定类型；SidebarRoot、行组件与树派生仍由 slot 注册封装在包内。
+声明感知的 `slots.inject()` 让替换包无论先于还是后于侧边栏激活都能生效。固定在底部的 `sidebar.footer.action` 列表位于 `sidebar.settings` 上方。两个 slot 都接收侧边栏的展开状态（`wide`）。用量汇总行注册在 `sidebar.footer.action`，汇总客户端会话列表中的 `tokenUsage`。`/client` 导出插件主体（`apply`/`inject`）及其类型。
 
 </details>
 
@@ -134,6 +138,7 @@ root 作用域的 `sidebar.session.action` 是包裹新建会话行内容的 HOC
 - **Session 状态点渲染由 ui-workspace 持有**：本外壳没有可用的 done/error 通知数据源。
 - **Workspace 浏览行为由组合持有**：分组、排序、搜索与行状态都属于 ui-workspace，不属于此外壳。
 - **复制本地构建版本号仅支持鼠标**：键盘激活品牌会新建会话。
+- **继承历史中的 Token 用量可能重复计入**：列表中的每个会话都计入其继承历史中的用量。
 - **只有滚轮和触控板输入能在一次手势中越过导航边界**：触摸拖动保持浏览器原生的嵌套滚动，在视口滚到底时停止；不支持滚动状态容器查询的浏览器会先滚动区块。由 JavaScript 分配的滚轮步进在主线程执行，没有平滑滚动动画，也没有越界回弹。
 
 <a id="dev-note"></a>

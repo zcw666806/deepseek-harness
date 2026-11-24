@@ -75,6 +75,9 @@ describe('ui-sidebar apply', () => {
     expect(section.inject.hooks.sectionScroller({} as never, { useSectionScroller })).toBe(useSectionScroller)
     expect(b.slots.spec('sidebar.settings')).toEqual({ kind: 'single', scope: 'root' })
     expect(b.slots.spec('sidebar.footer.action')).toEqual({ kind: 'list', scope: 'root' })
+    expect(b.slots.entries('sidebar.footer.action')).toMatchObject([
+      { options: { id: 'usage-reading', order: -10 }, locale: 'sidebar' },
+    ])
     expect(b.slots.spec('sidebar.session.action')).toEqual({ kind: 'hoc', scope: 'root' })
     expect(b.slots.spec('sidebar.panellist')).toEqual({ kind: 'list', scope: 'root' })
     // Copy rides the standard locale seat, not the inject face.

@@ -2,8 +2,11 @@ version: 1
 scenario: pwsh-tool-turn
 profile: headless
 composition: pwsh
-recording: live
+recording: authored
 header:
   class: pwsh
   pin: true
 platform: pwsh
+permission: workspace-write
+workspace:
+  final: true

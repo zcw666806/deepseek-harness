@@ -12,6 +12,11 @@ export const zh = {
   'navigation.label': '导航',
   'panels.more': '更多',
   'version.copied': '版本号复制成功',
+  'usage.tokens': '{count} tok',
+  'usage.cacheHit': '缓存命中 {percent}%',
+  'usage.title.one': '{sessions} 个会话共使用 {count} tok',
+  'usage.title.other': '{sessions} 个会话共使用 {count} tok',
+  'usage.groupSeparator': ',',
 } satisfies Record<string, string>
 
 /** The sidebar namespace key union. */
@@ -29,6 +34,11 @@ export const en = {
   'navigation.label': 'Navigation',
   'panels.more': 'More',
   'version.copied': 'Version copied',
+  'usage.tokens': '{count} tok',
+  'usage.cacheHit': 'Cache hit {percent}%',
+  'usage.title.one': 'Token usage across {sessions} session ({count} tok)',
+  'usage.title.other': 'Token usage across {sessions} sessions ({count} tok)',
+  'usage.groupSeparator': ',',
 } satisfies Record<SidebarKey, string>
 
 /** Japanese copy, checked against the English keys. */
@@ -43,6 +53,11 @@ export const ja = {
   'navigation.label': 'ナビゲーション',
   'panels.more': 'その他',
   'version.copied': 'バージョンをコピーしました',
+  'usage.tokens': '{count} tok',
+  'usage.cacheHit': 'キャッシュヒット {percent}%',
+  'usage.title.one': '{sessions} 件のセッションで {count} tok 使用',
+  'usage.title.other': '{sessions} 件のセッションで {count} tok 使用',
+  'usage.groupSeparator': ',',
 } satisfies Record<keyof typeof en, string>
 
 /** Spanish dictionary, checked against the English keys. */
@@ -57,6 +72,11 @@ export const es = {
   'navigation.label': 'Navegación',
   'panels.more': 'Más',
   'version.copied': 'Versión copiada',
+  'usage.tokens': '{count} tok',
+  'usage.cacheHit': 'Aciertos de caché {percent}%',
+  'usage.title.one': 'Uso en {sessions} sesión ({count} tok)',
+  'usage.title.other': 'Uso en {sessions} sesiones ({count} tok)',
+  'usage.groupSeparator': '.',
 } satisfies Record<keyof typeof en, string>
 
 /** French dictionary, checked against the English keys. */
@@ -71,6 +91,11 @@ export const fr = {
   'navigation.label': 'Navigation',
   'panels.more': 'Plus',
   'version.copied': 'Version copiée',
+  'usage.tokens': '{count} tok',
+  'usage.cacheHit': 'Cache atteint à {percent} %',
+  'usage.title.one': 'Utilisation sur {sessions} session ({count} tok)',
+  'usage.title.other': 'Utilisation sur {sessions} sessions ({count} tok)',
+  'usage.groupSeparator': '\u202f',
 } satisfies Record<keyof typeof en, string>
 
 /** German dictionary, checked against the English keys. */
@@ -85,6 +110,11 @@ export const de = {
   'navigation.label': 'Navigation',
   'panels.more': 'Mehr',
   'version.copied': 'Version kopiert',
+  'usage.tokens': '{count} tok',
+  'usage.cacheHit': 'Cachetreffer {percent} %',
+  'usage.title.one': 'Verbrauch in {sessions} Sitzung ({count} tok)',
+  'usage.title.other': 'Verbrauch in {sessions} Sitzungen ({count} tok)',
+  'usage.groupSeparator': '.',
 } satisfies Record<keyof typeof en, string>
 
 /** Russian dictionary, checked against the English keys. */
@@ -99,6 +129,11 @@ export const ru = {
   'navigation.label': 'Навигация',
   'panels.more': 'Ещё',
   'version.copied': 'Версия скопирована',
+  'usage.tokens': '{count} tok',
+  'usage.cacheHit': 'Попадания в кеш {percent}%',
+  'usage.title.one': 'Расход за {sessions} сесс. ({count} tok)',
+  'usage.title.other': 'Расход за {sessions} сесс. ({count} tok)',
+  'usage.groupSeparator': '\u00a0',
 } satisfies Record<keyof typeof en, string>
 
 /** Portuguese dictionary, checked against the English keys. */
@@ -113,4 +148,9 @@ export const pt = {
   'navigation.label': 'Navegação',
   'panels.more': 'Mais',
   'version.copied': 'Versão copiada',
+  'usage.tokens': '{count} tok',
+  'usage.cacheHit': 'Acertos no cache {percent}%',
+  'usage.title.one': 'Uso em {sessions} sessão ({count} tok)',
+  'usage.title.other': 'Uso em {sessions} sessões ({count} tok)',
+  'usage.groupSeparator': '.',
 } satisfies Record<keyof typeof en, string>
