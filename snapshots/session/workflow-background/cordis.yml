@@ -6,6 +6,9 @@
 - id: tool-pwsh
   disabled: true
 
+- id: tool-skill
+  disabled: true
+
 - id: workflow-worker-thread
   name: '@deepseek-ai/dsh-workflow-worker-thread'
   config:

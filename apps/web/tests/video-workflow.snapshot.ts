@@ -15,7 +15,8 @@ import type {} from '@deepseek-ai/dsh-settings'
 import type {} from '@deepseek-ai/dsh-video-production'
 import {
   assertFixtureInventory, captureStableAria, compareOrRefreshGolden, fixtureUserPrompts,
-  launchWebScaffold, loadFixturePreset, parseSeedFixture, readPersistedEvents, watchConsole, webSnapshotMode, type WebScaffold,
+  launchWebScaffold, loadFixturePreset, parseSeedFixture, readPersistedEvents,
+  selectedSessionFixture, watchConsole, webSnapshotMode, type WebScaffold,
 } from './scaffold.ts'
 import { newEnglishPage, openCreationStudio, saveFailureShot } from './support.ts'
 
@@ -32,7 +33,7 @@ describe.skipIf(MODE === 'record')('recorded Web video workflow with full-access
   let planned: VideoProjectInput
 
   beforeAll(async () => {
-    const fixture = await readFile(FIXTURE, 'utf8')
+    const fixture = await readFile(await selectedSessionFixture(FIXTURE), 'utf8')
     const recorded = parseSeedFixture(fixture).events
     const call = recorded.find(event => event.type === 'tool/call' && event.data.name === 'video_project')
     if (call?.type !== 'tool/call') throw new Error('Video workflow fixture must contain its project update.')

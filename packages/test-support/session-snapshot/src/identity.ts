@@ -86,8 +86,11 @@ export function redactSessionSnapshotIds(logs: readonly string[]): string[] {
         || data.message.source.kind !== 'tool' || typeof data.message.source.callId !== 'string'
         || !projectCalls.has(data.message.source.callId) || !Array.isArray(data.message.content)) continue
       const callId = data.message.source.callId
-      if (!data.message.content.some(block => isRecord(block) && block.type === 'tool-result'
-        && block.toolCallId === callId && block.isError === false)) continue
+      const succeeded = data.message.role === 'tool'
+        ? data.message.toolCallId === callId && data.message.isError === false
+        : data.message.content.some(block => isRecord(block) && block.type === 'tool-result'
+          && block.toolCallId === callId && block.isError === false)
+      if (!succeeded) continue
       const project = data.meta
       if (!isRecord(project) || project.sessionId !== sessionId || typeof project.revision !== 'number'
         || !Array.isArray(project.assets) || !Array.isArray(project.shots) || !Array.isArray(project.exports)) continue

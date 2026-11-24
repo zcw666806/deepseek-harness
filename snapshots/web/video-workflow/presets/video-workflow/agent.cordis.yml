@@ -1,6 +1,6 @@
 - id: persona
   name: '@deepseek-ai/dsh-persona'
   config:
-    text: You help users plan video projects through the available tools.
+    prefix: You help users plan video projects through the available tools.
     complete: true
     includeRuntimeContext: false
