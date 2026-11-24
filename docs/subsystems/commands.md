@@ -63,6 +63,8 @@ interface CommandInvocation {
   readonly commandId: CommandId
   /** Exact agent whose UI received the command. */
   readonly agent: Agent
+  /** Remote caller when it is not the owner. An absent caller is trusted in-process code or the owner. */
+  readonly principal?: Principal
   /** Exact text following the registered command name, including separator whitespace. */
   readonly rawInput: string
   /**

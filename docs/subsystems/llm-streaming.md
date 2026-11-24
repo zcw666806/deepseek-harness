@@ -957,6 +957,14 @@ declare abstract class LlmAdapter {
    */
   listModels(_provider: string): Promise<readonly LlmModelInfo[]>;
   /**
+   * Read a fresh listing from the endpoint and credential of one saved route.
+   * @param _provider - registered route owned by this adapter.
+   * @param _signal - deadline covering provider and credential resolution.
+   * @returns model IDs and metadata advertised by the endpoint.
+   * @throws LlmError when the route has no supported live listing.
+   */
+  listVisibleModels(_provider: string, _signal: AbortSignal): Promise<readonly LlmDiscoveredModel[]>;
+  /**
    * Resolve all metadata available for one exact model. This query is
    * independent of the advisory catalog and does not validate request routing.
    * @param provider - one provider route owned by this adapter.
