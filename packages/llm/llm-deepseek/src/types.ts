@@ -1,6 +1,6 @@
 /** Model catalog and request-local dependencies for DeepSeek Messages. */
 import type {
-  ImageAttachmentAccess, LlmError, LlmModelInfo, ModelModality, ResolvedRetryPolicy,
+  ImageAttachmentAccess, LlmDiscoveredModel, LlmError, LlmModelInfo, ModelModality, ResolvedRetryPolicy,
   SystemPromptUpdate, ToolUpdate,
 } from '@deepseek-ai/dsh-llm'
 import type { AttachmentStore, ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
@@ -116,6 +116,8 @@ export interface DeepSeekAdapterOptions<Connection extends DeepSeekConnectionOpt
   providerName?: string
   /** Provider-owned catalog availability; omission exposes no discovery entries. */
   discoverModels?: (provider: string) => Promise<LlmModelInfo[]>
+  /** Fresh listing on the authenticated route. Omission leaves explicit listing unsupported. */
+  listVisibleModels?: (provider: string, signal: AbortSignal) => Promise<readonly LlmDiscoveredModel[]>
   /** Current validated connection facts; called once per operation. */
   options: () => Connection
   /**

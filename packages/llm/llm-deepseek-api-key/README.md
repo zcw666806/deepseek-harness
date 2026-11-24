@@ -43,6 +43,8 @@ The first access waits for the listing up to `modelsTimeoutMs`. After first use,
 
 Listed models are offered, merged with this build's entries, and refused before network I/O with `CLIENT_UPGRADE_REQUIRED` or `MODEL_UNSUPPORTED` by the [account route's rules](../llm-deepseek-account/README.md#use-this-package); model ids the listing does not name pass through unchanged.
 
+The owner can use `/models` to make one explicit request to `/models` at the saved Messages origin, including when a custom catalog is configured. The command uses the same route credential and reports the provider response independently of the selector cache.
+
 A `models` list that differs from the built-in catalog replaces the catalog and stops listing requests; the Models page stores an edited catalog there. Removing that list, as **Restore defaults** on the Models page does, returns the route to the listing, and the next access loads the listing again even when the cached one is still fresh. A list identical to the built-in catalog counts as uncustomized.
 
 | Field | Default | Meaning |

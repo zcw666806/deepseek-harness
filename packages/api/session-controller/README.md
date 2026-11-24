@@ -27,6 +27,8 @@ Desktop analytics follows the [product collection policy](../../client/product-a
 <a id="use-this-package"></a>
 ## Use this package
 
+The owner can enter `/models` in a conversation to query the saved provider selected for the next step. The adapter sends one bounded listing request using its configured authentication. The command records its result in the conversation without starting a model turn. The returned IDs describe the listing, and inference access must be tested separately.
+
 Fork keeps the inclusive `atSeq` request field and the default completed-turn cut. The command passes the observed history as the fork source: the stored parent prefix through `persistedEventCount`, then the child's marker and cold-read repair events. A live parent's log replaces that prefix in the factory, and a sharing backend drains the parent writer before referencing it; a parent whose stored history is shorter than the cut creates no child. See the [fork upgrade guide](../../../docs/upgrade-guide/v0.2.2-rc.3/session-fork-source/guide.md) for the creation parameters.
 
 Prompt retries use the request identity in the first committed inbox insertion, including after the message is claimed or removed. Admission checks again after asynchronous attachment preparation, so concurrent retries accept one input. Acceptance acknowledges insertion, not execution or completion.

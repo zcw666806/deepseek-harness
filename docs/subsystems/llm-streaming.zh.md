@@ -1145,6 +1145,15 @@ fileRequestText(ref: FileAttachmentRef): string
 async listModels(provider: string): Promise<LlmModelInfo[]>
 
 /**
+ * Query the registered route's actual endpoint with a total deadline.
+ * @param provider - registered provider route to query.
+ * @param signal - optional cancellation by the caller.
+ * @returns advertised models in endpoint order with duplicate IDs removed.
+ * @throws LlmError when listing fails, is cancelled, or exceeds the deadline.
+ */
+async listVisibleModels(provider: string, signal?: AbortSignal): Promise<LlmDiscoveredModel[]>
+
+/**
  * Resolve and validate all metadata from the adapter that owns one exact
  * route. The result is detached from adapter-owned objects; catalog
  * membership remains advisory and does not control request routing.

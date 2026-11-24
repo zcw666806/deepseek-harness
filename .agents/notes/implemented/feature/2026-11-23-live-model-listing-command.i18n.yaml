@@ -1,0 +1,19 @@
+# Bilingual-pair consistency record for 2026-11-23-live-model-listing-command.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-11-23-live-model-listing-command.md
+/agent-note-live-model-listing-as-a-user-command:
+  en: d30784a6df8347ae
+  zh: 9c59051ea7e4eb0f
+/agent-note-live-model-listing-as-a-user-command/problem:
+  en: 8df04cb37e9f80a6
+  zh: 1b7349011bdfa3a7
+/agent-note-live-model-listing-as-a-user-command/decision:
+  en: 7b63deda11092d23
+  zh: 037472483eb88881
+/agent-note-live-model-listing-as-a-user-command/alternatives-considered:
+  en: 24d6b72939a37a4a
+  zh: 43ed49cc5dc74b2d
+/agent-note-live-model-listing-as-a-user-command/consequences:
+  en: 0073034adbaa5bfd
+  zh: b1baa6055cf7dbff

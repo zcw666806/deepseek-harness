@@ -48,6 +48,15 @@ const LISTABLE_PROTOCOLS: ReadonlySet<string> = new Set([
   'openai-responses',
 ])
 
+/**
+ * Whether a protocol has a supported model listing.
+ * @param api - pi-ai wire protocol of the saved route.
+ * @returns true when the adapter can authenticate and decode that listing.
+ */
+export function supportsModelListing(api: string): boolean {
+  return LISTABLE_PROTOCOLS.has(api)
+}
+
 /** Stable API version required by Anthropic's model-listing endpoint. */
 const ANTHROPIC_VERSION = '2023-06-01'
 
@@ -316,6 +325,7 @@ export interface StoredModelDiscoveryProfile {
  * @param storedProfile - Host-owned headers and lazy credential resolution for
  *   the named route. It is read only on the path that reaches the network; the
  *   credential is resolved only when the draft carries none.
+ * @param savedRoute - internal mode for an authenticated saved route, which always queries the bound endpoint.
  * @returns the advertised models in endpoint order.
  * @throws LlmError when the protocol has no readable listing, the endpoint
  *   refuses or fails the request, or the reply is not a model listing.
@@ -323,10 +333,11 @@ export interface StoredModelDiscoveryProfile {
 export async function discoverModels(
   request: LlmModelDiscoveryOperation,
   storedProfile?: () => StoredModelDiscoveryProfile | undefined,
+  savedRoute = false,
 ): Promise<readonly LlmDiscoveredModel[]> {
   // A catalog route already has its answer, and a better one: the installed
   // entries carry context windows and output caps no listing endpoint reports.
-  if (request.provider !== undefined) {
+  if (!savedRoute && request.provider !== undefined) {
     const installed = catalogModels(request.provider)
     if (installed.size > 0) {
       return [...installed.values()].map(model => ({
@@ -352,11 +363,17 @@ export async function discoverModels(
   // when the endpoint speaks something else (an Anthropic gateway answers 401,
   // which reads as a credential problem), and hand-entry remains the way out.
   const api = request.api ?? 'openai-completions'
-  if (!LISTABLE_PROTOCOLS.has(api)) {
+  if (!supportsModelListing(api)) {
     throw new LlmError(
       `pi-ai protocol "${api}" has no model listing this build can read; enter this provider's models by hand`,
       'DISCOVERY_UNSUPPORTED',
     )
+  }
+  if (savedRoute) {
+    const base = URL.parse(request.baseURL)
+    if (base === null || !['https:', 'http:'].includes(base.protocol) || base.username || base.password || base.search || base.hash) {
+      throw new LlmError('The saved provider endpoint is not a valid model listing base URL.', 'DISCOVERY_FAILED')
+    }
   }
   const url = listingUrl(request.baseURL, api)
   // A key typed into the form wins: it may replace the stored key that is
@@ -376,13 +393,14 @@ export async function discoverModels(
       if (apiKey !== undefined) headers.set('x-api-key', apiKey)
     } else if (api === 'google-generative-ai') {
       if (apiKey !== undefined) headers.set('x-goog-api-key', apiKey)
-    } else if (apiKey !== undefined) {
+    } else if (apiKey !== undefined && (!savedRoute || !headers.has('authorization'))) {
       headers.set('authorization', `Bearer ${apiKey}`)
     }
     for (const [name, value] of Object.entries(attributionHeaders())) headers.set(name, value)
     response = await fetch(url, {
       method: 'GET',
       headers,
+      redirect: savedRoute ? 'error' : 'follow',
       ...request.signal === undefined ? {} : { signal: request.signal },
     })
   } catch (error: unknown) {
@@ -392,9 +410,11 @@ export async function discoverModels(
     throw new LlmError(`could not reach ${url}`, 'DISCOVERY_FAILED', { cause: error })
   }
   if (!response.ok) {
+    await response.body?.cancel()
     throw new LlmError(
       `${url} answered ${response.status}${response.status === 401 || response.status === 403 ? '; check the API key' : ''}`,
       'DISCOVERY_FAILED',
+      { status: response.status },
     )
   }
   let text: string

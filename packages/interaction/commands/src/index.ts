@@ -13,7 +13,7 @@ import { NamedEntries, ScopedLayers } from '@deepseek-ai/dsh-scope'
 import type { ScopeKey, ScopeLayer } from '@deepseek-ai/dsh-scope'
 import { SessionSeq } from '@deepseek-ai/dsh-session'
 import type { Session, SessionEvent, SessionEventMap } from '@deepseek-ai/dsh-session'
-import { TypertRemoteService, Remote } from '@deepseek-ai/dsh-typert-protocol'
+import { TypertRemoteService, Remote, principalOf, type Principal } from '@deepseek-ai/dsh-typert-protocol'
 import { brandString } from '@deepseek-ai/dsh-brand'
 import type { CommandDefinitionId, CommandId } from './brand.ts'
 import type {
@@ -43,6 +43,8 @@ export interface CommandInvocation {
   readonly commandId: CommandId
   /** Exact agent whose UI received the command. */
   readonly agent: Agent
+  /** Remote caller when it is not the owner. An absent caller is trusted in-process code or the owner. */
+  readonly principal?: Principal
   /** Exact text following the registered command name, including separator whitespace. */
   readonly rawInput: string
   /**
@@ -418,7 +420,11 @@ export class CommandRuntime extends TypertRemoteService {
         throw cancelledDuringAdmission
       }
     }
-    const invocation = Object.freeze({ commandId, agent, rawInput: parsed.rawInput, attachments, signal })
+    const principal = principalOf(this.ctx.invocation)
+    const invocation = Object.freeze({
+      commandId, agent, rawInput: parsed.rawInput, attachments, signal,
+      ...principal === undefined ? {} : { principal },
+    })
     let result: CommandResult
     try {
       const output = command.definition.handler(invocation)

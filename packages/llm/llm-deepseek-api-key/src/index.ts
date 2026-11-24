@@ -6,7 +6,8 @@ import type {} from '@deepseek-ai/cordis-plugin-loader'
 import { DeepSeekAuthError } from '@deepseek-ai/dsh-deepseek-auth'
 import { launchEnvironmentOf } from '@deepseek-ai/dsh-launch-environment'
 import {
-  catalogModelInfo, createModelListingCache, refuseListedModel, registerDeepSeekProvider, resolveListedCatalog,
+  catalogModelInfo, createModelListingCache, modelListingURL, refuseListedModel, registerDeepSeekProvider,
+  requestModelListing, resolveListedCatalog,
 } from '@deepseek-ai/dsh-llm-deepseek'
 import type { CatalogRefusal, DeepSeekCatalogModel, DeepSeekRequestAuth, ListingView, ModelListing } from '@deepseek-ai/dsh-llm-deepseek'
 import { Config, plainOptions, resolveAdapterOptions } from './config.ts'
@@ -111,6 +112,15 @@ export function apply(ctx: Context, config: Config): void {
     resolveAuth,
     missingCredential,
     admit: (connection, model) => { refuseListedModel(model, connection.refusals.get(model)) },
+    listVisibleModels: async (_provider, signal) => {
+      const connection = options()
+      const url = modelListingURL(connection.baseURL)
+      const auth = await resolveAuth(connection, url)
+      signal.throwIfAborted()
+      if (auth === undefined) throw missingCredential(connection)
+      const { entries } = await requestModelListing(url, auth.headers, signal)
+      return entries.map(({ id, name }) => ({ id, ...name === undefined ? {} : { name } }))
+    },
     discoverModels: async (provider) => {
       const connection = options()
       if (connection.listing === undefined) {
