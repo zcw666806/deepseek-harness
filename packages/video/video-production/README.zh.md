@@ -69,6 +69,8 @@ Web 组合在既有附件、storage-domain、会话持久化与工具服务旁�
 
 生成的[配置目录](../../../docs/config-catalog.zh.md)说明所有字段。项目默认允许 64 个镜头、64 个素材、每镜头 20 次尝试、20 次导出和 1 MiB 序列化项目数据。生成与导出各有五分钟截止时间。成片默认输出为 1280×720、每秒 24 帧，源片段及输出大小上限为 512 MiB。部署差异通过显式插件配置改变。
 
+`projectToolDisabledPresets` 列出排除 `video_project` 声明和调用的会话预设 ID。Web 组合包指定 `minimal`，保留它的精简工具列表。视频工作台继续使用共享项目服务。
+
 ```yaml
 - id: video-production
   name: '@deepseek-ai/dsh-video-production'
@@ -115,8 +117,6 @@ Web 组合在既有附件、storage-domain、会话持久化与工具服务旁�
 #### 模型看到什么
 
 [`video_project` 工具目录](../../../docs/tool-catalog.zh.md#deepseek-aidsh-video-production)拥有动作与参数说明。每次成功操作以 JSON 返回完整当前项目，包括参考图元数据、镜头提示词、有序尝试、选用附件及导出结果。结果中不包含视频或图片字节。
-
-`projectToolDisabledPresets` 列出排除 `video_project` 声明和调用的会话预设 ID。Web 组合包指定 `minimal`，保留它的精简工具列表。视频工作台继续使用共享项目服务。
 
 #### Token 影响
 

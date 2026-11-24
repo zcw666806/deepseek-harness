@@ -69,6 +69,8 @@ Package defaults allow 768 MiB per complete container, a 4 MiB manifest, four re
 
 The generated [configuration catalog](../../../docs/config-catalog.md) describes all fields. Project defaults allow 64 shots, 64 assets, 20 attempts per shot, 20 exports, and 1 MiB of serialized project data. Generation and export each have a five-minute deadline. Film output defaults to 1280×720 at 24 frames per second, with a 512 MiB source/output size limit. Deployment changes are explicit plugin configuration.
 
+`projectToolDisabledPresets` lists preset IDs that exclude `video_project` from model requests and dispatch. The Web bundle lists `minimal` to keep its tool roster limited. The video workbench continues to use the shared project service.
+
 ```yaml
 - id: video-production
   name: '@deepseek-ai/dsh-video-production'
@@ -115,8 +117,6 @@ The service reserves enough project space to retain a bounded failure before sta
 #### What the model sees
 
 The [`video_project` tool catalog](../../../docs/tool-catalog.md#deepseek-aidsh-video-production) owns the action and parameter descriptions. Every successful action returns the complete current project as JSON, including reference metadata, shot prompts, ordered attempts, selected attachments, and export outcomes. Video and image bytes are absent from this result.
-
-`projectToolDisabledPresets` lists preset IDs that exclude `video_project` from model requests and dispatch. The Web bundle lists `minimal` to keep its tool roster limited. The video workbench continues to use the shared project service.
 
 #### Token effect
 
