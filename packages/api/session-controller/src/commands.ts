@@ -8,6 +8,7 @@ import { randomUUID } from 'node:crypto'
 import type { Context } from '@deepseek-ai/cordis'
 import { brandString } from '@deepseek-ai/dsh-brand'
 import type { Agent, ModelSelection as AgentModelSelection } from '@deepseek-ai/dsh-agent'
+import type { CommandResult } from '@deepseek-ai/dsh-commands'
 import { AttachmentError } from '@deepseek-ai/dsh-attachment'
 import type {
   AttachmentAdmissionPart,
@@ -15,7 +16,7 @@ import type {
 import type { FileUploadReceiptId, StagedAttachment } from '@deepseek-ai/dsh-client-file-upload/types'
 import type {} from '@deepseek-ai/dsh-client-file-upload'
 import {
-  type ReasoningEffortId, createUserMessage, freezeMessage,
+  LlmError, type ReasoningEffortId, createUserMessage, freezeMessage,
 } from '@deepseek-ai/dsh-llm'
 import type { MessageId, MessageSource } from '@deepseek-ai/dsh-llm'
 import { buildForkSeed } from '@deepseek-ai/dsh-session/fork'
@@ -62,6 +63,50 @@ import type {
 type PromptContentCandidate =
   | SessionPromptRequest['content'][number]
   | Extract<SessionUpdateQueueRequest['action'], { readonly kind: 'edit' }>['content'][number]
+
+function modelListingFailure(error: LlmError): string {
+  switch (error.failure.status) {
+    case 401: return 'The provider rejected the API credential (401).'
+    case 403: return 'The provider denied access to its model listing (403).'
+    case 404:
+    case 405: return `The provider did not expose a compatible model listing (${error.failure.status}).`
+    case 429: return 'The provider rate-limited the model listing (429). Retry later.'
+    default: return error.failure.status === undefined ? error.message : `The provider returned HTTP ${error.failure.status}.`
+  }
+}
+
+/**
+ * Register an owner-only lookup of the provider selected for the next step.
+ * @param ctx - Session controller context with the model runtime and optional command registry.
+ */
+export function registerModelListingCommand(ctx: Context): void {
+  ctx.inject(['commands'], (commandCtx) => {
+    commandCtx.effect(() => commandCtx.commands.register({
+      name: 'models',
+      description: 'Check which models the selected provider lists for its saved credential',
+      recordInput: false,
+      async handler({ agent, principal, rawInput, signal }): Promise<CommandResult> {
+        if (principal !== undefined) {
+          return { kind: 'error', text: 'Only the owner can query the provider model listing.' }
+        }
+        if (rawInput.trim() !== '') return { kind: 'error', text: 'Usage: /models' }
+        const selection = agent.model.current()
+        if (selection === undefined) return { kind: 'error', text: 'Select a conversation model before running /models.' }
+        const { provider } = selection
+        try {
+          const models = await ctx.llm.listVisibleModels(provider, signal)
+          const shown = models.slice(0, 100).map(({ id }) => id.replace(/[\p{Cc}\p{Cf}\s]/gu, ' ').slice(0, 200))
+          const summary = `${provider} returned ${models.length} model(s). Listing only.`
+          const remainder = models.length > shown.length ? [`Showing the first ${shown.length} models.`] : []
+          return { kind: 'success', text: [summary, ...shown, ...remainder].join('\n') }
+        } catch (error: unknown) {
+          if (!(error instanceof LlmError)) throw error
+          return { kind: 'error', text: `${provider}: ${modelListingFailure(error)}` }
+        }
+      },
+    }), 'session-controller.models-command')
+  })
+}
 
 /**
  * Whether prompt content carries non-whitespace text or an attachment.

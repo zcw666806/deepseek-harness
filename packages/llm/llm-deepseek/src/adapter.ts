@@ -36,6 +36,9 @@ export class DeepSeekAdapter<C extends Connection = Connection> extends LlmAdapt
   override async listModels(provider: string) {
     return this.dependencies.discoverModels?.(provider) ?? []
   }
+  override listVisibleModels(provider: string, signal: AbortSignal) {
+    return this.dependencies.listVisibleModels?.(provider, signal) ?? super.listVisibleModels(provider, signal)
+  }
   override async resolveModel(provider: string, model: string, signal?: AbortSignal) {
     return modelInfo(await this.connection(signal), provider, model)
   }

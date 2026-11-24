@@ -1,0 +1,14 @@
+.row {
+  display: grid;
+  flex: 0 0 100%;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--dsh-sidebar-label-gap);
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 32px;
+  padding: 4px var(--dsh-sidebar-row-padding);
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}

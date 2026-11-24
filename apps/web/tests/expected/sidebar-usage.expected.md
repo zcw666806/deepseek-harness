@@ -1,0 +1,1 @@
+- text: 31.6K tok · Cache hit 74%

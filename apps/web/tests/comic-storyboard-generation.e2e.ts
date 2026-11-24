@@ -68,6 +68,7 @@ class StoryPlanner extends LlmAdapter {
       return
     }
     yield { type: 'block-start', index: 0, blockType: 'text' }
+    yield { type: 'text-delta', index: 0, text }
     yield { type: 'block-end', index: 0, block: { type: 'text', text } }
     yield { type: 'finish', reason: { kind: 'stop' } }
   }
@@ -95,9 +96,9 @@ function appendStoryboardTurn(session: Session, title: string, request: string, 
   ])
 }
 
-function storyFixture(): string {
+function storyFixture(title: string, request: string, storyboard: string): string {
   const session = Session.create(SessionId('comic-storyboard-source'))
-  const events = appendStoryboardTurn(session, SESSION_TITLE, `请画一张四格漫画《${TITLE}》`, STORY)
+  const events = appendStoryboardTurn(session, title, request, storyboard)
   const header = JSON.stringify({ type: 'session', ...session.header, id: '{{sessionId}}', createdAt: 0, cwd: '{{cwd}}', delegationDepth: 0 })
   return renderSeedFixture(header, events)
 }
@@ -137,7 +138,7 @@ it.skipIf(MODE === 'record')('plans and writes the storyboard from Chat and rout
   const planner = new StoryPlanner(documentPath)
   scaffold.ctx.effect(() => scaffold.ctx.llm.registerAdapter([PLANNER_PROVIDER], planner), 'comic test planning adapter')
   const defaultPlanningModel = scaffold.ctx.agentDefaultModel.currentSelection()
-  const fixture = storyFixture().replaceAll('{{cwd}}', JSON.stringify(scaffold.workspaceCwd).slice(1, -1))
+  const fixture = storyFixture(SESSION_TITLE, `请画一张四格漫画《${TITLE}》`, STORY).replaceAll('{{cwd}}', JSON.stringify(scaffold.workspaceCwd).slice(1, -1))
   const sessionId = await seedSession(scaffold, fixture, 'comic-storyboard-generation')
   await scaffold.ctx.sessionController.rename({ sessionId, title: SESSION_TITLE })
   const workspace = await scaffold.ctx.workspaceRegistry.create(scaffold.workspaceCwd, WORKSPACE_TITLE)
@@ -208,15 +209,7 @@ it.skipIf(MODE === 'record')('plans and writes the storyboard from Chat and rout
     .find(target => target.id === IMAGE_TARGET)
   if (alternateTarget === undefined) throw new Error('Configured comic test route is unavailable.')
   const alternateTargetId = alternateTarget.id
-  const addLiveStoryboard = async (id: string, title: string, request: string, storyboardTitle: string): Promise<void> => {
-    const { agent } = await scaffold.ctx.agents.create({
-      sessionId: SessionId(id), meta: { cwd: scaffold.workspaceCwd },
-      setup: agentCtx => scaffold.ctx.agentPresets.mount(agentCtx).then(() => undefined),
-    })
-    await workspace.attachSession(agent.id)
-    await scaffold.ctx.comicProduction.selectStoryboardGenerationTarget(agent.id, alternateTargetId)
-    appendStoryboardTurn(agent.session, title, request, STORY.replace(TITLE, storyboardTitle))
-    await expect(scaffold.ctx.sessions.flush(agent.session)).resolves.toBe(true)
+  const showNewStoryboard = async (): Promise<void> => {
     await page.reload({ waitUntil: 'load' })
     await group.waitFor()
     await expect.poll(async () => {
@@ -228,13 +221,26 @@ it.skipIf(MODE === 'record')('plans and writes the storyboard from Chat and rout
   }
 
   const reviewTitle = 'Storyboards for review'
-  await addLiveStoryboard('comic-storyboard-review', reviewTitle, '请画一张四格漫画《晚安松鼠》，先给我看分镜，等我确认再出图。', '晚安松鼠')
+  const reviewFixture = storyFixture(reviewTitle, '请画一张四格漫画《晚安松鼠》，先给我看分镜，等我确认再出图。', STORY.replace(TITLE, '晚安松鼠'))
+  const reviewId = await seedSession(scaffold, reviewFixture, 'comic-storyboard-review', 'standard')
+  await scaffold.ctx.sessionController.rename({ sessionId: reviewId, title: reviewTitle })
+  await workspace.attachSession(reviewId)
+  await scaffold.ctx.comicProduction.selectStoryboardGenerationTarget(reviewId, alternateTargetId)
+  await showNewStoryboard()
   await sessionRow(reviewTitle).click()
   await expect.poll(() => generate.isEnabled()).toBe(true)
   expect(received).toHaveLength(1)
 
   const directTitle = 'Requested comic image'
-  await addLiveStoryboard('comic-storyboard-direct', directTitle, '请画一张四格漫画《晚安月亮》', '晚安月亮')
+  const { agent: direct } = await scaffold.ctx.agents.create({
+    sessionId: SessionId('comic-storyboard-direct'), meta: { cwd: scaffold.workspaceCwd },
+    setup: agentCtx => scaffold.ctx.agentPresets.mount(agentCtx).then(() => undefined),
+  })
+  await workspace.attachSession(direct.id)
+  await scaffold.ctx.comicProduction.selectStoryboardGenerationTarget(direct.id, alternateTargetId)
+  appendStoryboardTurn(direct.session, directTitle, '请画一张四格漫画《晚安月亮》', STORY.replace(TITLE, '晚安月亮'))
+  await expect(scaffold.ctx.sessions.flush(direct.session)).resolves.toBe(true)
+  await showNewStoryboard()
   await sessionRow(directTitle).click()
   await expect.poll(() => result.getByRole('img').evaluate(image => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0)
   expect(received).toHaveLength(2)

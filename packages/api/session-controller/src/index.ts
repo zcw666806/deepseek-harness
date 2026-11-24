@@ -21,7 +21,7 @@ import {
   ApiSessionAgentController,
   type ApiSessionAgentResult,
 } from './agent.ts'
-import { SessionCommandController, hasPromptContent } from './commands.ts'
+import { SessionCommandController, hasPromptContent, registerModelListingCommand } from './commands.ts'
 import { resolveSessionResource } from './session-resource.ts'
 import { SessionControlController } from './control.ts'
 import { HistoryController } from './history/controller.ts'
@@ -167,6 +167,7 @@ export class SessionController extends TypertRemoteService {
     this.agents = new ApiSessionAgentController(ctx)
     this.agents.initialize()
     this.commands = new SessionCommandController(ctx, this.agents, process.cwd())
+    registerModelListingCommand(ctx)
     ctx.effect(() => ctx.fileUploads.registerAgentResolver(async (sessionId) => {
       const result = await this.agents.resolveAgent(sessionId)
       if ('error' in result) throw result.error

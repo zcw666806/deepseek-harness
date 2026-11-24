@@ -71,6 +71,9 @@
       "path": "../../interaction/permission-presets"
     },
     {
+      "path": "../../interaction/commands"
+    },
+    {
       "path": "../../jobs/jobs"
     },
     {

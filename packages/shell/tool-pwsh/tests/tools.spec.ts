@@ -660,19 +660,27 @@ describe('sandbox escalation through ctx.approval', () => {
     const schema = ctx.tools.schemas().find(item => item.name === 'pwsh')!
     const properties = schema.parameters.properties as Record<string, { enum?: string[]; description?: string }>
     expect(properties['sandbox_permissions']?.enum).toEqual(['workspace-write', 'danger-full-access'])
+    expect(properties['sandbox_permissions']?.description).toContain('Omit this field and justification to use the session’s existing permissions.')
     expect(properties['sandbox_permissions']?.description).toContain('asks the user for approval')
     expect(schema.description).toContain('ConstrainedLanguage')
     expect(schema.description).toContain('workspace-write stays in FullLanguage')
     expect(schema.description).toContain('In both confined modes, programs cannot open named pipes')
     expect(schema.description).toContain('fails with EPERM')
 
-    for (const args of [
-      { command: 'Write-Output ok', description: 'd', sandbox_permissions: 'workspace-write' },
-      { command: 'Write-Output ok', description: 'd', justification: 'why' },
-      { command: 'Write-Output ok', description: 'd', sandbox_permissions: 'workspace-write', justification: ' ' },
-    ]) {
-      expect((await call(ctx, 'pwsh', args)).isError).toBe(true)
-    }
+  })
+
+  it.each([
+    [{ sandbox_permissions: 'workspace-write' }, 'requires a justification'],
+    [{ sandbox_permissions: 'workspace-write', justification: ' ' }, 'expected a non-empty sentence'],
+    [{ justification: 'why' }, 'only valid together with sandbox_permissions'],
+  ] as const)('rejects malformed escalation arguments %j before approval or execution', async (args, message) => {
+    const { ctx, bash } = await setupSandboxed(true)
+    const prompted = vi.fn()
+    ctx.on('approval/request', () => { prompted(); return Promise.resolve<ApprovalOutcome>('allowed-once') })
+    const result = await call(ctx, 'pwsh', { command: 'Write-Output ok', description: 'test escalation', ...args }, sandboxAgent('read-only'))
+    expect(text(result)).toContain(message)
+    expect(prompted).not.toHaveBeenCalled()
+    expect(bash.modes).toEqual([])
   })
 
   it('the escalation fields and the confined-mode clauses stay out of sandbox-less compositions', async () => {
@@ -719,11 +727,25 @@ describe('sandbox escalation through ctx.approval', () => {
     expect(text(await call(ctx, 'pwsh', escalate, malformed))).toContain('not strictly wider')
   })
 
-  it.each(['workspace-write', 'danger-full-access'] as const)('runs a repeated %s request without approval', async (mode) => {
-    const { ctx, bash } = await setupSandboxed()
-    const result = await call(ctx, 'pwsh', { ...escalate, sandbox_permissions: mode }, sandboxAgent(mode))
-    expect(result.isError).toBe(false)
-    expect(bash.modes).toEqual([mode])
+  it.each(['workspace-write', 'danger-full-access'] as const)('uses the session’s %s policy for ordinary and repeated-mode calls', async (mode) => {
+    const { ctx, bash } = await setupSandboxed(true)
+    const prompted = vi.fn()
+    ctx.on('approval/request', () => { prompted(); return Promise.resolve<ApprovalOutcome>('allowed-once') })
+    const agent = sandboxAgent(mode)
+    const command = { command: 'Write-Output ok', description: 'use existing permissions' }
+    const calls = [
+      command,
+      { ...command, justification: ' ' },
+      { ...command, sandbox_permissions: mode },
+      { ...command, sandbox_permissions: mode, justification: '' },
+      { ...command, sandbox_permissions: mode, justification: ' ' },
+      { ...escalate, sandbox_permissions: mode },
+    ]
+    for (const args of calls) {
+      expect((await call(ctx, 'pwsh', args, agent)).isError).toBe(false)
+    }
+    expect(prompted).not.toHaveBeenCalled()
+    expect(bash.modes).toEqual(calls.map(() => mode))
   })
 
   it('fails closed when approval cannot be routed', async () => {

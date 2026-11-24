@@ -7,6 +7,13 @@ import SessionStore, { type SessionId } from '@deepseek-ai/dsh-session'
 import { brandString } from '@deepseek-ai/dsh-brand'
 import CommandRuntime, { type CommandDefinitionId, parseCommand, type CommandDefinition } from '@deepseek-ai/dsh-commands'
 import { AttachmentStore } from '@deepseek-ai/dsh-attachment'
+import type { Principal, RemoteInvocation } from '@deepseek-ai/dsh-typert-protocol'
+
+declare module '@deepseek-ai/dsh-typert-protocol' {
+  interface PrincipalMap {
+    'command-test-guest': { readonly kind: 'command-test-guest' }
+  }
+}
 
 function command(name: string, text = `ran:${name}`): CommandDefinition {
   return {
@@ -55,6 +62,22 @@ describe('parseCommand()', () => {
 })
 
 describe('CommandRuntime', () => {
+  it('forwards a non-owner Remote caller to the command handler', async () => {
+    const ctx = await mount()
+    const { agent } = await mintAgentScope(ctx, 'a')
+    const handler = vi.fn<CommandDefinition['handler']>(() => ({ kind: 'success' }))
+    ctx.commands.register({ ...command('check-owner'), handler })
+
+    const invokeAs = (principal: Principal) => ctx.extend({
+      invocation: { peer: { principal } } as RemoteInvocation,
+    }).commands.execute(agent, '/check-owner', [], new AbortController().signal)
+
+    await invokeAs({ kind: 'command-test-guest' })
+    await invokeAs({ kind: 'owner' })
+    expect(handler).toHaveBeenNthCalledWith(1, expect.objectContaining({ principal: { kind: 'command-test-guest' } }))
+    expect(handler.mock.calls[1]?.[0]).not.toHaveProperty('principal')
+  })
+
   it('lists immutable global descriptors with input metadata', async () => {
     const ctx = await mount()
     const { agent } = await mintAgentScope(ctx, 'a')

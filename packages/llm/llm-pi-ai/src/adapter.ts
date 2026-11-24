@@ -46,6 +46,7 @@ import {
 import type {
   GenerateOptions,
   ImageAttachmentAccess,
+  LlmDiscoveredModel,
   LlmModelInfo,
   LlmProviderInfo,
   LlmResolvedModelInfo,
@@ -60,6 +61,7 @@ import { brandString } from '@deepseek-ai/dsh-brand'
 import { idleWatchdog, timeoutOf } from '@deepseek-ai/dsh-timeout'
 import type { ResolvedPiAiProviderProfile } from './config.ts'
 import { requestImageTarget, toPiContext } from './context.ts'
+import { discoverModels, supportsModelListing } from './discovery.ts'
 import { resolveImageRequestBudget } from './image-policy.ts'
 import { conversationUpdates, createModels, getSupportedThinkingLevels } from './models.ts'
 import { toStreamChunks } from './stream.ts'
@@ -281,6 +283,10 @@ function isVideoModel(model: Model<Api>): boolean {
   return (model as ModelWithOutput).output?.includes('video') === true
 }
 
+function listingProtocol(api: string): string {
+  return api === 'openai-responses' ? 'openai-completions' : api
+}
+
 /**
  * pi-ai-backed multi-provider adapter. Each operation reads the current
  * profiles, so a configuration change reaches the next request without a
@@ -377,6 +383,43 @@ export class PiAiAdapter extends LlmAdapter {
         }
       })
     })
+  }
+
+  override async listVisibleModels(provider: string, signal: AbortSignal): Promise<readonly LlmDiscoveredModel[]> {
+    const snapshot = this.current()
+    const profile = this.profileOf(snapshot, provider)
+    const models = snapshot.models.getModels(provider)
+    const model = models[0]
+    if (model === undefined || !supportsModelListing(model.api)
+      || models.some(candidate => candidate.baseUrl !== model.baseUrl || listingProtocol(candidate.api) !== listingProtocol(model.api))) {
+      throw new LlmError(`Provider "${provider}" needs one compatible endpoint to list models.`, 'DISCOVERY_UNSUPPORTED')
+    }
+    signal.throwIfAborted()
+    const explicitKey = await this.config.resolveApiKey(provider, profile)
+    signal.throwIfAborted()
+    if (explicitKey === undefined && profile.piProvider?.auth.oauth !== undefined) {
+      throw new LlmError(`Provider "${provider}" needs an explicit API key for model listing.`, 'DISCOVERY_UNSUPPORTED')
+    }
+    const resolved = await snapshot.models.getAuth(model, {
+      ...explicitKey === undefined ? {} : { apiKey: explicitKey },
+      signal,
+    }).catch((error: unknown) => {
+      signal.throwIfAborted()
+      throw new LlmError(`Could not verify credentials for provider "${provider}".`, 'DISCOVERY_FAILED', { cause: error })
+    })
+    if (resolved === undefined) throw new LlmError(`Provider "${provider}" has no usable credential.`, 'MISSING_CREDENTIAL')
+    const headers = new Map([...Object.entries(resolved.auth.headers ?? {}), ...Object.entries(profile.headers ?? {})]
+      .map(([name, value]) => [name.toLowerCase(), value] as const))
+    const apiKey = headers.get('authorization') === null ? undefined : explicitKey ?? resolved.auth.apiKey
+    return await discoverModels({
+      baseURL: resolved.auth.baseUrl ?? model.baseUrl,
+      api: model.api,
+      ...apiKey === undefined ? {} : { apiKey },
+      signal,
+    }, () => ({
+      headers: Object.fromEntries([...headers].filter((entry): entry is [string, string] => entry[1] !== null)),
+      resolveApiKey: () => Promise.resolve(undefined),
+    }), true)
   }
 
   override resolveModel(

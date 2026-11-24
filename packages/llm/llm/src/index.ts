@@ -8,7 +8,9 @@
 
 import { Context } from '@deepseek-ai/cordis'
 import { Remote, RemoteError, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
+import { deadline, timeoutOf } from '@deepseek-ai/dsh-timeout'
 import { deepFreeze } from '@deepseek-ai/dsh-util-values'
+import z from '@deepseek-ai/schemastery'
 import type {
   GenerateOptions,
   RequestMessage,
@@ -245,6 +247,17 @@ export abstract class LlmAdapter {
   }
 
   /**
+   * Read a fresh listing from the endpoint and credential of one saved route.
+   * @param _provider - registered route owned by this adapter.
+   * @param _signal - deadline covering provider and credential resolution.
+   * @returns model IDs and metadata advertised by the endpoint.
+   * @throws LlmError when the route has no supported live listing.
+   */
+  listVisibleModels(_provider: string, _signal: AbortSignal): Promise<readonly LlmDiscoveredModel[]> {
+    return Promise.reject(new LlmError('This provider protocol has no supported live model listing.', 'DISCOVERY_UNSUPPORTED'))
+  }
+
+  /**
    * Resolve all metadata available for one exact model. This query is
    * independent of the advisory catalog and does not validate request routing.
    * @param provider - one provider route owned by this adapter.
@@ -330,11 +343,29 @@ export interface DirectoryRegistrationHandle {
   replace(entries: readonly LlmConfigurableProvider[]): void
 }
 
+/** Host policy for one saved-provider model listing. */
+export interface Config {
+  /** Deadline for resolving the credential and reading the complete listing, in milliseconds. */
+  readonly modelListingTimeoutMs?: number
+}
+
+interface ResolvedConfig {
+  readonly modelListingTimeoutMs: number
+}
+
+const MODEL_LISTING_TIMEOUT = 'MODEL_LISTING_TIMEOUT'
+
 /**
  * The abstract `llm` service: an adapter registry plus a streaming model-call
  * API, interceptable via the `llm/stream` waterfall.
  */
 export class LlmRuntime extends TypertRemoteService {
+  /** Deadline policy for saved-provider model listings. */
+  static Config: z<Config, ResolvedConfig> = z.object({
+    modelListingTimeoutMs: z.natural().min(1).max(60_000).default(8_000),
+  })
+
+  private readonly modelListingTimeoutMs: number
   private adapters = new Map<string, AdapterRegistration>()
   private directory = new Map<string, LlmConfigurableProvider>()
   private discoveries = new Map<
@@ -342,8 +373,9 @@ export class LlmRuntime extends TypertRemoteService {
     (request: LlmModelDiscoveryRequest, signal?: AbortSignal) => Promise<readonly LlmDiscoveredModel[]>
   >()
 
-  constructor(ctx: Context) {
+  constructor(ctx: Context, config: Config = {}) {
     super(ctx, 'llm')
+    this.modelListingTimeoutMs = LlmRuntime.Config(config).modelListingTimeoutMs
   }
 
   /** Notify topology observers without letting one broken listener veto the commit. */
@@ -731,6 +763,37 @@ export class LlmRuntime extends TypertRemoteService {
         },
       }
     })
+  }
+
+  /**
+   * Query the registered route's actual endpoint with a total deadline.
+   * @param provider - registered provider route to query.
+   * @param signal - optional cancellation by the caller.
+   * @returns advertised models in endpoint order with duplicate IDs removed.
+   * @throws LlmError when listing fails, is cancelled, or exceeds the deadline.
+   */
+  async listVisibleModels(provider: string, signal?: AbortSignal): Promise<LlmDiscoveredModel[]> {
+    using timing = deadline(signal, this.modelListingTimeoutMs, MODEL_LISTING_TIMEOUT)
+    const stopped = Promise.withResolvers<never>()
+    const abort = (): void => {
+      const timeout = timeoutOf(timing.signal, MODEL_LISTING_TIMEOUT)
+      stopped.reject(timeout === undefined
+        ? new LlmError('Model listing cancelled.', 'ABORTED')
+        : new LlmError(`The provider model listing timed out after ${timeout.timeoutMs} ms.`, 'TIMEOUT'))
+    }
+    if (timing.signal.aborted) {
+      abort()
+      return await stopped.promise
+    }
+    timing.signal.addEventListener('abort', abort, { once: true })
+    try {
+      const adapter = this.registration(provider).adapter
+      const models = await Promise.race([stopped.promise, adapter.listVisibleModels(provider, timing.signal)])
+      const unique = new Map(models.map(model => [model.id, model]))
+      return [...unique.values()]
+    } finally {
+      timing.signal.removeEventListener('abort', abort)
+    }
   }
 
   /**

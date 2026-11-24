@@ -88,6 +88,16 @@ it('keeps a customized catalog without requesting the listing', async () => {
   expect(requests).toEqual([])
 })
 
+it('queries the live endpoint explicitly without substituting the configured catalog', async () => {
+  const requests = officialListing(listing(FLASH))
+  const { ctx } = await host()
+  await ctx.plugin(DeepSeekAuth)
+  await ctx.plugin(ApiKey, { models: [{ id: 'custom', name: 'Custom' }] })
+  await expect(ctx.llm.listVisibleModels('deepseek-official')).resolves.toEqual([{ id: FLASH.id, name: FLASH.name }])
+  expect(await ids(ctx)).toEqual(['custom'])
+  expect(requests.map(request => request.headers.get('x-api-key'))).toEqual(['fixture-api-key'])
+})
+
 it('serves the built-in catalog on another endpoint without requesting a listing', async () => {
   const requests = officialListing(listing(FLASH))
   const { ctx } = await host()
